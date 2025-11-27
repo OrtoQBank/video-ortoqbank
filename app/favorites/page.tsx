@@ -1,31 +1,71 @@
 import { FavoritesInner } from "./_components/FavoritesInner";
-import { preloadQuery } from "convex/nextjs";
-import { api } from "@/convex/_generated/api";
 
-export default async function FavoritesPage() {
-  // TODO: Replace with actual user ID from auth
-  const userId = "demo-user";
-
-  // Preload favorites data
-  const preloadedFavorites = await preloadQuery(api.favorites.getUserFavorites, {
-    userId,
-    paginationOpts: {
-      numItems: 3,
-      cursor: null,
+export default function FavoritesPage() {
+  // Mock data for presentation - will be replaced with Convex later
+  const mockFavorites = [
+    {
+      _id: "1",
+      title: "Ossos e Estruturas - Aula 1",
+      description: "Nesta aula você vai aprender conceitos importantes sobre ossos e estruturas. Vamos explorar os fundamentos e aplicações práticas.",
+      duration: "15:30",
+      level: "Básico" as const,
+      courseName: "Introdução à Anatomia Óssea",
+      subthemeName: "Ossos e Estruturas",
     },
-  });
+    {
+      _id: "2",
+      title: "Articulações - Aula 2",
+      description: "Nesta aula você vai aprender conceitos importantes sobre articulações. Vamos explorar os fundamentos e aplicações práticas.",
+      duration: "20:40",
+      level: "Intermediário" as const,
+      courseName: "Introdução à Anatomia Óssea",
+      subthemeName: "Articulações",
+    },
+    {
+      _id: "3",
+      title: "Sistema Muscular - Aula 1",
+      description: "Nesta aula você vai aprender conceitos importantes sobre sistema muscular. Vamos explorar os fundamentos e aplicações práticas.",
+      duration: "18:25",
+      level: "Avançado" as const,
+      courseName: "Introdução à Anatomia Óssea",
+      subthemeName: "Sistema Muscular",
+    },
+  ];
 
-  // Preload watch also videos
-  const preloadedWatchAlso = await preloadQuery(api.favorites.getUnwatchedFirstVideos, {
-    userId,
-    count: 3,
-  });
+  const mockWatchAlso = [
+    {
+      _id: "4",
+      title: "Tipos de Fraturas - Aula 1",
+      description: "Nesta aula você vai aprender conceitos importantes sobre tipos de fraturas. Vamos explorar os fundamentos e aplicações práticas.",
+      duration: "22:15",
+      level: "Intermediário" as const,
+      courseName: "Ortopedia Avançada",
+      subthemeName: "Tipos de Fraturas",
+    },
+    {
+      _id: "5",
+      title: "Princípios de Biomecânica - Aula 1",
+      description: "Nesta aula você vai aprender conceitos importantes sobre princípios de biomecânica. Vamos explorar os fundamentos e aplicações práticas.",
+      duration: "19:45",
+      level: "Básico" as const,
+      courseName: "Fisiologia do Movimento",
+      subthemeName: "Princípios de Biomecânica",
+    },
+    {
+      _id: "6",
+      title: "Análise de Movimento - Aula 1",
+      description: "Nesta aula você vai aprender conceitos importantes sobre análise de movimento. Vamos explorar os fundamentos e aplicações práticas.",
+      duration: "25:10",
+      level: "Avançado" as const,
+      courseName: "Fisiologia do Movimento",
+      subthemeName: "Análise de Movimento",
+    },
+  ];
 
   return (
     <FavoritesInner
-      preloadedFavorites={preloadedFavorites}
-      preloadedWatchAlso={preloadedWatchAlso}
-      userId={userId}
+      initialFavorites={mockFavorites}
+      watchAlsoVideos={mockWatchAlso}
     />
   );
 }

@@ -94,17 +94,12 @@ export const seedVideos = mutation({
 });
 
 /**
- * Clear all data from favorites and progress tables (for testing)
+ * Clear all data from progress table (for testing)
  */
 export const clearUserData = mutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
-    const favorites = await ctx.db.query("favorites").collect();
-    for (const favorite of favorites) {
-      await ctx.db.delete(favorite._id);
-    }
-
     const progress = await ctx.db.query("progress").collect();
     for (const prog of progress) {
       await ctx.db.delete(prog._id);

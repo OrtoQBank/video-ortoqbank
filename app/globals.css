@@ -136,9 +136,9 @@
     @apply bg-background text-foreground;
   }
   
-  /* Customização da Sidebar - mantém o design original de 147px */
+  /* Customização da Sidebar - largura aumentada */
   [data-sidebar] {
-    --sidebar-width: 147px;
-    --sidebar-width-icon: 60px;
+    --sidebar-width: 200px;
+    --sidebar-width-icon: 68px;
   }
 }

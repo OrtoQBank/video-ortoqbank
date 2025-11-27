@@ -27,14 +27,6 @@ export default defineSchema({
     .index("by_subtheme", ["subthemeId"])
     .index("by_subtheme_and_order", ["subthemeId", "order"]),
 
-  // User favorites
-  favorites: defineTable({
-    userId: v.string(),
-    videoId: v.id("videos"),
-  })
-    .index("by_user", ["userId"])
-    .index("by_user_and_video", ["userId", "videoId"]),
-
   // User progress/watched videos
   progress: defineTable({
     userId: v.string(),

@@ -8,7 +8,6 @@
  * @module
  */
 
-import type * as favorites from "../favorites.js";
 import type * as myFunctions from "../myFunctions.js";
 import type * as seed from "../seed.js";
 
@@ -19,7 +18,6 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  favorites: typeof favorites;
   myFunctions: typeof myFunctions;
   seed: typeof seed;
 }>;

@@ -6,11 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useRouter } from "next/navigation";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
 
-interface Lesson {
+interface VideoLesson {
   id: string;
   title: string;
   duration: string;
@@ -22,7 +19,7 @@ interface Module {
   title: string;
   lessonsCount: number;
   completedCount: number;
-  lessons: Lesson[];
+  lessons: VideoLesson[];
 }
 
 interface CourseInnerProps {
@@ -37,22 +34,14 @@ interface CourseInnerProps {
 export function CourseInner({ courseData }: CourseInnerProps) {
   const router = useRouter();
   const [expandedModules, setExpandedModules] = useState<string[]>(["1"]);
-  const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(
+  const [selectedLesson, setSelectedLesson] = useState<VideoLesson | null>(
     courseData.modules[0]?.lessons[0] || null
   );
 
-  // TODO: Replace with actual user ID from auth
-  const userId = "demo-user";
-  
-  // Convex mutations and queries
-  const toggleFavorite = useMutation(api.favorites.toggleFavorite);
-  const markAsCompleted = useMutation(api.favorites.markAsCompleted);
-  
-  // Check if current lesson is favorited
-  const isFavorited = useQuery(
-    api.favorites.isFavorited,
-    selectedLesson ? { userId, videoId: selectedLesson.id as Id<"videos"> } : "skip"
-  );
+  // Mock data - will be replaced with Convex later
+  // TODO: Replace with actual user ID from auth and Convex integration
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const isFavorited = selectedLesson ? favorites.includes(selectedLesson.id) : false;
 
   const toggleModule = (moduleId: string) => {
     setExpandedModules((prev) =>
@@ -60,34 +49,24 @@ export function CourseInner({ courseData }: CourseInnerProps) {
     );
   };
 
-  const handleLessonClick = (lesson: Lesson) => {
+  const handleLessonClick = (lesson: VideoLesson) => {
     setSelectedLesson(lesson);
   };
 
-  const handleToggleFavorite = async () => {
+  const handleToggleFavorite = () => {
     if (selectedLesson) {
-      try {
-        await toggleFavorite({
-          userId,
-          videoId: selectedLesson.id as Id<"videos">,
-        });
-      } catch (error) {
-        console.error("Error toggling favorite:", error);
-      }
+      setFavorites(prev => 
+        prev.includes(selectedLesson.id)
+          ? prev.filter(id => id !== selectedLesson.id)
+          : [...prev, selectedLesson.id]
+      );
     }
   };
 
-  const handleMarkAsCompleted = async () => {
+  const handleMarkAsCompleted = () => {
     if (selectedLesson) {
-      try {
-        await markAsCompleted({
-          userId,
-          videoId: selectedLesson.id as Id<"videos">,
-        });
-        console.log("Marcada como concluída:", selectedLesson.id);
-      } catch (error) {
-        console.error("Error marking as completed:", error);
-      }
+      // TODO: Implement with Convex
+      console.log("Marcada como concluída:", selectedLesson.id);
     }
   };
 

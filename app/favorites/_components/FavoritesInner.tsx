@@ -7,52 +7,44 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useRouter } from "next/navigation";
-import { Preloaded, usePreloadedQuery, useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
 import Image from "next/image";
 
+interface Video {
+  _id: string;
+  title: string;
+  description: string;
+  duration: string;
+  level: "Básico" | "Intermediário" | "Avançado";
+  courseName: string;
+  subthemeName: string;
+  thumbnailUrl?: string;
+}
+
 interface FavoritesInnerProps {
-  preloadedFavorites: Preloaded<typeof api.favorites.getUserFavorites>;
-  preloadedWatchAlso: Preloaded<typeof api.favorites.getUnwatchedFirstVideos>;
-  userId: string;
+  initialFavorites: Video[];
+  watchAlsoVideos: Video[];
 }
 
 export function FavoritesInner({
-  preloadedFavorites,
-  preloadedWatchAlso,
-  userId,
+  initialFavorites,
+  watchAlsoVideos,
 }: FavoritesInnerProps) {
   const router = useRouter();
   const [currentPage, setCurrentPage] = useState(0);
-
-  // Use preloaded data for initial render
-  const favoritesResult = usePreloadedQuery(preloadedFavorites);
-  const watchAlsoVideos = usePreloadedQuery(preloadedWatchAlso);
-
-  // For pagination, we'll use regular queries after initial load
   const pageSize = 3;
-  const paginatedFavorites = useQuery(
-    api.favorites.getUserFavorites,
-    currentPage > 0
-      ? {
-          userId,
-          paginationOpts: {
-            numItems: pageSize,
-            cursor: null,
-          },
-        }
-      : "skip"
-  );
 
-  // Use paginated data if available, otherwise use preloaded
-  const displayFavorites = currentPage > 0 && paginatedFavorites ? paginatedFavorites : favoritesResult;
+  // Mock pagination
+  const totalPages = Math.ceil(initialFavorites.length / pageSize);
+  const startIndex = currentPage * pageSize;
+  const endIndex = startIndex + pageSize;
+  const displayFavorites = initialFavorites.slice(startIndex, endIndex);
 
   const handleVideoClick = (videoId: string) => {
     router.push(`/course/${videoId}`);
   };
 
   const handleNextPage = () => {
-    if (displayFavorites && !displayFavorites.isDone) {
+    if (currentPage < totalPages - 1) {
       setCurrentPage((prev) => prev + 1);
     }
   };
@@ -91,17 +83,17 @@ export function FavoritesInner({
             <h2 className="text-xl font-bold text-gray-900">Meus Favoritos</h2>
           </div>
 
-          {displayFavorites && displayFavorites.page.length > 0 ? (
+          {displayFavorites.length > 0 ? (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-                {displayFavorites.page.map((video) => (
+                {displayFavorites.map((video) => (
                   <Card
                     key={video._id}
                     onClick={() => handleVideoClick(video._id)}
                     className="cursor-pointer hover:shadow-md transition-all duration-300 hover:border-primary group relative overflow-hidden"
                   >
                     {/* Thumbnail/Background */}
-                    <div className="w-full h-40 `bg-gradient-to-b` from-primary/20 via-primary/10 to-primary/5 flex items-center justify-center relative">
+                    <div className="w-full h-40 bg-linear-to-b from-primary/20 via-primary/10 to-primary/5 flex items-center justify-center relative">
                       {video.thumbnailUrl ? (
                         <Image
                           src={video.thumbnailUrl}
@@ -143,7 +135,7 @@ export function FavoritesInner({
               </div>
 
               {/* Pagination Controls */}
-              {(currentPage > 0 || !displayFavorites.isDone) && (
+              {totalPages > 1 && (
                 <div className="flex items-center justify-center gap-4">
                   <Button
                     variant="outline"
@@ -155,12 +147,12 @@ export function FavoritesInner({
                     Anterior
                   </Button>
                   <span className="text-sm text-gray-600">
-                    Página {currentPage + 1}
+                    Página {currentPage + 1} de {totalPages}
                   </span>
                   <Button
                     variant="outline"
                     onClick={handleNextPage}
-                    disabled={displayFavorites.isDone}
+                    disabled={currentPage >= totalPages - 1}
                     className="border-gray-300"
                   >
                     Próxima
@@ -191,7 +183,7 @@ export function FavoritesInner({
             </p>
           </div>
 
-          {watchAlsoVideos && watchAlsoVideos.length > 0 ? (
+          {watchAlsoVideos.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {watchAlsoVideos.map((video) => (
                 <Card
@@ -200,7 +192,7 @@ export function FavoritesInner({
                   className="cursor-pointer hover:shadow-md transition-all duration-300 hover:border-primary group relative overflow-hidden"
                 >
                   {/* Thumbnail/Background */}
-                  <div className="w-full h-40 `bg-gradient-to-br` from-blue-500/20 via-blue-400/10 to-blue-300/5 flex items-center justify-center relative">
+                  <div className="w-full h-40 bg-linear-to-br from-blue-500/20 via-blue-400/10 to-blue-300/5 flex items-center justify-center relative">
                     {video.thumbnailUrl ? (
                       <Image
                         src={video.thumbnailUrl}
@@ -262,4 +254,3 @@ export function FavoritesInner({
     </div>
   );
 }
-

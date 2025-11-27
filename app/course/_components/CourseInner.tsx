@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, ChevronDown, ChevronRight, PlayCircle, CheckCircle } from "lucide-react";
+import { ChevronLeft, ChevronDown, ChevronRight, PlayCircle, CheckCircle, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useRouter } from "next/navigation";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 
 interface Lesson {
   id: string;
@@ -38,6 +41,19 @@ export function CourseInner({ courseData }: CourseInnerProps) {
     courseData.modules[0]?.lessons[0] || null
   );
 
+  // TODO: Replace with actual user ID from auth
+  const userId = "demo-user";
+  
+  // Convex mutations and queries
+  const toggleFavorite = useMutation(api.favorites.toggleFavorite);
+  const markAsCompleted = useMutation(api.favorites.markAsCompleted);
+  
+  // Check if current lesson is favorited
+  const isFavorited = useQuery(
+    api.favorites.isFavorited,
+    selectedLesson ? { userId, videoId: selectedLesson.id as Id<"videos"> } : "skip"
+  );
+
   const toggleModule = (moduleId: string) => {
     setExpandedModules((prev) =>
       prev.includes(moduleId) ? prev.filter((id) => id !== moduleId) : [...prev, moduleId]
@@ -48,10 +64,30 @@ export function CourseInner({ courseData }: CourseInnerProps) {
     setSelectedLesson(lesson);
   };
 
-  const handleMarkAsCompleted = () => {
+  const handleToggleFavorite = async () => {
     if (selectedLesson) {
-      // TODO: Implementar mutation do Convex
-      console.log("Marcar como concluída:", selectedLesson.id);
+      try {
+        await toggleFavorite({
+          userId,
+          videoId: selectedLesson.id as Id<"videos">,
+        });
+      } catch (error) {
+        console.error("Error toggling favorite:", error);
+      }
+    }
+  };
+
+  const handleMarkAsCompleted = async () => {
+    if (selectedLesson) {
+      try {
+        await markAsCompleted({
+          userId,
+          videoId: selectedLesson.id as Id<"videos">,
+        });
+        console.log("Marcada como concluída:", selectedLesson.id);
+      } catch (error) {
+        console.error("Error marking as completed:", error);
+      }
     }
   };
 
@@ -173,6 +209,21 @@ export function CourseInner({ courseData }: CourseInnerProps) {
 
               {/* Botões de ação */}
               <div className="flex gap-4">
+                <Button
+                  onClick={handleToggleFavorite}
+                  variant="outline"
+                  className={`border-2 ${
+                    isFavorited
+                      ? "border-red-500 text-red-500 hover:bg-red-50"
+                      : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  <Heart
+                    size={20}
+                    className={`mr-2 ${isFavorited ? "fill-red-500" : ""}`}
+                  />
+                  {isFavorited ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+                </Button>
                 <Button
                   onClick={handleMarkAsCompleted}
                   className="bg-blue-brand hover:bg-blue-brand-dark text-white"

@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import {
   internalMutation,
   internalQuery,
+  mutation,
   type MutationCtx,
   query,
   type QueryCtx as QueryContext,
@@ -45,6 +46,44 @@ export const current = query({
   ),
   handler: async (context) => {
     return await getCurrentUser(context);
+  },
+});
+
+/**
+ * Ensure the current user exists in Convex
+ * This is a fallback in case the webhook hasn't fired yet
+ */
+export const ensureCurrentUser = mutation({
+  args: {},
+  returns: v.union(v.id("users"), v.null()),
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+
+    const existingUser = await userByClerkUserId(ctx, identity.subject);
+    if (existingUser) {
+      return existingUser._id;
+    }
+
+    // Create user from Clerk identity
+    const userId = await ctx.db.insert("users", {
+      firstName: identity.givenName || "",
+      lastName: identity.familyName || "",
+      email: identity.email || "",
+      clerkUserId: identity.subject,
+      imageUrl: identity.pictureUrl,
+      onboardingCompleted: false,
+      termsAccepted: false,
+      role: "user",
+      status: "active",
+      paid: false,
+      paymentStatus: "pending",
+      hasActiveYearAccess: false,
+    });
+
+    return userId;
   },
 });
 

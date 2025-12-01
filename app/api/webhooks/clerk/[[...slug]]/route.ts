@@ -2,6 +2,8 @@ import type { WebhookEvent } from '@clerk/backend';
 import { createClerkClient } from '@clerk/backend';
 import { NextResponse } from 'next/server';
 import { Webhook } from 'svix';
+import { ConvexHttpClient } from 'convex/browser';
+import { api } from '@/convex/_generated/api';
 
 // Import env variables to make sure they're available
 const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY;
@@ -11,6 +13,9 @@ const CLERK_WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET_2;
 const clerk = CLERK_SECRET_KEY
   ? createClerkClient({ secretKey: CLERK_SECRET_KEY })
   : undefined;
+
+// Initialize Convex client
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 // This is the main webhook handler for Clerk events
 export async function POST(request: Request) {
@@ -85,7 +90,51 @@ export async function POST(request: Request) {
     }
 
     // Process the event based on type
-    if (event.type === 'session.created') {
+    if (event.type === 'user.created' || event.type === 'user.updated') {
+      console.log(`[Clerk Webhook] Processing ${event.type} event for user`);
+      
+      try {
+        // Call Convex to upsert the user
+        await convex.mutation(api.users.upsertFromClerk, {
+          data: event.data,
+        });
+        
+        console.log(`[Clerk Webhook] Successfully synced user to Convex`);
+      } catch (error) {
+        console.error('[Clerk Webhook] Error syncing user to Convex:', error);
+        
+        // Still return success to acknowledge the webhook
+        return NextResponse.json(
+          {
+            received: true,
+            error: 'Error syncing user but acknowledged',
+          },
+          { status: 200 },
+        );
+      }
+    } else if (event.type === 'user.deleted') {
+      console.log(`[Clerk Webhook] Processing user.deleted event`);
+      
+      try {
+        // Call Convex to delete the user
+        await convex.mutation(api.users.deleteFromClerk, {
+          clerkUserId: event.data.id!,
+        });
+        
+        console.log(`[Clerk Webhook] Successfully deleted user from Convex`);
+      } catch (error) {
+        console.error('[Clerk Webhook] Error deleting user from Convex:', error);
+        
+        // Still return success to acknowledge the webhook
+        return NextResponse.json(
+          {
+            received: true,
+            error: 'Error deleting user but acknowledged',
+          },
+          { status: 200 },
+        );
+      }
+    } else if (event.type === 'session.created') {
       const { user_id, id: newSessionId } = event.data;
 
       // Validate new session ID

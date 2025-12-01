@@ -67,13 +67,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${sifonn.variable} antialiased`}
       >
-      
-            <ConvexClientProvider>
-              <NuqsAdapter>
-                {children}
-                <Toaster />
-              </NuqsAdapter>
-            </ConvexClientProvider>
+        <ConvexClientProvider>
+          <NuqsAdapter>
+            {children}
+            <Toaster />
+          </NuqsAdapter>
+        </ConvexClientProvider>
       </body>
     </html>
   );

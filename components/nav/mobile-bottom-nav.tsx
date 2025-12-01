@@ -10,15 +10,14 @@ import { cn } from '@/lib/utils';
 
 // Define the main navigation items (excluding Home/Menu trigger)
 const navItems = [
-  // { href: '/', label: 'Início', icon: Home }, // Removed Home
-  { href: '/trilhas', label: 'Trilhas', icon: LayoutGrid, prefetch: true },
+  { href: '/categories', label: 'Cursos', icon: LayoutGrid, prefetch: true },
   {
-    href: '/simulados',
-    label: 'Simulados',
+    href: '/favorites',
+    label: 'Favoritos',
     icon: GraduationCap,
     prefetch: true,
   },
-  { href: '/perfil', label: 'Perfil', icon: User, prefetch: true },
+  { href: '/profile', label: 'Perfil', icon: User, prefetch: true },
   // Add more items if necessary
 ] as const;
 

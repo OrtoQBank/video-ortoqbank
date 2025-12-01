@@ -24,7 +24,7 @@ interface MenuItem {
 
 const items: MenuItem[] = [
   { title: 'Meu Perfil', url: '/profile', icon: UserCircleIcon, prefetch: true },
-  { title: 'Cursos', url: '/', icon: BookOpenIcon, prefetch: true },
+  { title: 'Cursos', url: '/categories', icon: BookOpenIcon, prefetch: true },
   { title: 'Favoritos', url: '/favorites', icon: StarIcon, prefetch: true },
 ];
 

@@ -25,7 +25,7 @@ const mockData = {
     {
       id: "1",
       title: "Anatomia do Sistema Nervoso Central",
-      courseName: "Neuroanatomia Básica",
+      categoryName: "Neuroanatomia Básica",
       duration: "15:34",
       thumbnailUrl: undefined,
       lastWatchedAt: Date.now() - 1000 * 60 * 30, // 30 min atrás
@@ -34,7 +34,7 @@ const mockData = {
     {
       id: "2",
       title: "Fundamentos da Fisiologia Celular",
-      courseName: "Fisiologia Humana",
+      categoryName: "Fisiologia Humana",
       duration: "22:15",
       thumbnailUrl: undefined,
       lastWatchedAt: Date.now() - 1000 * 60 * 60 * 2, // 2 horas atrás
@@ -43,7 +43,7 @@ const mockData = {
     {
       id: "3",
       title: "Introdução à Farmacologia",
-      courseName: "Farmacologia Geral",
+      categoryName: "Farmacologia Geral",
       duration: "18:45",
       thumbnailUrl: undefined,
       lastWatchedAt: Date.now() - 1000 * 60 * 60 * 5, // 5 horas atrás
@@ -52,7 +52,7 @@ const mockData = {
     {
       id: "4",
       title: "Bioquímica das Proteínas",
-      courseName: "Bioquímica Básica",
+      categoryName: "Bioquímica Básica",
       duration: "20:30",
       thumbnailUrl: undefined,
       lastWatchedAt: Date.now() - 1000 * 60 * 60 * 24, // 1 dia atrás
@@ -61,45 +61,45 @@ const mockData = {
     {
       id: "5",
       title: "Embriologia: Primeira Semana",
-      courseName: "Embriologia Humana",
+      categoryName: "Embriologia Humana",
       duration: "25:00",
       thumbnailUrl: undefined,
       lastWatchedAt: Date.now() - 1000 * 60 * 60 * 24 * 2, // 2 dias atrás
       completed: false,
     },
   ],
-  courseProgress: [
+  categoriesProgress: [ 
     {
-      courseId: "1",
-      courseName: "Neuroanatomia Básica",
+      categoryId: "1",
+      categoryName: "Neuroanatomia Básica",
       totalVideos: 25,
       watchedVideos: 18,
       percentage: 72,
     },
     {
-      courseId: "2",
-      courseName: "Fisiologia Humana",
+      categoryId: "2",
+      categoryName: "Fisiologia Humana",
       totalVideos: 30,
       watchedVideos: 12,
       percentage: 40,
     },
     {
-      courseId: "3",
-      courseName: "Farmacologia Geral",
+      categoryId: "3",
+      categoryName: "Farmacologia Geral",
       totalVideos: 20,
       watchedVideos: 5,
       percentage: 25,
     },
     {
-      courseId: "4",
-      courseName: "Bioquímica Básica",
+      categoryId: "4",
+      categoryName: "Bioquímica Básica",
       totalVideos: 22,
       watchedVideos: 8,
       percentage: 36,
     },
     {
-      courseId: "5",
-      courseName: "Embriologia Humana",
+      categoryId: "5",
+      categoryName: "Embriologia Humana",
       totalVideos: 23,
       watchedVideos: 2,
       percentage: 9,
@@ -196,21 +196,21 @@ export default function ProfileInner() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Cursos em Andamento</CardTitle>
+            <CardTitle className="text-sm font-medium">Categorias em Andamento</CardTitle>
             <PlayCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {data.courseProgress.filter((c) => c.percentage > 0 && c.percentage < 100).length}
+                {data.categoriesProgress.filter((c) => c.percentage > 0 && c.percentage < 100).length}
             </div>
             <p className="text-xs text-muted-foreground">
-              de {data.courseProgress.length} cursos
+              de {data.categoriesProgress.length} categorias
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Recent Videos */}
+      {/* Recent Categories */}
       {data.recentVideos.length > 0 && (
         <Card>
           <CardHeader>
@@ -238,7 +238,7 @@ export default function ProfileInner() {
                   )}
                   <div className="flex-1 min-w-0">
                     <h4 className="font-medium truncate">{video.title}</h4>
-                    <p className="text-sm text-muted-foreground">{video.courseName}</p>
+                    <p className="text-sm text-muted-foreground">{video.categoryName}</p>
                     <div className="flex items-center gap-3 mt-1 flex-wrap">
                       <div className="flex items-center gap-1">
                         <Clock className="h-3 w-3 text-muted-foreground" />

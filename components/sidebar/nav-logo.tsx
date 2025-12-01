@@ -19,7 +19,7 @@ export default function NavLogo() {
           <Link href="/" onClick={() => setOpenMobile(false)}>
             <div className="flex aspect-square size-6 items-center justify-center rounded-lg">
               <Image
-                src="/logo.webp"
+                src="/logo-transparente.png"
                 alt="OrtoQBank Logo"
                 width={32}
                 height={32}

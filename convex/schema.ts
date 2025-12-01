@@ -13,8 +13,8 @@ export default defineSchema({
     duration: v.string(), // formato "15:34"
     videoUrl: v.optional(v.string()),
     thumbnailUrl: v.optional(v.string()),
-    courseId: v.string(),
-    courseName: v.string(),
+    categoryId: v.string(),
+    categoryName: v.string(),
     moduleId: v.string(),
     moduleName: v.string(),
     subthemeId: v.string(),
@@ -22,7 +22,7 @@ export default defineSchema({
     order: v.number(), // ordem dentro do subtema
     level: v.union(v.literal("Básico"), v.literal("Intermediário"), v.literal("Avançado")),
   })
-    .index("by_course", ["courseId"])
+    .index("by_category", ["categoryId"])
     .index("by_module", ["moduleId"])
     .index("by_subtheme", ["subthemeId"])
     .index("by_subtheme_and_order", ["subthemeId", "order"]),

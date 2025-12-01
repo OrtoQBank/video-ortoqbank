@@ -1,4 +1,4 @@
-import { CourseInner } from "../_components/CourseInner";
+import { CategoriesInner } from "../../categories/_components/categories-inner";
 
 interface Lesson {
   id: string;
@@ -15,7 +15,7 @@ interface Module {
   lessons: Lesson[];
 }
 
-interface CourseData {
+interface Categories {
   title: string;
   subtitle: string;
   progress: number;
@@ -23,7 +23,7 @@ interface CourseData {
 }
 
 // Dados mockados - substituir por preloadQuery do Convex
-const defaultCourseData: CourseData = {
+const defaultCategories: Categories = {
   title: "Introdução à Anatomia Óssea",
   subtitle: "Ciências Básicas em Ortopedia",
   progress: 34,
@@ -44,7 +44,7 @@ const defaultCourseData: CourseData = {
   ],
 };
 
-export default async function CoursePage({
+export default async function CategoriesPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -56,7 +56,7 @@ export default async function CoursePage({
   // const preloaded = await preloadQuery(api.courses.getCourse, { courseId: id });
 
   // Por enquanto, retorna dados mockados para qualquer ID
-  const courseData = defaultCourseData;
+  const categories = defaultCategories;
 
-  return <CourseInner courseData={courseData} />;
-}
+  return <CategoriesInner initialCategories={[{...categories, id: "1", description: "Ciências Básicas em Ortopedia", level: "Básico", lessonsCount: 45, duration: 12}]} initialProgress={categories.progress} />;
+  }

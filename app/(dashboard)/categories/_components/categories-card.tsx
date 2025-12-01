@@ -5,7 +5,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 
-interface CourseCardProps {
+interface CategoriesCardProps {
   imageUrl?: string;
   title: string;
   description: string;
@@ -15,14 +15,14 @@ interface CourseCardProps {
   onClick?: () => void;
 }
 
-export function CourseCard({
+export function CategoriesCard({
   imageUrl = "",
   title = "",
   level = "Básico",
   lessonsCount = 0,
   duration = 0,
   onClick = () => {},
-}: CourseCardProps) {
+  }: CategoriesCardProps) {
   return (
     <Card
       onClick={onClick}

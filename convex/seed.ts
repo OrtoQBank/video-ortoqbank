@@ -16,9 +16,9 @@ export const seedVideos = mutation({
     }
 
     // Sample courses, modules, and subthemes
-    const courses = [
+    const categories = [
       {
-        id: "course-1",
+        id: "category-1",
         name: "Introdução à Anatomia Óssea",
         modules: [
           {
@@ -33,7 +33,7 @@ export const seedVideos = mutation({
         ],
       },
       {
-        id: "course-2",
+        id: "category-2",
         name: "Ortopedia Avançada",
         modules: [
           {
@@ -47,7 +47,7 @@ export const seedVideos = mutation({
         ],
       },
       {
-        id: "course-3",
+            id: "category-3",
         name: "Fisiologia do Movimento",
         modules: [
           {
@@ -65,19 +65,19 @@ export const seedVideos = mutation({
     const levels: Array<"Básico" | "Intermediário" | "Avançado"> = ["Básico", "Intermediário", "Avançado"];
 
     // Create videos for each subtheme
-    for (const course of courses) {
-      for (const courseModule of course.modules) {
-        for (const subtheme of courseModule.subthemes) {
+    for (const category of categories) {
+      for (const categoryModule of category.modules) {
+        for (const subtheme of categoryModule.subthemes) {
           // Create 3 videos per subtheme
           for (let i = 0; i < 3; i++) {
             await ctx.db.insert("videos", {
               title: `${subtheme.name} - Aula ${i + 1}`,
               description: `Nesta aula você vai aprender conceitos importantes sobre ${subtheme.name.toLowerCase()}. Vamos explorar os fundamentos e aplicações práticas.`,
               duration: `${15 + i * 5}:${30 + i * 10}`,
-              courseId: course.id,
-              courseName: course.name,
-              moduleId: courseModule.id,
-              moduleName: courseModule.name,
+              categoryId: category.id,
+              categoryName: category.name,
+              moduleId: categoryModule.id,
+              moduleName: categoryModule.name,
               subthemeId: subtheme.id,
               subthemeName: subtheme.name,
               order: i,

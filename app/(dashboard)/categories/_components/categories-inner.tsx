@@ -1,15 +1,15 @@
 "use client";
 
-import { ProgressBar } from "./ProgressBar";
-import { SearchBar } from "./SearchBar";
-import { CourseCard } from "./CourseCard";
+import { ProgressBar } from "./progress-bar";
+import { SearchBar } from "./search-bar";
+import { CategoriesCard } from "./categories-card";
 import { Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-interface Course {
+interface Categories {
   id: string;
   title: string;
   description: string;
@@ -18,12 +18,12 @@ interface Course {
   duration: number;
 }
 
-interface HomeContentProps {
-  initialCourses: Course[];
+interface CategoriesInnerProps {
+  initialCategories: Categories[];
   initialProgress: number;
 }
 
-export function HomeContent({ initialCourses, initialProgress }: HomeContentProps) {
+export function CategoriesInner({ initialCategories, initialProgress }: CategoriesInnerProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
 
@@ -33,18 +33,18 @@ export function HomeContent({ initialCourses, initialProgress }: HomeContentProp
     // Implementar lógica de pesquisa
   };
 
-  const handleCourseClick = (courseId: string) => {
-    router.push(`/course/${courseId}`);
+    const handleCategoryClick = (categoryId: string) => {
+    router.push(`/category/${categoryId}`);
   };
 
   // Filtrar cursos baseado na busca (exemplo simples)
-  const filteredCourses = searchQuery
-    ? initialCourses.filter(
-        (course) =>
-          course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          course.description.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredCategories = searchQuery
+    ? initialCategories.filter(
+        (category) =>
+          category.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          category.description.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : initialCourses;
+    : initialCategories;
 
   return (
     <div className="min-h-screen bg-white">
@@ -69,11 +69,11 @@ export function HomeContent({ initialCourses, initialProgress }: HomeContentProp
 
         {/* Grid de cards - 3 linhas de 3 cursos sem scroll */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filteredCourses.map((course) => (
-            <CourseCard
-              key={course.id}
-              {...course}
-              onClick={() => handleCourseClick(course.id)}
+          {filteredCategories.map((category) => (
+            <CategoriesCard
+              key={category.id}
+              {...category}
+              onClick={() => handleCategoryClick(category.id)}
             />
           ))}
         </div>

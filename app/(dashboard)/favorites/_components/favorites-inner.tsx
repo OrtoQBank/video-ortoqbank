@@ -15,20 +15,12 @@ interface Video {
   description: string;
   duration: string;
   level: "Básico" | "Intermediário" | "Avançado";
-  courseName: string;
+  categoryName: string;
   subthemeName: string;
   thumbnailUrl?: string;
-}
+  }
 
-interface FavoritesInnerProps {
-  initialFavorites: Video[];
-  watchAlsoVideos: Video[];
-}
-
-export function FavoritesInner({
-  initialFavorites,
-  watchAlsoVideos,
-}: FavoritesInnerProps) {
+export function FavoritesInner({ initialFavorites, watchAlsoVideos }: { initialFavorites: Video[]; watchAlsoVideos: Video[] }) {
   const router = useRouter();
   const [currentPage, setCurrentPage] = useState(0);
   const pageSize = 3;
@@ -40,7 +32,7 @@ export function FavoritesInner({
   const displayFavorites = initialFavorites.slice(startIndex, endIndex);
 
   const handleVideoClick = (videoId: string) => {
-    router.push(`/course/${videoId}`);
+    router.push(`/categories/${videoId}`);
   };
 
   const handleNextPage = () => {
@@ -126,7 +118,7 @@ export function FavoritesInner({
                       </div>
 
                       <div className="text-xs text-gray-500">
-                        <p className="font-medium">{video.courseName}</p>
+                        <p className="font-medium">{video.categoryName}</p>
                         <p>{video.subthemeName}</p>
                       </div>
                     </div>
@@ -231,7 +223,7 @@ export function FavoritesInner({
                     </div>
 
                     <div className="text-xs text-gray-500">
-                      <p className="font-medium">{video.courseName}</p>
+                      <p className="font-medium">{video.categoryName}</p>
                       <p>{video.subthemeName}</p>
                     </div>
                   </div>

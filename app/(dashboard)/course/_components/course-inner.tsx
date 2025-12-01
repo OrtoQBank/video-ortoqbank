@@ -22,8 +22,8 @@ interface Module {
   lessons: VideoLesson[];
 }
 
-interface CourseInnerProps {
-  courseData: {
+interface CategoriesInnerProps {  
+  categories: {
     title: string;
     subtitle: string;
     progress: number;
@@ -31,11 +31,11 @@ interface CourseInnerProps {
   };
 }
 
-export function CourseInner({ courseData }: CourseInnerProps) {
+export function CategoriesInner({ categories }: CategoriesInnerProps) {
   const router = useRouter();
   const [expandedModules, setExpandedModules] = useState<string[]>(["1"]);
   const [selectedLesson, setSelectedLesson] = useState<VideoLesson | null>(
-    courseData.modules[0]?.lessons[0] || null
+    categories.modules[0]?.lessons[0] || null
   );
 
   // Mock data - will be replaced with Convex later
@@ -90,8 +90,8 @@ export function CourseInner({ courseData }: CourseInnerProps) {
             <ChevronLeft size={24} />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{courseData.title}</h1>
-            <p className="text-sm text-gray-600">{courseData.subtitle}</p>
+            <h1 className="text-2xl font-bold text-gray-900">{categories.title}</h1>
+            <p className="text-sm text-gray-600">{categories.subtitle}</p>
           </div>
         </div>
 
@@ -105,14 +105,14 @@ export function CourseInner({ courseData }: CourseInnerProps) {
             <div className="flex items-center gap-3">
               <span className="text-sm font-medium text-gray-700">Progresso</span>
               <div className="flex-1">
-                <Progress value={courseData.progress} className="h-2" />
+                <Progress value={categories.progress} className="h-2" />
               </div>
-              <span className="text-sm font-semibold text-gray-900">{courseData.progress}%</span>
+              <span className="text-sm font-semibold text-gray-900">{categories.progress}%</span>
             </div>
           </div>
 
           <div className="overflow-y-auto p-6 space-y-4" style={{ maxHeight: "calc(100vh - 250px)" }}>
-          {courseData.modules.map((module) => {
+          {categories.modules.map((module) => {
             const isExpanded = expandedModules.includes(module.id);
             return (
               <div key={module.id} className="border border-gray-200 rounded-lg overflow-hidden bg-white">

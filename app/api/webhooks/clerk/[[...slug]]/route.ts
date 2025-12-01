@@ -95,7 +95,7 @@ export async function POST(request: Request) {
       
       try {
         // Call Convex to upsert the user
-        await convex.mutation(api.users.upsertFromClerk, {
+        await convex.mutation(api.userAdmin.upsertFromClerk, {
           data: event.data,
         });
         
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
       
       try {
         // Call Convex to delete the user
-        await convex.mutation(api.users.deleteFromClerk, {
+        await convex.mutation(api.userAdmin.deleteFromClerk, {
           clerkUserId: event.data.id!,
         });
         

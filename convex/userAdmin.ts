@@ -3,6 +3,87 @@ import { mutation, query } from "./_generated/server";
 import { getCurrentUser, requireAdmin } from "./users";
 
 // ============================================================================
+// CLERK WEBHOOK HANDLERS
+// ============================================================================
+
+/**
+ * Upsert user from Clerk webhook
+ */
+export const upsertFromClerk = mutation({
+  args: {
+    data: v.any(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const clerkUser = args.data;
+    
+    // Extract user information from Clerk data
+    const clerkUserId = clerkUser.id;
+    const email = clerkUser.email_addresses?.[0]?.email_address || "";
+    const firstName = clerkUser.first_name || "";
+    const lastName = clerkUser.last_name || "";
+    const imageUrl = clerkUser.image_url;
+
+    // Check if user already exists
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", clerkUserId))
+      .unique();
+
+    if (existingUser) {
+      // Update existing user
+      await ctx.db.patch(existingUser._id, {
+        email,
+        firstName,
+        lastName,
+        imageUrl,
+      });
+    } else {
+      // Create new user with default values
+      await ctx.db.insert("users", {
+        clerkUserId,
+        email,
+        firstName,
+        lastName,
+        imageUrl,
+        onboardingCompleted: false,
+        role: "user",
+        status: "active",
+        hasActiveYearAccess: false,
+        paid: false,
+        paymentStatus: "pending",
+      });
+    }
+
+    return null;
+  },
+});
+
+/**
+ * Delete user from Clerk webhook
+ */
+export const deleteFromClerk = mutation({
+  args: {
+    clerkUserId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    // Find the user by clerkUserId
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", args.clerkUserId))
+      .unique();
+
+    if (user) {
+      // Delete the user
+      await ctx.db.delete(user._id);
+    }
+
+    return null;
+  },
+});
+
+// ============================================================================
 // ROLE MANAGEMENT
 // ============================================================================
 

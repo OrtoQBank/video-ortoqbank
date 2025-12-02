@@ -8,43 +8,36 @@ import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-
-interface Categories {
-  id: string;
-  title: string;
-  description: string;
-  level: "Básico" | "Intermediário" | "Avançado";
-  lessonsCount: number;
-  duration: number;
-}
+import { Preloaded, usePreloadedQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 interface CategoriesInnerProps {
-  initialCategories: Categories[];
+  preloadedCategories: Preloaded<typeof api.categories.list>;
   initialProgress: number;
 }
 
-export function CategoriesInner({ initialCategories, initialProgress }: CategoriesInnerProps) {
+export function CategoriesInner({ preloadedCategories, initialProgress }: CategoriesInnerProps) {
+  const categories = usePreloadedQuery(preloadedCategories);
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     console.log("Pesquisando por:", query);
-    // Implementar lógica de pesquisa
   };
 
-    const handleCategoryClick = (categoryId: string) => {
-    router.push(`/category/${categoryId}`);
+  const handleCategoryClick = (categoryId: string) => {
+    router.push(`/modules/${categoryId}`);
   };
 
-  // Filtrar cursos baseado na busca (exemplo simples)
+  // Filtrar categorias baseado na busca
   const filteredCategories = searchQuery
-    ? initialCategories.filter(
+    ? categories.filter(
         (category) =>
           category.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
           category.description.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : initialCategories;
+    : categories;
 
   return (
     <div className="min-h-screen bg-white">
@@ -67,13 +60,15 @@ export function CategoriesInner({ initialCategories, initialProgress }: Categori
           <SearchBar onSearch={handleSearch} />
         </div>
 
-        {/* Grid de cards - 3 linhas de 3 cursos sem scroll */}
+        {/* Grid de cards - 3 linhas de 3 categorias sem scroll */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {filteredCategories.map((category) => (
             <CategoriesCard
-              key={category.id}
-              {...category}
-              onClick={() => handleCategoryClick(category.id)}
+              key={category._id}
+              title={category.title}
+              description={category.description}
+              imageUrl={category.iconUrl}
+              onClick={() => handleCategoryClick(category._id)}
             />
           ))}
         </div>

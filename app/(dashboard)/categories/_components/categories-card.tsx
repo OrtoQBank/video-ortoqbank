@@ -1,26 +1,20 @@
 "use client";
 
-import { PlayCircle, Clock } from "lucide-react";
-import { Card, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { PlayCircle } from "lucide-react";
+import { Card, CardTitle, CardDescription } from "@/components/ui/card";
 import Image from "next/image";
 
 interface CategoriesCardProps {
   imageUrl?: string;
   title: string;
   description: string;
-  level: "Básico" | "Intermediário" | "Avançado";
-  lessonsCount: number;
-  duration: number;
   onClick?: () => void;
 }
 
 export function CategoriesCard({
   imageUrl = "",
   title = "",
-  level = "Básico",
-  lessonsCount = 0,
-  duration = 0,
+  description = "",
   onClick = () => {},
   }: CategoriesCardProps) {
   return (
@@ -39,24 +33,14 @@ export function CategoriesCard({
         )}
       </div>
 
-      <div className="relative z-10 p-4 pb-0">
-        <CardTitle className="text-base font-bold mb-3 group-hover:text-primary transition-colors">
+      <div className="relative z-10 p-4 pb-4">
+        <CardTitle className="text-base font-bold mb-2 group-hover:text-primary transition-colors">
           {title}
         </CardTitle>
 
-        <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
-          <Badge className="text-xs" variant="default">
-            {level}
-          </Badge>
-          <div className="flex items-center gap-1">
-            <PlayCircle size={14} />
-            <span>{lessonsCount} aulas</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Clock size={14} />
-            <span>{duration} horas</span>
-          </div>
-        </div>
+        <CardDescription className="text-sm line-clamp-2">
+          {description}
+        </CardDescription>
       </div>
     </Card>
   );

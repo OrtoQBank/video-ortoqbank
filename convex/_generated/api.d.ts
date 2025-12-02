@@ -8,6 +8,9 @@
  * @module
  */
 
+import type * as categories from "../categories.js";
+import type * as lessons from "../lessons.js";
+import type * as modules from "../modules.js";
 import type * as myFunctions from "../myFunctions.js";
 import type * as seed from "../seed.js";
 import type * as userAccess from "../userAccess.js";
@@ -21,6 +24,9 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  categories: typeof categories;
+  lessons: typeof lessons;
+  modules: typeof modules;
   myFunctions: typeof myFunctions;
   seed: typeof seed;
   userAccess: typeof userAccess;

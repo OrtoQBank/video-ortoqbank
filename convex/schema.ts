@@ -31,35 +31,47 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_hasActiveYearAccess", ["hasActiveYearAccess"]),
 
-  // Videos/Lessons table
-  videos: defineTable({
+  // Categories table
+  categories: defineTable({
     title: v.string(),
+    slug: v.string(),
     description: v.string(),
-    duration: v.string(), // formato "15:34"
-    videoUrl: v.optional(v.string()),
-    thumbnailUrl: v.optional(v.string()),
-    categoryId: v.string(),
-    categoryName: v.string(),
-    moduleId: v.string(),
-    moduleName: v.string(),
-    subthemeId: v.string(),
-    subthemeName: v.string(),
-    order: v.number(), // ordem dentro do subtema
-    level: v.union(v.literal("Básico"), v.literal("Intermediário"), v.literal("Avançado")),
+    position: v.number(),
+    iconUrl: v.optional(v.string()),
   })
-    .index("by_category", ["categoryId"])
-    .index("by_module", ["moduleId"])
-    .index("by_subtheme", ["subthemeId"])
-    .index("by_subtheme_and_order", ["subthemeId", "order"]),
+    .index("by_slug", ["slug"])
+    .index("by_position", ["position"]),
 
-  // User progress/watched videos
-  progress: defineTable({
-    userId: v.string(),
-    videoId: v.id("videos"),
-    completed: v.boolean(),
-    lastWatchedAt: v.number(),
+  // Modules table (formerly courses)
+  modules: defineTable({
+    categoryId: v.id("categories"),
+    title: v.string(),
+    slug: v.string(),
+    description: v.string(),
+    order_index: v.number(),
+    totalLessonVideos: v.number(),
   })
-    .index("by_user", ["userId"])
-    .index("by_user_and_video", ["userId", "videoId"])
-    .index("by_user_and_completed", ["userId", "completed"]),
+    .index("by_categoryId", ["categoryId"])
+    .index("by_slug", ["slug"])
+    .index("by_categoryId_and_order", ["categoryId", "order_index"]),
+
+  // Lessons table (video lessons)
+  lessons: defineTable({
+    moduleId: v.id("modules"),
+    title: v.string(),
+    slug: v.string(),
+    description: v.string(),
+    bunnyStoragePath: v.optional(v.string()),
+    publicUrl: v.optional(v.string()),
+    thumbnailUrl: v.optional(v.string()),
+    durationSeconds: v.number(),
+    order_index: v.number(),
+    lessonNumber: v.number(),
+    isPublished: v.boolean(),
+    tags: v.optional(v.array(v.string())),
+  })
+    .index("by_moduleId", ["moduleId"])
+    .index("by_slug", ["slug"])
+    .index("by_moduleId_and_order", ["moduleId", "order_index"])
+    .index("by_isPublished", ["isPublished"]),
 });

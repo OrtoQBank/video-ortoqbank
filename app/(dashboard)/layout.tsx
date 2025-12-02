@@ -22,7 +22,7 @@ export default function Layout({
             <AppSidebar />
           </div>
 
-          <main className="w-full `bg-gradient-to-b` from-slate-50 via-brand-blue/10 to-indigo-100 min-h-screen">
+          <main className="w-full bg-gradient-to-b from-slate-50 via-brand-blue/10 to-indigo-100 min-h-screen">
             {children}
           </main>
 

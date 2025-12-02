@@ -185,7 +185,7 @@ export function UserList() {
               {/* Actions */}
               <div className="flex items-center gap-2 flex-wrap justify-end">
                 {/* Approve/Revoke Access Button */}
-                {user.hasActiveYearAccess && user.paid ? (
+                {user.hasActiveYearAccess ? (
                   <Button
                     onClick={() => handleRevokeAccess(user._id)}
                     disabled={changingAccess === user._id}

@@ -20,7 +20,7 @@ export default function AccessPendingPage() {
     }
   }, [accessDetails, router]);
 
-  if (!clerkUser || accessDetails === undefined || currentUser === undefined) {
+  if (!clerkUser || accessDetails == null || currentUser == null) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-50 via-brand-blue/10 to-indigo-100 flex items-center justify-center">
         <div className="text-center">

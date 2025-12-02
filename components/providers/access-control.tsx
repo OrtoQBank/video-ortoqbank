@@ -10,6 +10,17 @@ interface AccessControlProps {
 }
 
 /**
+ * Helper function to check if a pathname is unrestricted
+ * Returns true for admin routes and profile page
+ */
+function isUnrestrictedPath(pathname: string | undefined): boolean {
+  if (!pathname) {
+    return false;
+  }
+  return pathname.startsWith('/admin') || pathname === '/profile';
+}
+
+/**
  * Access Control Component
  * Checks if user has paid and hasActiveYearAccess before allowing access to content
  * Redirects to /access-pending if user doesn't have access
@@ -25,13 +36,8 @@ export function AccessControl({ children }: AccessControlProps) {
       return;
     }
 
-    // Allow access to admin pages regardless (admin has its own protection)
-    if (pathname?.startsWith('/admin')) {
-      return;
-    }
-
-    // Allow access to profile page (users need to see their status)
-    if (pathname === '/profile') {
+    // Allow access to admin pages and profile page (unrestricted paths)
+    if (isUnrestrictedPath(pathname)) {
       return;
     }
 
@@ -45,8 +51,8 @@ export function AccessControl({ children }: AccessControlProps) {
   if (accessDetails === undefined) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+        <div className="text-center" role="status" aria-live="polite">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" aria-hidden="true"></div>
           <p className="mt-4 text-gray-600">Verificando acesso...</p>
         </div>
       </div>
@@ -54,7 +60,7 @@ export function AccessControl({ children }: AccessControlProps) {
   }
 
   // Allow admin routes and profile to pass through
-  if (pathname?.startsWith('/admin') || pathname === '/profile') {
+  if (isUnrestrictedPath(pathname)) {
     return <>{children}</>;
   }
 

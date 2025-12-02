@@ -23,32 +23,55 @@ if (!CONVEX_DEPLOY_KEY) {
   console.error('Missing CONVEX_DEPLOY_KEY environment variable - required for webhook authentication');
 }
 
+// Configurable timeout for Convex requests (in milliseconds)
+const CONVEX_REQUEST_TIMEOUT = 10000; // 10 seconds
+
 // Helper function to call Convex internal mutations
 async function callConvexMutation(functionName: string, args: any) {
   if (!CONVEX_URL || !CONVEX_DEPLOY_KEY) {
     throw new Error('Missing Convex configuration');
   }
 
-  const response = await fetch(`${CONVEX_URL}/api/json`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Convex-Client': 'npm-@0.0.0',
-      'Authorization': `Convex ${CONVEX_DEPLOY_KEY}`,
-    },
-    body: JSON.stringify({
-      path: functionName,
-      args: [args],
-      format: 'convex_encoded_json',
-    }),
-  });
+  // Create AbortController for timeout handling
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), CONVEX_REQUEST_TIMEOUT);
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Convex mutation failed: ${error}`);
+  try {
+    const response = await fetch(`${CONVEX_URL}/api/json`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Convex-Client': 'npm-@0.0.0',
+        'Authorization': `Convex ${CONVEX_DEPLOY_KEY}`,
+      },
+      body: JSON.stringify({
+        path: functionName,
+        args: args, // Pass args as an object directly, not wrapped in an array
+        format: 'convex_encoded_json',
+      }),
+      signal: controller.signal,
+    });
+
+    // Clear timeout on successful completion
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Convex mutation failed: ${error}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    // Clear timeout on error
+    clearTimeout(timeoutId);
+    
+    // Check if the error is due to abort/timeout
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Convex mutation timed out after ${CONVEX_REQUEST_TIMEOUT}ms`);
+    }
+    
+    throw error;
   }
-
-  return response.json();
 }
 
 // This is the main webhook handler for Clerk events

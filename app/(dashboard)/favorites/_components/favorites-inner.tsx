@@ -8,6 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useUser } from "@clerk/nextjs";
+import { Id } from "@/convex/_generated/dataModel";
 
 interface Video {
   _id: string;
@@ -18,12 +22,16 @@ interface Video {
   categoryName: string;
   subthemeName: string;
   thumbnailUrl?: string;
-  }
+  categoryId?: string;
+}
 
 export function FavoritesInner({ initialFavorites, watchAlsoVideos }: { initialFavorites: Video[]; watchAlsoVideos: Video[] }) {
   const router = useRouter();
+  const { user } = useUser();
   const [currentPage, setCurrentPage] = useState(0);
   const pageSize = 3;
+  const removeFavorite = useMutation(api.favorites.removeFavorite);
+  const addFavorite = useMutation(api.favorites.addFavorite);
 
   // Mock pagination
   const totalPages = Math.ceil(initialFavorites.length / pageSize);
@@ -31,8 +39,39 @@ export function FavoritesInner({ initialFavorites, watchAlsoVideos }: { initialF
   const endIndex = startIndex + pageSize;
   const displayFavorites = initialFavorites.slice(startIndex, endIndex);
 
-  const handleVideoClick = (videoId: string) => {
-    router.push(`/categories/${videoId}`);
+  const handleVideoClick = (video: Video) => {
+    // Navigate to the modules page for this category
+    if (video.categoryId) {
+      router.push(`/modules/${video.categoryId}`);
+    }
+  };
+
+  const handleRemoveFavorite = async (e: React.MouseEvent, lessonId: string) => {
+    e.stopPropagation();
+    if (!user?.id) return;
+    
+    try {
+      await removeFavorite({
+        userId: user.id,
+        lessonId: lessonId as Id<"lessons">,
+      });
+    } catch (error) {
+      console.error("Error removing favorite:", error);
+    }
+  };
+
+  const handleAddFavorite = async (e: React.MouseEvent, lessonId: string) => {
+    e.stopPropagation();
+    if (!user?.id) return;
+    
+    try {
+      await addFavorite({
+        userId: user.id,
+        lessonId: lessonId as Id<"lessons">,
+      });
+    } catch (error) {
+      console.error("Error adding favorite:", error);
+    }
   };
 
   const handleNextPage = () => {
@@ -81,7 +120,7 @@ export function FavoritesInner({ initialFavorites, watchAlsoVideos }: { initialF
                 {displayFavorites.map((video) => (
                   <Card
                     key={video._id}
-                    onClick={() => handleVideoClick(video._id)}
+                    onClick={() => handleVideoClick(video)}
                     className="cursor-pointer hover:shadow-md transition-all duration-300 hover:border-primary group relative overflow-hidden"
                   >
                     {/* Thumbnail/Background */}
@@ -96,6 +135,15 @@ export function FavoritesInner({ initialFavorites, watchAlsoVideos }: { initialF
                       ) : (
                         <PlayCircle size={48} className="text-primary/30" />
                       )}
+                      {/* Favorite Button */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-2 right-2 bg-white/90 hover:bg-white"
+                        onClick={(e) => handleRemoveFavorite(e, video._id)}
+                      >
+                        <Heart size={20} className="text-red-500 fill-red-500" />
+                      </Button>
                     </div>
 
                     <div className="p-4">
@@ -180,7 +228,7 @@ export function FavoritesInner({ initialFavorites, watchAlsoVideos }: { initialF
               {watchAlsoVideos.map((video) => (
                 <Card
                   key={video._id}
-                  onClick={() => handleVideoClick(video._id)}
+                  onClick={() => handleVideoClick(video)}
                   className="cursor-pointer hover:shadow-md transition-all duration-300 hover:border-primary group relative overflow-hidden"
                 >
                   {/* Thumbnail/Background */}
@@ -195,6 +243,15 @@ export function FavoritesInner({ initialFavorites, watchAlsoVideos }: { initialF
                     ) : (
                       <PlayCircle size={48} className="text-blue-500/30" />
                     )}
+                    {/* Favorite Button */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-2 right-2 bg-white/90 hover:bg-white"
+                      onClick={(e) => handleAddFavorite(e, video._id)}
+                    >
+                      <Heart size={20} className="text-gray-400 hover:text-red-500" />
+                    </Button>
                   </div>
 
                   <div className="p-4">

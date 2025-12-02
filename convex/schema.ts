@@ -74,4 +74,51 @@ export default defineSchema({
     .index("by_slug", ["slug"])
     .index("by_moduleId_and_order", ["moduleId", "order_index"])
     .index("by_isPublished", ["isPublished"]),
+
+  // User progress per lesson (granular tracking)
+  userProgress: defineTable({
+    userId: v.string(), // clerkUserId
+    lessonId: v.id("lessons"),
+    moduleId: v.id("modules"),
+    completed: v.boolean(),
+    completedAt: v.optional(v.number()), // timestamp when completed
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_and_lessonId", ["userId", "lessonId"])
+    .index("by_userId_and_moduleId", ["userId", "moduleId"])
+    .index("by_lessonId", ["lessonId"])
+    .index("by_userId_and_completed", ["userId", "completed"]),
+
+  // Aggregated progress per module (for quick module progress queries)
+  moduleProgress: defineTable({
+    userId: v.string(), // clerkUserId
+    moduleId: v.id("modules"),
+    completedLessonsCount: v.number(),
+    totalLessonVideos: v.number(), // cached from module
+    progressPercent: v.number(), // 0-100
+    updatedAt: v.number(), // timestamp of last update
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_and_moduleId", ["userId", "moduleId"])
+    .index("by_moduleId", ["moduleId"])
+    .index("by_userId_and_progressPercent", ["userId", "progressPercent"]),
+
+  // Global user progress (for dashboard/home quick view)
+  userGlobalProgress: defineTable({
+    userId: v.string(), // clerkUserId
+    completedLessonsCount: v.number(),
+    progressPercent: v.number(), // 0-100
+    updatedAt: v.number(), // timestamp of last update
+  })
+    .index("by_userId", ["userId"])
+    .index("by_progressPercent", ["progressPercent"]),
+
+  // Favorites (user's favorite lessons)
+  favorites: defineTable({
+    userId: v.string(), // clerkUserId
+    lessonId: v.id("lessons"),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_and_lessonId", ["userId", "lessonId"])
+    .index("by_lessonId", ["lessonId"]),
 });

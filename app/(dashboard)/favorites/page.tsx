@@ -1,91 +1,69 @@
+"use client";
+
 import { FavoritesInner } from "./_components/favorites-inner";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useUser } from "@clerk/nextjs";
 
 export default function FavoritesPage() {
-  // Mock data for presentation - will be replaced with Convex later
-  const mockFavorites = [
-    {
-      _id: "1",
-      title: "Ossos e Estruturas - Aula 1",
-      description: "Nesta aula você vai aprender conceitos importantes sobre ossos e estruturas. Vamos explorar os fundamentos e aplicações práticas.",
-      duration: "15:30",
-      level: "Básico" as const,
-      categoryName: "Introdução à Anatomia Óssea",
-      subthemeName: "Ossos e Estruturas",
-    },
-    {
-      _id: "2",
-      title: "Articulações - Aula 2",
-      description: "Nesta aula você vai aprender conceitos importantes sobre articulações. Vamos explorar os fundamentos e aplicações práticas.",
-      duration: "20:40",
-      level: "Intermediário" as const,
-      categoryName: "Introdução à Anatomia Óssea",
-      subthemeName: "Articulações",
-    },
-    {
-      _id: "3",
-      title: "Sistema Muscular - Aula 1",
-      description: "Nesta aula você vai aprender conceitos importantes sobre sistema muscular. Vamos explorar os fundamentos e aplicações práticas.",
-      duration: "18:25",
-      level: "Avançado" as const,
-      categoryName: "Introdução à Anatomia Óssea",
-      subthemeName: "Sistema Muscular",
-    },
-  ];
-
-  const mockWatchAlso = [
-    {
-      _id: "4",
-      title: "Tipos de Fraturas - Aula 1",
-      description: "Nesta aula você vai aprender conceitos importantes sobre tipos de fraturas. Vamos explorar os fundamentos e aplicações práticas.",
-      duration: "22:15",
-      level: "Intermediário" as const,
-      categoryName: "Ortopedia Avançada",
-      subthemeName: "Tipos de Fraturas",
-    },
-    {
-      _id: "5",
-      title: "Princípios de Biomecânica - Aula 1",
-      description: "Nesta aula você vai aprender conceitos importantes sobre princípios de biomecânica. Vamos explorar os fundamentos e aplicações práticas.",
-      duration: "19:45",
-      level: "Básico" as const,
-      categoryName: "Fisiologia do Movimento",
-      subthemeName: "Princípios de Biomecânica",
-    },
-    {
-      _id: "6",
-      title: "Análise de Movimento - Aula 1",
-      description: "Nesta aula você vai aprender conceitos importantes sobre análise de movimento. Vamos explorar os fundamentos e aplicações práticas.",
-      duration: "25:10",
-      level: "Avançado" as const,
-      categoryName: "Fisiologia do Movimento",
-      subthemeName: "Análise de Movimento",
-    },
-  ];
-
-  return (
-    <FavoritesInner
-      initialFavorites={[
-        {
-          ...mockFavorites[0],
-          // Remove 'id', since 'Video' type expects '_id'
-          description:
-            "Nesta aula você vai aprender conceitos importantes sobr  e ossos e estruturas. Vamos explorar os fundamentos e aplicações práticas.",
-          level: "Básico",
-          categoryName: "Introdução à Anatomia Óssea",
-          subthemeName: "Ossos e Estruturas",
-        },
-      ]}
-      watchAlsoVideos={[
-        {
-          ...mockWatchAlso[0],
-          // Remove 'id', since 'Video' type expects '_id'
-          description:
-            "Nesta aula você vai aprender conceitos importantes sobre tipos de fraturas. Vamos explorar os fundamentos e aplicações práticas.",
-          level: "Intermediário",
-          categoryName: "Ortopedia Avançada",
-          subthemeName: "Tipos de Fraturas",
-        },
-      ]}
-    />
+  const { user } = useUser();
+  
+  // Get user's favorites with full lesson details
+  const favoritesData = useQuery(
+    api.favorites.getUserFavoriteLessons,
+    user?.id ? { userId: user.id } : "skip"
   );
+
+  // Get some random lessons for "Watch Also" section
+  // (lessons that are published but not favorited by the user)
+  const allPublishedLessons = useQuery(api.lessons.list);
+
+  if (!user || favoritesData === undefined || allPublishedLessons === undefined) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-gray-600">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Transform favorites data to match the Video interface
+  const favorites = favoritesData.map((fav) => ({
+    _id: fav.lesson._id,
+    title: fav.lesson.title,
+    description: fav.lesson.description,
+    duration: formatDuration(fav.lesson.durationSeconds),
+    level: "Básico" as const, // Could be added to lesson schema later
+    categoryName: fav.category.title,
+    subthemeName: fav.module.title,
+    thumbnailUrl: fav.lesson.thumbnailUrl,
+    categoryId: fav.category._id,
+  }));
+
+  // Get lessons that user hasn't favorited (for "Watch Also" section)
+  const favoritedIds = new Set(favorites.map((f) => f._id));
+  const watchAlso = allPublishedLessons
+    .filter((lesson) => lesson.isPublished && !favoritedIds.has(lesson._id))
+    .slice(0, 6)
+    .map((lesson) => ({
+      _id: lesson._id,
+      title: lesson.title,
+      description: lesson.description,
+      duration: formatDuration(lesson.durationSeconds),
+      level: "Básico" as const,
+      categoryName: "Categoria", // Will need to fetch if needed
+      subthemeName: "Módulo",
+      thumbnailUrl: lesson.thumbnailUrl,
+    }));
+
+  return <FavoritesInner initialFavorites={favorites} watchAlsoVideos={watchAlso} />;
+}
+
+// Helper function to format duration
+function formatDuration(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 }

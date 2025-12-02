@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type MutationCtx } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 
 /**
@@ -480,4 +480,171 @@ export const recalculateGlobalProgress = mutation({
     return null;
   },
 });
+
+/**
+ * Save video progress (current time, duration, and auto-complete if >90%)
+ * This is called periodically from the video player
+ */
+export const saveVideoProgress = mutation({
+  args: {
+    userId: v.string(),
+    lessonId: v.id("lessons"),
+    currentTimeSec: v.number(),
+    durationSec: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    // Get the lesson to find its moduleId
+    const lesson = await ctx.db.get(args.lessonId);
+    if (!lesson) {
+      throw new Error("Aula não encontrada");
+    }
+
+    const now = Date.now();
+
+    // Calculate if video should be marked as completed (>90%)
+    const progressPercent = args.durationSec > 0 
+      ? (args.currentTimeSec / args.durationSec) 
+      : 0;
+    const shouldComplete = progressPercent >= 0.9;
+
+    // Check if progress exists
+    const existingProgress = await ctx.db
+      .query("userProgress")
+      .withIndex("by_userId_and_lessonId", (q) =>
+        q.eq("userId", args.userId).eq("lessonId", args.lessonId)
+      )
+      .unique();
+
+    if (!existingProgress) {
+      // Create new progress record
+      await ctx.db.insert("userProgress", {
+        userId: args.userId,
+        lessonId: args.lessonId,
+        moduleId: lesson.moduleId,
+        completed: shouldComplete,
+        completedAt: shouldComplete ? now : undefined,
+        currentTimeSec: args.currentTimeSec,
+        durationSec: args.durationSec,
+        updatedAt: now,
+      });
+
+      // If marking as completed, update module and global progress
+      if (shouldComplete) {
+        await updateModuleAndGlobalProgress(ctx, args.userId, lesson.moduleId);
+      }
+    } else {
+      // Update existing progress
+      const wasCompleted = existingProgress.completed;
+      
+      await ctx.db.patch(existingProgress._id, {
+        currentTimeSec: args.currentTimeSec,
+        durationSec: args.durationSec,
+        completed: shouldComplete || wasCompleted,
+        completedAt: (shouldComplete && !wasCompleted) ? now : existingProgress.completedAt,
+        updatedAt: now,
+      });
+
+      // If newly completed (wasn't completed before), update module and global progress
+      if (shouldComplete && !wasCompleted) {
+        await updateModuleAndGlobalProgress(ctx, args.userId, lesson.moduleId);
+      }
+    }
+
+    return null;
+  },
+});
+
+/**
+ * Helper function to update module and global progress
+ */
+async function updateModuleAndGlobalProgress(
+  ctx: MutationCtx,
+  userId: string,
+  moduleId: Id<"modules">
+) {
+  const now = Date.now();
+
+  // Update moduleProgress
+  const module = await ctx.db.get(moduleId);
+  if (module) {
+    const completedLessonsInModule = await ctx.db
+      .query("userProgress")
+      .withIndex("by_userId_and_moduleId", (q) =>
+        q.eq("userId", userId).eq("moduleId", moduleId)
+      )
+      .collect();
+
+    const completedCount = completedLessonsInModule.filter(
+      (p) => p.completed
+    ).length;
+    const progressPercent =
+      module.totalLessonVideos > 0
+        ? Math.round((completedCount / module.totalLessonVideos) * 100)
+        : 0;
+
+    const moduleProgressDoc = await ctx.db
+      .query("moduleProgress")
+      .withIndex("by_userId_and_moduleId", (q) =>
+        q.eq("userId", userId).eq("moduleId", moduleId)
+      )
+      .unique();
+
+    if (!moduleProgressDoc) {
+      await ctx.db.insert("moduleProgress", {
+        userId,
+        moduleId,
+        completedLessonsCount: completedCount,
+        totalLessonVideos: module.totalLessonVideos,
+        progressPercent,
+        updatedAt: now,
+      });
+    } else {
+      await ctx.db.patch(moduleProgressDoc._id, {
+        completedLessonsCount: completedCount,
+        totalLessonVideos: module.totalLessonVideos,
+        progressPercent,
+        updatedAt: now,
+      });
+    }
+  }
+
+  // Update userGlobalProgress
+  const allCompletedLessons = await ctx.db
+    .query("userProgress")
+    .withIndex("by_userId_and_completed", (q) =>
+      q.eq("userId", userId).eq("completed", true)
+    )
+    .collect();
+
+  const totalCompletedCount = allCompletedLessons.length;
+
+  // Get total lessons from contentStats
+  const contentStats = await ctx.db.query("contentStats").first();
+  const totalLessonsInSystem = contentStats?.totalLessons || 0;
+  const globalProgressPercent =
+    totalLessonsInSystem > 0
+      ? Math.round((totalCompletedCount / totalLessonsInSystem) * 100)
+      : 0;
+
+  const globalProgressDoc = await ctx.db
+    .query("userGlobalProgress")
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .unique();
+
+  if (!globalProgressDoc) {
+    await ctx.db.insert("userGlobalProgress", {
+      userId,
+      completedLessonsCount: totalCompletedCount,
+      progressPercent: globalProgressPercent,
+      updatedAt: now,
+    });
+  } else {
+    await ctx.db.patch(globalProgressDoc._id, {
+      completedLessonsCount: totalCompletedCount,
+      progressPercent: globalProgressPercent,
+      updatedAt: now,
+    });
+  }
+}
 

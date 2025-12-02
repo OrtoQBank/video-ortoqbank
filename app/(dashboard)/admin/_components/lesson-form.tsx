@@ -16,6 +16,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import AdminVideoUploader from "@/components/bunny/admin-video-uploader";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface LessonFormProps {
   onSuccess?: () => void;
@@ -50,6 +52,7 @@ export function LessonForm({ onSuccess, editingLesson, onCancelEdit }: LessonFor
   const [publicUrl, setPublicUrl] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [tags, setTags] = useState("");
+  const [videoId, setVideoId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const modules = useQuery(api.modules.list);
@@ -72,13 +75,14 @@ export function LessonForm({ onSuccess, editingLesson, onCancelEdit }: LessonFor
       setPublicUrl(editingLesson.publicUrl || "");
       setThumbnailUrl(editingLesson.thumbnailUrl || "");
       setTags(editingLesson.tags?.join(", ") || "");
+      setVideoId((editingLesson as any).videoId || "");
     }
   }, [editingLesson]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!moduleId || !title || !slug || !description || !durationSeconds || !orderIndex || !lessonNumber) {
+    if (!moduleId || !title || !slug || !description || !orderIndex || !lessonNumber) {
       toast({
         title: "Erro",
         description: "Preencha todos os campos obrigatórios",
@@ -91,6 +95,7 @@ export function LessonForm({ onSuccess, editingLesson, onCancelEdit }: LessonFor
 
     try {
       const tagsArray = tags.trim() ? tags.split(",").map(tag => tag.trim()) : undefined;
+      const duration = durationSeconds ? parseInt(durationSeconds) : 0;
 
       if (editingLesson) {
         // Update existing lesson
@@ -100,7 +105,7 @@ export function LessonForm({ onSuccess, editingLesson, onCancelEdit }: LessonFor
           title,
           slug,
           description,
-          durationSeconds: parseInt(durationSeconds),
+          durationSeconds: duration,
           order_index: parseInt(orderIndex),
           lessonNumber: parseInt(lessonNumber),
           isPublished,
@@ -108,7 +113,8 @@ export function LessonForm({ onSuccess, editingLesson, onCancelEdit }: LessonFor
           publicUrl: publicUrl || undefined,
           thumbnailUrl: thumbnailUrl || undefined,
           tags: tagsArray,
-        });
+          videoId: videoId || undefined,
+        } as any);
 
         toast({
           title: "Sucesso",
@@ -121,7 +127,7 @@ export function LessonForm({ onSuccess, editingLesson, onCancelEdit }: LessonFor
         title,
         slug,
         description,
-        durationSeconds: parseInt(durationSeconds),
+        durationSeconds: duration,
         order_index: parseInt(orderIndex),
         lessonNumber: parseInt(lessonNumber),
         isPublished,
@@ -129,7 +135,8 @@ export function LessonForm({ onSuccess, editingLesson, onCancelEdit }: LessonFor
         publicUrl: publicUrl || undefined,
         thumbnailUrl: thumbnailUrl || undefined,
         tags: tagsArray,
-      });
+        videoId: videoId || undefined,
+      } as any);
 
       toast({
         title: "Sucesso",
@@ -150,6 +157,7 @@ export function LessonForm({ onSuccess, editingLesson, onCancelEdit }: LessonFor
       setPublicUrl("");
       setThumbnailUrl("");
       setTags("");
+      setVideoId("");
 
       if (onSuccess) {
         onSuccess();
@@ -186,6 +194,13 @@ export function LessonForm({ onSuccess, editingLesson, onCancelEdit }: LessonFor
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <Tabs defaultValue="info" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="info">Informações Básicas</TabsTrigger>
+            <TabsTrigger value="video">Upload de Vídeo</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="info">
         <form onSubmit={handleSubmit} className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
           <div>
             <label className="text-sm font-medium">Módulo *</label>
@@ -236,15 +251,18 @@ export function LessonForm({ onSuccess, editingLesson, onCancelEdit }: LessonFor
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="text-sm font-medium">Duração (segundos) *</label>
+              <label className="text-sm font-medium">Duração (segundos)</label>
               <Input
                 type="number"
                 value={durationSeconds}
                 onChange={(e) => setDurationSeconds(e.target.value)}
-                placeholder="600"
-                min="1"
+                placeholder="0 (será preenchido após upload)"
+                min="0"
                 disabled={isSubmitting}
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Deixe em branco se não souber
+              </p>
             </div>
 
             <div>
@@ -272,8 +290,18 @@ export function LessonForm({ onSuccess, editingLesson, onCancelEdit }: LessonFor
             </div>
           </div>
 
+          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <p className="text-sm text-blue-900 dark:text-blue-100 font-medium mb-1">
+              💡 Dica: Campos relacionados ao vídeo
+            </p>
+            <p className="text-xs text-blue-700 dark:text-blue-300">
+              Use a aba "Upload de Vídeo" para fazer upload e esses campos serão preenchidos automaticamente.
+              Ou preencha manualmente se preferir.
+            </p>
+          </div>
+
           <div>
-            <label className="text-sm font-medium">Bunny Storage Path</label>
+            <label className="text-sm font-medium">Bunny Storage Path (opcional)</label>
             <Input
               value={bunnyStoragePath}
               onChange={(e) => setBunnyStoragePath(e.target.value)}
@@ -283,7 +311,7 @@ export function LessonForm({ onSuccess, editingLesson, onCancelEdit }: LessonFor
           </div>
 
           <div>
-            <label className="text-sm font-medium">URL Pública</label>
+            <label className="text-sm font-medium">URL Pública (opcional)</label>
             <Input
               value={publicUrl}
               onChange={(e) => setPublicUrl(e.target.value)}
@@ -293,7 +321,7 @@ export function LessonForm({ onSuccess, editingLesson, onCancelEdit }: LessonFor
           </div>
 
           <div>
-            <label className="text-sm font-medium">URL da Thumbnail</label>
+            <label className="text-sm font-medium">URL da Thumbnail (opcional)</label>
             <Input
               value={thumbnailUrl}
               onChange={(e) => setThumbnailUrl(e.target.value)}
@@ -310,6 +338,19 @@ export function LessonForm({ onSuccess, editingLesson, onCancelEdit }: LessonFor
               placeholder="anatomia, básico, ortopedia"
               disabled={isSubmitting}
             />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Bunny Video ID</label>
+            <Input
+              value={videoId}
+              onChange={(e) => setVideoId(e.target.value)}
+              placeholder="ID do vídeo no Bunny Stream"
+              disabled={isSubmitting}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Use a aba "Upload de Vídeo" para enviar um novo vídeo e obter o ID automaticamente.
+            </p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -343,6 +384,49 @@ export function LessonForm({ onSuccess, editingLesson, onCancelEdit }: LessonFor
           </Button>
           </div>
         </form>
+          </TabsContent>
+
+          <TabsContent value="video" className="space-y-4">
+            <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800 mb-4">
+              <p className="text-sm text-yellow-900 dark:text-yellow-100 font-medium mb-1">
+                📹 Como funciona o upload
+              </p>
+              <ol className="text-xs text-yellow-700 dark:text-yellow-300 space-y-1 list-decimal list-inside">
+                <li>Preencha o título e descrição do vídeo</li>
+                <li>Clique em "Criar Vídeo" para obter o ID</li>
+                <li>Selecione o arquivo de vídeo do seu computador</li>
+                <li>Clique em "Fazer Upload"</li>
+                <li>Volte para "Informações Básicas" e salve a aula</li>
+              </ol>
+            </div>
+
+            <AdminVideoUploader
+              onSuccess={(videoData) => {
+                setVideoId(videoData.videoId);
+                setTitle(title || videoData.title);
+                setDescription(description || videoData.description || '');
+                toast({
+                  title: "Vídeo vinculado",
+                  description: "O vídeo foi vinculado à aula. Volte para 'Informações Básicas' e salve a aula.",
+                });
+              }}
+            />
+            
+            {videoId && (
+              <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                <p className="text-sm font-medium text-green-900 dark:text-green-100">
+                  ✓ Vídeo vinculado
+                </p>
+                <p className="text-xs text-green-700 dark:text-green-300 mt-1">
+                  Video ID: {videoId}
+                </p>
+                <p className="text-xs text-green-700 dark:text-green-300 mt-1">
+                  Lembre-se de salvar a aula na aba "Informações Básicas" para confirmar o vínculo.
+                </p>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );

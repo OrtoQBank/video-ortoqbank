@@ -22,6 +22,7 @@ export const list = query({
       lessonNumber: v.number(),
       isPublished: v.boolean(),
       tags: v.optional(v.array(v.string())),
+      videoId: v.optional(v.string()),
     })
   ),
   handler: async (ctx) => {
@@ -49,6 +50,7 @@ export const listByModule = query({
       lessonNumber: v.number(),
       isPublished: v.boolean(),
       tags: v.optional(v.array(v.string())),
+      videoId: v.optional(v.string()),
     })
   ),
   handler: async (ctx, args) => {
@@ -82,6 +84,7 @@ export const listPublishedByModule = query({
       lessonNumber: v.number(),
       isPublished: v.boolean(),
       tags: v.optional(v.array(v.string())),
+      videoId: v.optional(v.string()),
     })
   ),
   handler: async (ctx, args) => {
@@ -116,6 +119,7 @@ export const getById = query({
       lessonNumber: v.number(),
       isPublished: v.boolean(),
       tags: v.optional(v.array(v.string())),
+      videoId: v.optional(v.string()),
     }),
     v.null()
   ),
@@ -144,6 +148,7 @@ export const getBySlug = query({
       lessonNumber: v.number(),
       isPublished: v.boolean(),
       tags: v.optional(v.array(v.string())),
+      videoId: v.optional(v.string()),
     }),
     v.null()
   ),
@@ -172,6 +177,7 @@ export const create = mutation({
     lessonNumber: v.number(),
     isPublished: v.boolean(),
     tags: v.optional(v.array(v.string())),
+    videoId: v.optional(v.string()),
   },
   returns: v.id("lessons"),
   handler: async (ctx, args) => {
@@ -198,6 +204,7 @@ export const create = mutation({
       lessonNumber: args.lessonNumber,
       isPublished: args.isPublished,
       tags: args.tags,
+      videoId: args.videoId,
     });
 
     // Atualizar o total de lessons no módulo
@@ -233,6 +240,7 @@ export const update = mutation({
     lessonNumber: v.number(),
     isPublished: v.boolean(),
     tags: v.optional(v.array(v.string())),
+    videoId: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -264,6 +272,7 @@ export const update = mutation({
       lessonNumber: args.lessonNumber,
       isPublished: args.isPublished,
       tags: args.tags,
+      videoId: args.videoId,
     });
 
     // Update contentStats if publish status changed

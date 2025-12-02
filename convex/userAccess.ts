@@ -213,6 +213,32 @@ export const checkUserHasVideoAccessById = query({
   },
 });
 
+/**
+ * Check if a user has video access by Clerk user ID (for API routes)
+ * This is a public query that can be called from server-side API routes
+ * Note: In production, you might want to add additional security checks
+ */
+export const checkUserHasVideoAccessByClerkId = query({
+  args: { clerkUserId: v.string() },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", args.clerkUserId))
+      .unique();
+
+    if (!user) {
+      return false;
+    }
+
+    return (
+      user.status === "active" &&
+      user.paid === true &&
+      user.hasActiveYearAccess === true
+    );
+  },
+});
+
 // ============================================================================
 // ONBOARDING FUNCTIONS
 // ============================================================================

@@ -69,11 +69,36 @@ export default defineSchema({
     lessonNumber: v.number(),
     isPublished: v.boolean(),
     tags: v.optional(v.array(v.string())),
+    videoId: v.optional(v.string()), // Bunny video ID
   })
     .index("by_moduleId", ["moduleId"])
     .index("by_slug", ["slug"])
     .index("by_moduleId_and_order", ["moduleId", "order_index"])
-    .index("by_isPublished", ["isPublished"]),
+    .index("by_isPublished", ["isPublished"])
+    .index("by_videoId", ["videoId"]),
+
+  // Videos table (Bunny Stream videos)
+  videos: defineTable({
+    videoId: v.string(), // Bunny library video id
+    libraryId: v.string(), // Bunny library id
+    title: v.string(),
+    description: v.string(),
+    thumbnailUrl: v.optional(v.string()),
+    hlsUrl: v.optional(v.string()),
+    mp4Urls: v.optional(v.array(v.object({ quality: v.string(), url: v.string() }))),
+    status: v.union(
+      v.literal("uploading"),
+      v.literal("processing"),
+      v.literal("ready"),
+      v.literal("failed")
+    ),
+    createdBy: v.string(), // userId do Clerk
+    isPrivate: v.boolean(),
+    metadata: v.optional(v.any()),
+  })
+    .index("by_videoId", ["videoId"])
+    .index("by_createdBy", ["createdBy"])
+    .index("by_status", ["status"]),
 
   // User progress per lesson (granular tracking)
   userProgress: defineTable({
@@ -82,6 +107,9 @@ export default defineSchema({
     moduleId: v.id("modules"),
     completed: v.boolean(),
     completedAt: v.optional(v.number()), // timestamp when completed
+    currentTimeSec: v.optional(v.number()), // current playback position in seconds
+    durationSec: v.optional(v.number()), // video duration in seconds
+    updatedAt: v.optional(v.number()), // last update timestamp
   })
     .index("by_userId", ["userId"])
     .index("by_userId_and_lessonId", ["userId", "lessonId"])

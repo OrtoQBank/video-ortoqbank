@@ -12,6 +12,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import { useUser } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 import { ModuleWithLessons } from "./module-with-lessons";
+import PlayerHls from "@/components/bunny/player-hls";
 
 interface ModulesInnerProps {
   preloadedModules: Preloaded<typeof api.modules.listByCategory>;
@@ -213,9 +214,31 @@ export function ModulesInner({ preloadedModules, categoryTitle }: ModulesInnerPr
           {currentLesson ? (
             <div className="p-6">
               {/* Video Player */}
-              <div className="bg-black rounded-lg aspect-video flex items-center justify-center mb-6">
-                <PlayCircleIcon size={64} className="text-white/50" />
-              </div>
+              {currentLesson.videoId ? (
+                <div className="mb-6">
+                  <PlayerHls
+                    videoId={currentLesson.videoId}
+                    lessonId={currentLesson._id}
+                    onComplete={async () => {
+                      // Auto-mark as completed when video reaches 90%
+                      if (user?.id) {
+                        try {
+                          await markCompleted({ userId: user.id, lessonId: currentLesson._id });
+                        } catch (error) {
+                          console.error("Error auto-completing lesson:", error);
+                        }
+                      }
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="bg-black rounded-lg aspect-video flex items-center justify-center mb-6">
+                  <div className="text-center">
+                    <PlayCircleIcon size={64} className="text-white/50 mb-2" />
+                    <p className="text-white/70 text-sm">Vídeo ainda não disponível</p>
+                  </div>
+                </div>
+              )}
 
               {/* Lesson Info */}
               <div className="mb-6">

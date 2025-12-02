@@ -20,6 +20,7 @@ import type * as seed from "../seed.js";
 import type * as userAccess from "../userAccess.js";
 import type * as userAdmin from "../userAdmin.js";
 import type * as users from "../users.js";
+import type * as videos from "../videos.js";
 
 import type {
   ApiFromModules,
@@ -40,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   userAccess: typeof userAccess;
   userAdmin: typeof userAdmin;
   users: typeof users;
+  videos: typeof videos;
 }>;
 
 /**

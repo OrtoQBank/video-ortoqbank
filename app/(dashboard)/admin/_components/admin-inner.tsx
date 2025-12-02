@@ -5,7 +5,7 @@ import { CategoryForm } from "./category-form";
 import { CategoryList } from "./category-list";
 import { ModuleForm } from "./module-form";
 import { ModuleList } from "./module-list";
-import { LessonForm } from "./lesson-form";
+import { LessonFormV2 } from "./lesson-form-v2";
 import { LessonList } from "./lesson-list";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -95,7 +95,7 @@ export function AdminInner() {
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div data-lesson-form>
-                  <LessonForm 
+                  <LessonFormV2 
                     editingLesson={editingLesson}
                     onSuccess={handleLessonSuccess}
                     onCancelEdit={handleCancelEdit}

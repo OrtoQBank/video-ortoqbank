@@ -177,6 +177,7 @@ export const getUserFavoriteLessons = query({
         lessonNumber: v.number(),
         isPublished: v.boolean(),
         tags: v.optional(v.array(v.string())),
+        videoId: v.optional(v.string()),
       }),
       module: v.object({
         _id: v.id("modules"),
@@ -251,6 +252,7 @@ export const getUserFavoriteLessons = query({
         lessonNumber: number;
         isPublished: boolean;
         tags?: string[];
+        videoId?: string;
       };
       module: {
         _id: Id<"modules">;

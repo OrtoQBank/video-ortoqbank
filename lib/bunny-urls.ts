@@ -20,26 +20,29 @@ export interface BunnyVideoInfo {
 
 export class BunnyUrlBuilder {
   private libraryId: string;
+  private cdnHostname: string;
   
-  constructor(libraryId: string) {
+  constructor(libraryId: string, cdnHostname?: string) {
     this.libraryId = libraryId;
+    // Use custom CDN hostname if provided, otherwise use default pattern
+    this.cdnHostname = cdnHostname || `vz-${libraryId}.b-cdn.net`;
   }
   
   /**
    * Gera URL do HLS playlist
-   * Formato: https://vz-{libraryId}.b-cdn.net/{videoId}/playlist.m3u8
+   * Formato: https://{cdnHostname}/{videoId}/playlist.m3u8
    */
   getHlsUrl(videoId: string): string {
-    return `https://vz-${this.libraryId}.b-cdn.net/${videoId}/playlist.m3u8`;
+    return `https://${this.cdnHostname}/${videoId}/playlist.m3u8`;
   }
   
   /**
    * Gera URL do thumbnail
-   * Formato: https://vz-{libraryId}.b-cdn.net/{videoId}/{thumbnailFileName}
+   * Formato: https://{cdnHostname}/{videoId}/{thumbnailFileName}
    */
   getThumbnailUrl(videoId: string, thumbnailFileName?: string): string | null {
     if (!thumbnailFileName) return null;
-    return `https://vz-${this.libraryId}.b-cdn.net/${videoId}/${thumbnailFileName}`;
+    return `https://${this.cdnHostname}/${videoId}/${thumbnailFileName}`;
   }
   
   /**
@@ -52,14 +55,14 @@ export class BunnyUrlBuilder {
   
   /**
    * Gera URLs de MP4 para diferentes resoluções
-   * Formato: https://vz-{libraryId}.b-cdn.net/{videoId}/play_{resolution}.mp4
+   * Formato: https://{cdnHostname}/{videoId}/play_{resolution}.mp4
    */
   getMp4Urls(videoId: string, availableResolutions?: string): Array<{ quality: string; url: string }> {
     if (!availableResolutions) return [];
     
     return availableResolutions.split(',').map(resolution => ({
       quality: resolution.trim(),
-      url: `https://vz-${this.libraryId}.b-cdn.net/${videoId}/play_${resolution.trim()}.mp4`
+      url: `https://${this.cdnHostname}/${videoId}/play_${resolution.trim()}.mp4`
     }));
   }
   
@@ -76,10 +79,10 @@ export class BunnyUrlBuilder {
   
   /**
    * Gera preview URL (para thumbnail em diferentes tamanhos)
-   * Formato: https://vz-{libraryId}.b-cdn.net/{videoId}/preview.webp
+   * Formato: https://{cdnHostname}/{videoId}/preview.webp
    */
   getPreviewUrl(videoId: string, width?: number, height?: number): string {
-    const baseUrl = `https://vz-${this.libraryId}.b-cdn.net/${videoId}/preview.webp`;
+    const baseUrl = `https://${this.cdnHostname}/${videoId}/preview.webp`;
     if (!width && !height) return baseUrl;
     
     const url = new URL(baseUrl);
@@ -92,11 +95,14 @@ export class BunnyUrlBuilder {
 /**
  * Função auxiliar para criar o builder com configuração padrão
  */
-export function createBunnyUrlBuilder(libraryId?: string): BunnyUrlBuilder {
+export function createBunnyUrlBuilder(libraryId?: string, cdnHostname?: string): BunnyUrlBuilder {
   const id = libraryId || process.env.BUNNY_LIBRARY_ID;
+  const hostname = cdnHostname || process.env.BUNNY_CDN_HOSTNAME;
+  
   if (!id) {
     throw new Error('BUNNY_LIBRARY_ID is not defined');
   }
-  return new BunnyUrlBuilder(id);
+  
+  return new BunnyUrlBuilder(id, hostname);
 }
 

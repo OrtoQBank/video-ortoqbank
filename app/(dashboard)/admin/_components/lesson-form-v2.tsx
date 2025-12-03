@@ -192,7 +192,7 @@ export function LessonFormV2({ onSuccess, editingLesson, onCancelEdit }: LessonF
           }
         });
 
-        xhr.addEventListener('load', () => {
+        xhr.addEventListener('load', async () => {
           if (xhr.status >= 200 && xhr.status < 300) {
             toast({
               title: 'Sucesso',
@@ -202,6 +202,41 @@ export function LessonFormV2({ onSuccess, editingLesson, onCancelEdit }: LessonF
             setVideoId(createData.videoId);
             setUploadProgress(100);
             setIsUploading(false);
+            
+            // Buscar informações do vídeo do Bunny
+            try {
+              const infoResponse = await fetch(
+                `/api/bunny/get-video-info?videoId=${encodeURIComponent(createData.videoId)}&libraryId=${encodeURIComponent(createData.libraryId)}`
+              );
+              
+              if (infoResponse.ok) {
+                const videoData = await infoResponse.json();
+                
+                console.log('Video info from Bunny:', videoData);
+                
+                // Atualizar estado com informações reais do Bunny
+                if (videoData.urls?.thumbnail) {
+                  setThumbnailUrl(videoData.urls.thumbnail);
+                }
+                if (videoData.urls?.hls) {
+                  setPublicUrl(videoData.urls.hls);
+                }
+                if (videoData.processed?.durationSeconds) {
+                  setDurationSeconds(videoData.processed.durationSeconds.toString());
+                }
+                
+                // Mostrar informações extras no toast
+                if (videoData.processed?.statusText) {
+                  toast({
+                    title: 'Informações do vídeo atualizadas',
+                    description: `Status: ${videoData.processed.statusText} | Duração: ${videoData.processed.durationSeconds}s`,
+                  });
+                }
+              }
+            } catch (infoError) {
+              console.error('Erro ao buscar info do vídeo:', infoError);
+              // Não bloquear o fluxo se falhar
+            }
             
             resolve();
           } else {

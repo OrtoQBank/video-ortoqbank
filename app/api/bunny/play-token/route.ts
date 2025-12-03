@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '@/convex/_generated/api';
+import { createBunnyUrlBuilder } from '@/lib/bunny-urls';
 import crypto from 'crypto';
 
 export async function GET(req: Request) {
@@ -74,6 +75,9 @@ export async function GET(req: Request) {
       );
     }
 
+    // Create URL builder
+    const urlBuilder = createBunnyUrlBuilder(libraryId);
+
     // Generate token with expiration (10 minutes)
     const expires = Math.floor(Date.now() / 1000) + 60 * 10;
 
@@ -82,14 +86,18 @@ export async function GET(req: Request) {
     const toSign = `${libraryId}${securityKey}${expires}${videoId}`;
     const token = crypto.createHash('sha256').update(toSign).digest('hex');
 
-    // Build the signed URLs
-    const embedUrl = `https://iframe.mediadelivery.net/embed/${libraryId}/${videoId}?token=${token}&expires=${expires}`;
-    const hlsUrl = `https://vz-${libraryId}.b-cdn.net/${videoId}/playlist.m3u8?token=${token}&expires=${expires}`;
+    // Build the signed URLs usando o builder - CORRETO
+    const baseEmbedUrl = urlBuilder.getEmbedUrl(videoId);
+    const baseHlsUrl = urlBuilder.getHlsUrl(videoId);
+    
+    const embedUrl = urlBuilder.getAuthenticatedUrl(baseEmbedUrl, token, expires);
+    const hlsUrl = urlBuilder.getAuthenticatedUrl(baseHlsUrl, token, expires);
 
     return NextResponse.json({
       success: true,
       embedUrl,
       hlsUrl,
+      token,
       expires,
       expiresAt: new Date(expires * 1000).toISOString(),
     });

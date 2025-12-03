@@ -7,7 +7,6 @@ import { ModuleForm } from "./module-form";
 import { ModuleList } from "./module-list";
 import { LessonFormV2 } from "./lesson-form-v2";
 import { LessonList } from "./lesson-list";
-import { UserList } from "./user-list";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSession } from "@/components/providers/session-provider";
@@ -72,7 +71,7 @@ export function AdminInner() {
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
-      <div className="py-6 px-8 flex items-center gap-4 border-b">
+      <div className="py-6 px-8 flex items-center gap-3 border-b">
         <SidebarTrigger className="text-blue-brand hover:text-blue-brand-dark hover:bg-blue-brand-light" />
         <h1 className="text-2xl font-bold">Administração</h1>
       </div>
@@ -81,11 +80,10 @@ export function AdminInner() {
       <div className="p-8">
         <div className="max-w-7xl mx-auto">
           <Tabs defaultValue="categories" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 mb-8">
+            <TabsList className="grid w-full grid-cols-3 mb-8">
               <TabsTrigger value="categories">Categorias</TabsTrigger>
               <TabsTrigger value="modules">Módulos</TabsTrigger>
               <TabsTrigger value="lessons">Aulas</TabsTrigger>
-              <TabsTrigger value="users">Usuários</TabsTrigger>
             </TabsList>
 
             {/* Categorias */}
@@ -143,19 +141,6 @@ export function AdminInner() {
                 <div>
                   <LessonList onEditLesson={handleEditLesson} />
                 </div>
-              </div>
-            </TabsContent>
-
-            {/* Usuários */}
-            <TabsContent value="users">
-              <div className="mb-6">
-                <h2 className="text-xl font-semibold mb-2">Gerenciar Usuários</h2>
-                <p className="text-muted-foreground">
-                  Visualize todos os usuários e gerencie permissões de administrador
-                </p>
-              </div>
-              <div className="max-w-4xl">
-                <UserList />
               </div>
             </TabsContent>
           </Tabs>

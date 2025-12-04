@@ -146,56 +146,8 @@ function LessonItem({
             <Upload className="h-3 w-3 mr-1" />
             Upload Vídeo
           </Button>
-        )}
-        {lesson.videoId && video && video.status !== "ready" && (
-          <>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onCheckVideoStatus(lesson.videoId!, lesson.title)}
-              title="Verificar status do vídeo no Bunny"
-              className="text-xs"
-            >
-              <RefreshCw className="h-3 w-3 mr-1" />
-              Verificar Status
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onMarkVideoAsReady(lesson.videoId!, lesson.title)}
-              title="Marcar vídeo como pronto manualmente"
-              className="text-xs"
-            >
-              <CheckCircleIcon className="h-3 w-3 mr-1" />
-              Marcar Pronto
-            </Button>
-          </>
-        )}
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() =>
-            onTogglePublish(lesson._id, lesson.title, lesson.isPublished)
-          }
-          title={lesson.isPublished ? "Despublicar" : "Publicar"}
-        >
-          {lesson.isPublished ? (
-            <EyeOff className="h-4 w-4" />
-          ) : (
-            <Eye className="h-4 w-4" />
           )}
-        </Button>
-        {onEditLesson && (
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => onEditLesson(lesson)}
-            title="Editar"
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-        )}
-        <Button
+         <Button
           variant="outline"
           size="icon"
           onClick={() => onDelete(lesson._id, lesson.title)}

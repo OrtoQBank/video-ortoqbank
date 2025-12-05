@@ -3,152 +3,266 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useToast } from "@/hooks/use-toast";
+import * as z from "zod";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import { CheckCircle2, FolderPlus } from "lucide-react";
+
+const formSchema = z.object({
+  title: z.string().min(3, "Título deve ter pelo menos 3 caracteres"),
+  slug: z.string().min(3, "Slug deve ter pelo menos 3 caracteres"),
+  description: z.string().min(10, "Descrição deve ter pelo menos 10 caracteres"),
+  position: z.number().min(1, "Posição deve ser maior que 0"),
+  iconUrl: z.string().url("URL inválida").optional().or(z.literal("")),
+});
 
 interface CategoryFormProps {
   onSuccess?: () => void;
 }
 
 export function CategoryForm({ onSuccess }: CategoryFormProps) {
-  const [title, setTitle] = useState("");
-  const [slug, setSlug] = useState("");
-  const [description, setDescription] = useState("");
-  const [position, setPosition] = useState("");
-  const [iconUrl, setIconUrl] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
   const createCategory = useMutation(api.categories.create);
   const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createdCategory, setCreatedCategory] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!title || !slug || !description || !position) {
-      toast({
-        title: "Erro",
-        description: "Preencha todos os campos obrigatórios",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      await createCategory({
-        title,
-        slug,
-        description,
-        position: parseInt(position),
-        iconUrl: iconUrl || undefined,
-      });
-
-      toast({
-        title: "Sucesso",
-        description: "Categoria criada com sucesso!",
-      });
-
-      // Limpar o formulário
-      setTitle("");
-      setSlug("");
-      setDescription("");
-      setPosition("");
-      setIconUrl("");
-
-      if (onSuccess) {
-        onSuccess();
-      }
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: error instanceof Error ? error.message : "Erro ao criar categoria",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      title: "",
+      slug: "",
+      description: "",
+      position: 1,
+      iconUrl: "",
+    },
+  });
 
   // Auto-gerar slug a partir do título
-  const handleTitleChange = (value: string) => {
-    setTitle(value);
-    // Gerar slug automaticamente
-    const generatedSlug = value
+  const generateSlug = (title: string) => {
+    return title
       .toLowerCase()
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "");
-    setSlug(generatedSlug);
   };
 
+  async function onSubmit(data: z.infer<typeof formSchema>) {
+    setIsSubmitting(true);
+    try {
+      await createCategory({
+        title: data.title,
+        slug: data.slug,
+        description: data.description,
+        position: data.position,
+        iconUrl: data.iconUrl || undefined,
+      });
+
+      setCreatedCategory(true);
+
+      toast({
+        title: "✅ Categoria criada com sucesso!",
+        description: `${data.title} foi criada.`,
+      });
+
+      form.reset();
+      
+      if (onSuccess) {
+        onSuccess();
+      }
+
+      // Reset success state after 3 seconds
+      setTimeout(() => setCreatedCategory(false), 3000);
+    } catch (error) {
+      toast({
+        title: "❌ Erro ao criar categoria",
+        description:
+          error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader>
-        <CardTitle>Nova Categoria</CardTitle>
-        <CardDescription>Adicione uma nova categoria ao sistema</CardDescription>
+        <CardTitle className="flex items-center gap-2">
+          <FolderPlus className="h-5 w-5" />
+          Nova Categoria
+        </CardTitle>
+        <CardDescription>
+          Adicione uma nova categoria ao sistema
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="text-sm font-medium">Título *</label>
-            <Input
-              value={title}
-              onChange={(e) => handleTitleChange(e.target.value)}
-              placeholder="Ex: Ciências Básicas em Ortopedia"
-              disabled={isSubmitting}
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <FieldGroup>
+            {/* Title */}
+            <Controller
+              name="title"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel>Título</FieldLabel>
+                  <Input
+                    {...field}
+                    placeholder="Ex: Ciências Básicas em Ortopedia"
+                    autoComplete="off"
+                    onChange={(e) => {
+                      field.onChange(e);
+                      // Auto-generate slug
+                      form.setValue("slug", generateSlug(e.target.value));
+                    }}
+                  />
+                  <FieldDescription>
+                    Slug gerado: {generateSlug(field.value || "")}
+                  </FieldDescription>
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
             />
-          </div>
 
-          <div>
-            <label className="text-sm font-medium">Slug *</label>
-            <Input
-              value={slug}
-              onChange={(e) => setSlug(e.target.value)}
-              placeholder="ciencias-basicas-em-ortopedia"
-              disabled={isSubmitting}
+            {/* Slug */}
+            <Controller
+              name="slug"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel>Slug</FieldLabel>
+                  <Input
+                    {...field}
+                    placeholder="ciencias-basicas-em-ortopedia"
+                    autoComplete="off"
+                  />
+                  <FieldDescription>
+                    URL amigável para a categoria
+                  </FieldDescription>
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
             />
-          </div>
 
-          <div>
-            <label className="text-sm font-medium">Descrição *</label>
-            <Input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Breve descrição da categoria"
-              disabled={isSubmitting}
+            {/* Description */}
+            <Controller
+              name="description"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel>Descrição</FieldLabel>
+                  <Input
+                    {...field}
+                    placeholder="Breve descrição da categoria"
+                    autoComplete="off"
+                  />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
             />
-          </div>
 
-          <div>
-            <label className="text-sm font-medium">Posição *</label>
-            <Input
-              type="number"
-              value={position}
-              onChange={(e) => setPosition(e.target.value)}
-              placeholder="1"
-              min="1"
-              disabled={isSubmitting}
+            {/* Position */}
+            <Controller
+              name="position"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel>Posição</FieldLabel>
+                  <Input
+                    {...field}
+                    type="number"
+                    min={1}
+                    placeholder="1"
+                    onChange={(e) =>
+                      field.onChange(parseInt(e.target.value) || 1)
+                    }
+                  />
+                  <FieldDescription>Ordem de exibição</FieldDescription>
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
             />
-          </div>
 
-          <div>
-            <label className="text-sm font-medium">URL do Ícone (opcional)</label>
-            <Input
-              value={iconUrl}
-              onChange={(e) => setIconUrl(e.target.value)}
-              placeholder="https://..."
-              disabled={isSubmitting}
+            {/* Icon URL */}
+            <Controller
+              name="iconUrl"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel>URL do Ícone (opcional)</FieldLabel>
+                  <Input
+                    {...field}
+                    placeholder="https://..."
+                    autoComplete="off"
+                  />
+                  <FieldDescription>
+                    Link para o ícone da categoria
+                  </FieldDescription>
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
             />
-          </div>
+          </FieldGroup>
 
-          <Button type="submit" disabled={isSubmitting} className="w-full">
-            {isSubmitting ? "Criando..." : "Criar Categoria"}
-          </Button>
+          {/* Submit Button */}
+          <div className="flex gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => form.reset()}
+              disabled={isSubmitting}
+            >
+              Limpar
+            </Button>
+            <Button type="submit" disabled={isSubmitting} className="flex-1">
+              {isSubmitting ? (
+                "Criando..."
+              ) : createdCategory ? (
+                <>
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  Categoria Criada!
+                </>
+              ) : (
+                "Criar Categoria"
+              )}
+            </Button>
+          </div>
         </form>
+
+        {createdCategory && (
+          <div className="mt-6 rounded-lg border border-green-500/20 bg-green-500/10 p-4">
+            <p className="text-sm text-green-700 dark:text-green-400">
+              ✅ Categoria criada com sucesso! Visualize na lista ao lado.
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

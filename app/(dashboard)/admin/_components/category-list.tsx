@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useToast } from "@/hooks/use-toast";
 import { Edit, Trash2 } from "lucide-react";
@@ -15,10 +15,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Id } from "@/convex/_generated/dataModel";
+import { Id, Doc } from "@/convex/_generated/dataModel";
 
-export function CategoryList() {
-  const categories = useQuery(api.categories.list);
+interface CategoryListProps {
+  categories: Doc<"categories">[];
+}
+
+export function CategoryList({ categories }: CategoryListProps) {
   const updateCategory = useMutation(api.categories.update);
   const deleteCategory = useMutation(api.categories.remove);
   const { toast } = useToast();
@@ -108,10 +111,6 @@ export function CategoryList() {
       });
     }
   };
-
-  if (categories === undefined) {
-    return <div>Carregando...</div>;
-  }
 
   return (
     <>

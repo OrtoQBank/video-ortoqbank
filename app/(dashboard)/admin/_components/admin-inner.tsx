@@ -8,8 +8,23 @@ import { LessonForm } from "././lesson-form";
 import { LessonList } from "./lesson-list";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Preloaded, usePreloadedQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
-export function AdminInner() {
+interface AdminInnerProps {
+  preloadedCategories: Preloaded<typeof api.categories.list>;
+  preloadedModules: Preloaded<typeof api.modules.list>;
+  preloadedLessons: Preloaded<typeof api.lessons.list>;
+}
+
+export function AdminInner({
+  preloadedCategories,
+  preloadedModules,
+  preloadedLessons,
+}: AdminInnerProps) {
+  const categories = usePreloadedQuery(preloadedCategories);
+  const modules = usePreloadedQuery(preloadedModules);
+  const lessons = usePreloadedQuery(preloadedLessons);
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
@@ -43,7 +58,7 @@ export function AdminInner() {
                   <CategoryForm />
                 </div>
                 <div>
-                  <CategoryList />
+                  <CategoryList categories={categories} />
                 </div>
               </div>
             </TabsContent>
@@ -60,10 +75,10 @@ export function AdminInner() {
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div>
-                  <ModuleForm />
+                  <ModuleForm categories={categories} />
                 </div>
                 <div>
-                  <ModuleList />
+                  <ModuleList modules={modules} categories={categories} />
                 </div>
               </div>
             </TabsContent>
@@ -75,10 +90,10 @@ export function AdminInner() {
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div data-lesson-form>
-                  <LessonForm />
+                  <LessonForm modules={modules} />
                 </div>
                 <div>
-                  <LessonList />
+                  <LessonList lessons={lessons} />
                 </div>
               </div>
             </TabsContent>

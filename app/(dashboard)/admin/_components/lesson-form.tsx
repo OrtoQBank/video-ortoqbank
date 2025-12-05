@@ -32,7 +32,7 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
-import { Id } from "@/convex/_generated/dataModel";
+import { Id, Doc } from "@/convex/_generated/dataModel";
 
 const formSchema = z.object({
   moduleId: z.string().min(1, "Selecione um módulo"),
@@ -47,8 +47,11 @@ const formSchema = z.object({
   videoId: z.string().optional(),
 });
 
-export function LessonForm() {
-  const modules = useQuery(api.modules.list);
+interface LessonFormProps {
+  modules: Doc<"modules">[];
+}
+
+export function LessonForm({ modules }: LessonFormProps) {
   const createLesson = useMutation(api.lessons.create);
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -123,10 +126,6 @@ export function LessonForm() {
     } finally {
       setIsSubmitting(false);
     }
-  }
-
-  if (!modules) {
-    return <div className="p-4">Carregando módulos...</div>;
   }
 
   return (

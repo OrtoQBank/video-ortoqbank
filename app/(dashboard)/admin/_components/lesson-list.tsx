@@ -32,10 +32,11 @@ import {
   Upload,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Id } from "@/convex/_generated/dataModel";
+import { Id, Doc } from "@/convex/_generated/dataModel";
 import AdminVideoUploader from "@/components/bunny/admin-video-uploader";
 
 interface LessonListProps {
+  lessons: Doc<"lessons">[];
   onEditLesson?: (lesson: any) => void;
 }
 
@@ -160,8 +161,7 @@ function LessonItem({
   );
 }
 
-export function LessonList() {
-  const lessons = useQuery(api.lessons.list);
+export function LessonList({ lessons }: LessonListProps) {
   const modules = useQuery(api.modules.list);
   const deleteLesson = useMutation(api.lessons.remove);
   const togglePublish = useMutation(api.lessons.togglePublish);
@@ -309,8 +309,8 @@ export function LessonList() {
     }
   };
 
-  if (lessons === undefined || modules === undefined) {
-    return <div>Carregando...</div>;
+  if (modules === undefined) {
+    return <div>Carregando módulos...</div>;
   }
 
   return (

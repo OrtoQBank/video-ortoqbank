@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useToast } from "@/hooks/use-toast";
 import { Edit, Trash2 } from "lucide-react";
@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Id } from "@/convex/_generated/dataModel";
+import { Id, Doc } from "@/convex/_generated/dataModel";
 import {
   Select,
   SelectContent,
@@ -24,9 +24,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export function ModuleList() {
-  const modules = useQuery(api.modules.list);
-  const categories = useQuery(api.categories.list);
+interface ModuleListProps {
+  modules: Doc<"modules">[];
+  categories: Doc<"categories">[];
+}
+
+export function ModuleList({ modules, categories }: ModuleListProps) {
   const updateModule = useMutation(api.modules.update);
   const deleteModule = useMutation(api.modules.remove);
   const { toast } = useToast();
@@ -122,13 +125,9 @@ export function ModuleList() {
   };
 
   const getCategoryName = (categoryId: Id<"categories">) => {
-    const category = categories?.find(c => c._id === categoryId);
+    const category = categories.find(c => c._id === categoryId);
     return category?.title || "Categoria desconhecida";
   };
-
-  if (modules === undefined || categories === undefined) {
-    return <div>Carregando...</div>;
-  }
 
   return (
     <>

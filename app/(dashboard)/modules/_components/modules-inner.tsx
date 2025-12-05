@@ -55,6 +55,7 @@ export function ModulesInner({
 
   // Mutations
   const markCompleted = useMutation(api.progress.markLessonCompleted);
+  const markIncomplete = useMutation(api.progress.markLessonIncomplete);
   const toggleFavorite = useMutation(api.favorites.toggleFavorite);
   const addRecentView = useMutation(api.recentViews.addView);
   const submitFeedback = useMutation(api.feedback.submitFeedback);
@@ -160,17 +161,24 @@ export function ModulesInner({
   const handleMarkCompleted = async () => {
     if (!user?.id || !currentLessonId || !currentModuleId) return;
     try {
-      await markCompleted({ userId: user.id, lessonId: currentLessonId });
+      // Toggle between completed and incomplete
+      if (isLessonCompleted) {
+        // If already completed, mark as incomplete
+        await markIncomplete({ userId: user.id, lessonId: currentLessonId });
+      } else {
+        // If not completed, mark as completed
+        await markCompleted({ userId: user.id, lessonId: currentLessonId });
 
-      // Register completion view
-      await addRecentView({
-        userId: user.id,
-        lessonId: currentLessonId,
-        moduleId: currentModuleId,
-        action: "completed",
-      });
+        // Register completion view
+        await addRecentView({
+          userId: user.id,
+          lessonId: currentLessonId,
+          moduleId: currentModuleId,
+          action: "completed",
+        });
+      }
     } catch (error) {
-      console.error("Error marking lesson as completed:", error);
+      console.error("Error toggling lesson completion:", error);
     }
   };
 

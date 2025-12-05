@@ -87,6 +87,7 @@ export const getRecentViewsWithDetails = query({
       _creationTime: v.number(),
       viewedAt: v.number(),
       action: v.union(v.literal("started"), v.literal("resumed"), v.literal("completed")),
+      isCompleted: v.boolean(),
       lesson: v.object({
         _id: v.id("lessons"),
         _creationTime: v.number(),
@@ -128,14 +129,29 @@ export const getRecentViewsWithDetails = query({
   handler: async (ctx, args) => {
     const limit = args.limit || 10;
 
-    const views = await ctx.db
+    // Get all views for the user
+    const allViews = await ctx.db
       .query("recentViews")
       .withIndex("by_userId_and_viewedAt", (q) => q.eq("userId", args.userId))
       .order("desc")
-      .take(limit);
+      .collect();
+
+    // Group by lessonId and keep only the most recent view per lesson
+    const lessonViewMap = new Map<string, typeof allViews[0]>();
+    for (const view of allViews) {
+      const lessonIdStr = view.lessonId;
+      if (!lessonViewMap.has(lessonIdStr)) {
+        lessonViewMap.set(lessonIdStr, view);
+      }
+    }
+
+    // Get the most recent unique lessons, limited by the limit parameter
+    const uniqueViews = Array.from(lessonViewMap.values())
+      .sort((a, b) => b.viewedAt - a.viewedAt)
+      .slice(0, limit);
 
     const viewsWithDetails = await Promise.all(
-      views.map(async (view) => {
+      uniqueViews.map(async (view) => {
         const lesson = await ctx.db.get(view.lessonId);
         if (!lesson) {
           return null;
@@ -151,11 +167,22 @@ export const getRecentViewsWithDetails = query({
           return null;
         }
 
+        // Get the user's progress for this lesson to check if it's completed
+        const progress = await ctx.db
+          .query("userProgress")
+          .withIndex("by_userId_and_lessonId", (q) =>
+            q.eq("userId", args.userId).eq("lessonId", view.lessonId)
+          )
+          .unique();
+
+        const isCompleted = progress?.completed || false;
+
         return {
           _id: view._id,
           _creationTime: view._creationTime,
           viewedAt: view.viewedAt,
           action: view.action,
+          isCompleted,
           lesson,
           module,
           category,
@@ -169,6 +196,7 @@ export const getRecentViewsWithDetails = query({
       _creationTime: number;
       viewedAt: number;
       action: "started" | "resumed" | "completed";
+      isCompleted: boolean;
       lesson: {
         _id: Id<"lessons">;
         _creationTime: number;
@@ -288,6 +316,35 @@ export const clearAllViews = mutation({
     }
 
     return views.length;
+  },
+});
+
+/**
+ * Get count of unique viewed lessons
+ */
+export const getUniqueViewedLessonsCount = query({
+  args: {
+    userId: v.string(),
+  },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    const allViews = await ctx.db
+      .query("recentViews")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .collect();
+
+    // Get unique lesson IDs
+    const uniqueLessonIds = new Set<string>();
+    
+    for (const view of allViews) {
+      const lesson = await ctx.db.get(view.lessonId);
+      // Only count if lesson still exists
+      if (lesson) {
+        uniqueLessonIds.add(view.lessonId);
+      }
+    }
+
+    return uniqueLessonIds.size;
   },
 });
 

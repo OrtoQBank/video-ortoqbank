@@ -428,6 +428,35 @@ export const getCompletedLessons = query({
 });
 
 /**
+ * Get count of completed lessons (only for lessons that still exist)
+ */
+export const getCompletedPublishedLessonsCount = query({
+  args: {
+    userId: v.string(),
+  },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    const completedProgress = await ctx.db
+      .query("userProgress")
+      .withIndex("by_userId_and_completed", (q) =>
+        q.eq("userId", args.userId).eq("completed", true)
+      )
+      .collect();
+
+    let count = 0;
+    for (const progress of completedProgress) {
+      const lesson = await ctx.db.get(progress.lessonId);
+      // Only count if lesson still exists
+      if (lesson) {
+        count++;
+      }
+    }
+
+    return count;
+  },
+});
+
+/**
  * Initialize or recalculate global progress for a user
  * Useful for migrations or fixing inconsistencies
  */

@@ -29,6 +29,7 @@ interface ProfileInnerProps {
     _id: Id<"recentViews">;
     viewedAt: number;
     action: "started" | "resumed" | "completed";
+    isCompleted: boolean;
     lesson: {
       _id: Id<"lessons">;
       title: string;
@@ -47,6 +48,7 @@ interface ProfileInnerProps {
     };
   }>;
   completedCount: number;
+  viewedCount: number;
   totalLessons: number;
 }
 
@@ -70,6 +72,7 @@ export default function ProfileInner({
   globalProgress,
   recentViews,
   completedCount,
+  viewedCount,
   totalLessons,
 }: ProfileInnerProps) {
   const router = useRouter();
@@ -138,7 +141,7 @@ export default function ProfileInner({
           <CardContent>
             <div className="text-2xl font-bold">{completedCount}</div>
             <p className="text-xs text-muted-foreground">
-              de {totalLessons} aulas
+              de {totalLessons} {totalLessons === 1 ? "aula" : "aulas"}
             </p>
           </CardContent>
         </Card>
@@ -161,10 +164,10 @@ export default function ProfileInner({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {recentViews.length}
+              {viewedCount}
             </div>
             <p className="text-xs text-muted-foreground">
-              aulas recentemente visualizadas
+              {viewedCount === 1 ? "aula visualizada" : "aulas visualizadas"}
             </p>
           </CardContent>
         </Card>
@@ -179,58 +182,60 @@ export default function ProfileInner({
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentViews.map((view) => (
-                <div
-                  key={view._id}
-                  onClick={() => router.push(`/modules/${view.category._id}`)}
-                  className="flex items-center gap-4 p-3 rounded-lg border hover:bg-accent transition-colors cursor-pointer"
-                >
-                  {view.lesson.thumbnailUrl ? (
-                    <Image
-                      src={view.lesson.thumbnailUrl}
-                      alt={view.lesson.title}
-                      width={96}
-                      height={64}
-                      className="rounded object-cover"
-                    />
-                  ) : (
-                    <div className="w-24 h-16 rounded bg-muted flex items-center justify-center">
-                      <PlayCircle className="h-8 w-8 text-muted-foreground" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium truncate">{view.lesson.title}</h4>
-                    <p className="text-sm text-muted-foreground">{view.category.title}</p>
-                    <div className="flex items-center gap-3 mt-1 flex-wrap">
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">
-                          {formatDuration(view.lesson.durationSeconds)}
-                        </span>
+              {recentViews.map((view) => {
+                const isCompleted = view.isCompleted;
+                const borderColor = isCompleted ? "border-green-500" : "border-blue-500";
+                const textColor = isCompleted ? "text-green-600" : "text-blue-600";
+                const iconColor = isCompleted ? "text-green-500" : "text-blue-500";
+                
+                return (
+                  <div
+                    key={view._id}
+                    onClick={() => router.push(`/modules/${view.category._id}`)}
+                    className={`flex items-center gap-4 p-3 rounded-lg border-2 ${borderColor} hover:bg-accent transition-colors cursor-pointer`}
+                  >
+                    {view.lesson.thumbnailUrl ? (
+                      <Image
+                        src={view.lesson.thumbnailUrl}
+                        alt={view.lesson.title}
+                        width={96}
+                        height={64}
+                        className="rounded object-cover"
+                      />
+                    ) : (
+                      <div className="w-24 h-16 rounded bg-muted flex items-center justify-center">
+                        <PlayCircle className="h-8 w-8 text-muted-foreground" />
                       </div>
-                      <span className="text-xs text-muted-foreground">
-                        {formatTimeAgo(view.viewedAt)}
-                      </span>
-                      {view.action === "completed" && (
-                        <Badge variant="secondary" className="text-xs">
-                          <CheckCircle2 className="h-3 w-3 mr-1" />
-                          Concluído
-                        </Badge>
-                      )}
-                      {view.action === "started" && (
-                        <Badge variant="outline" className="text-xs">
-                          Iniciado
-                        </Badge>
-                      )}
-                      {view.action === "resumed" && (
-                        <Badge variant="outline" className="text-xs">
-                          Em andamento
-                        </Badge>
-                      )}
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h4 className={`font-medium truncate ${textColor}`}>{view.lesson.title}</h4>
+                      <p className="text-sm text-muted-foreground">{view.category.title}</p>
+                      <div className="flex items-center gap-3 mt-1 flex-wrap">
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">
+                            {formatDuration(view.lesson.durationSeconds)}
+                          </span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {formatTimeAgo(view.viewedAt)}
+                        </span>
+                        {isCompleted ? (
+                          <Badge variant="secondary" className={`text-xs border-green-500 bg-green-50 ${textColor}`}>
+                            <CheckCircle2 className={`h-3 w-3 mr-1 ${iconColor}`} />
+                            Concluída
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className={`text-xs border-blue-500 bg-blue-50 ${textColor}`}>
+                            <PlayCircle className={`h-3 w-3 mr-1 ${iconColor}`} />
+                            Iniciada
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>

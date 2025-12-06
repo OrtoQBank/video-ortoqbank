@@ -428,7 +428,7 @@ export const getCompletedLessons = query({
 });
 
 /**
- * Get count of completed lessons (only for lessons that still exist)
+ * Get count of completed lessons (only for lessons that still exist and are published)
  */
 export const getCompletedPublishedLessonsCount = query({
   args: {
@@ -445,10 +445,16 @@ export const getCompletedPublishedLessonsCount = query({
 
     let count = 0;
     for (const progress of completedProgress) {
-      const lesson = await ctx.db.get(progress.lessonId);
-      // Only count if lesson still exists
-      if (lesson) {
-        count++;
+      try {
+        const lesson = await ctx.db.get(progress.lessonId);
+        // Only count if lesson exists and is published
+        if (lesson && lesson.isPublished) {
+          count++;
+        }
+      } catch (error) {
+        // Skip invalid lesson references
+        console.error(`Error checking lesson ${progress.lessonId}:`, error);
+        continue;
       }
     }
 

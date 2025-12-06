@@ -38,7 +38,8 @@ export default function ProfilePage() {
   // Get content stats for total count
   const contentStats = useQuery(api.contentStats.get);
 
-  if (!user || userData === undefined || globalProgress === undefined || recentViews === undefined || completedCount === undefined || viewedCount === undefined) {
+  // Handle loading state
+  if (!user || userData === undefined || globalProgress === undefined || recentViews === undefined || completedCount === undefined || viewedCount === undefined || contentStats === undefined) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">

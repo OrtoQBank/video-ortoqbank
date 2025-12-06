@@ -17,12 +17,6 @@ export default function ProfilePage() {
     user?.id ? { userId: user.id } : "skip"
   );
   
-  // Get recent views with details (limit to 3 most recent unique lessons)
-  const recentViews = useQuery(
-    api.recentViews.getRecentViewsWithDetails,
-    user?.id ? { userId: user.id, limit: 3 } : "skip"
-  );
-
   // Get count of completed published lessons
   const completedCount = useQuery(
     api.progress.getCompletedPublishedLessonsCount,
@@ -39,7 +33,7 @@ export default function ProfilePage() {
   const contentStats = useQuery(api.contentStats.get);
 
   // Handle loading state
-  if (!user || userData === undefined || globalProgress === undefined || recentViews === undefined || completedCount === undefined || viewedCount === undefined || contentStats === undefined) {
+  if (!user || userData === undefined || globalProgress === undefined || completedCount === undefined || viewedCount === undefined || contentStats === undefined) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
@@ -54,7 +48,6 @@ export default function ProfilePage() {
     <ProfileInner
       userData={userData}
       globalProgress={globalProgress}
-      recentViews={recentViews}
       completedCount={completedCount}
       viewedCount={viewedCount}
       totalLessons={contentStats?.totalLessons || 0}

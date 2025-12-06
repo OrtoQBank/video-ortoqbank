@@ -8,6 +8,16 @@ vi.mock('next/navigation', () => ({
     }),
 }));
 
+vi.mock('@clerk/nextjs', () => ({
+    useUser: () => ({
+        user: { id: 'test-user-id' },
+    }),
+}));
+
+vi.mock('convex/react', () => ({
+    useQuery: vi.fn(() => []),
+}));
+
 
 describe('RecentViews', () => {
     it('should render the recent views', () => {

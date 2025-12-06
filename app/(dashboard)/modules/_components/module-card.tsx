@@ -1,8 +1,7 @@
 "use client";
 
-import { PlayCircle, Clock } from "lucide-react";
+import { PlayCircleIcon } from "lucide-react";
 import { Card, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 
 interface ModuleCardProps {
   title: string;
@@ -24,7 +23,7 @@ export function ModuleCard({
     >
       <div className="flex items-start gap-4">
         <div className="`flex-shrink-0` w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-          <PlayCircle size={24} className="text-primary" />
+          <PlayCircleIcon size={24} className="text-primary" />
         </div>
 
         <div className="flex-1 min-w-0">
@@ -38,7 +37,7 @@ export function ModuleCard({
 
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <div className="flex items-center gap-1">
-              <PlayCircle size={16} />
+              <PlayCircleIcon size={16} />
               <span>{totalLessons} {totalLessons === 1 ? "aula" : "aulas"}</span>
             </div>
           </div>

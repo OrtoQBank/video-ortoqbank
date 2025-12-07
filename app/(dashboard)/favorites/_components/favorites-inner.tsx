@@ -102,8 +102,8 @@ export function FavoritesInner({ initialFavorites, watchAlsoVideos }: { initialF
             <ChevronLeftIcon size={24} />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Vídeos Favoritos</h1>
-            <p className="text-sm text-gray-600">Seus vídeos salvos para assistir depois</p>
+            <h1 className="text-2xl font-bold text-gray-900">Aulas Favoritas</h1>
+            <p className="text-sm text-gray-600">Seus aulas favoritas para assistir depois</p>
           </div>
         </div>
       </div>

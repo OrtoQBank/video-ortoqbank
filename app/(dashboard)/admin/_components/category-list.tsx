@@ -33,24 +33,6 @@ export function CategoryList({ categories }: CategoryListProps) {
   const [editIconUrl, setEditIconUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Auto-generate slug from title
-  const generateSlug = (title: string) => {
-    const slug = title
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-    
-    // Ensure slug meets minimum length requirement (3 characters)
-    // If the generated slug is too short, use a fallback based on timestamp
-    if (slug.length < 3) {
-      return `categoria-${Date.now()}`;
-    }
-    
-    return slug;
-  };
-
   const handleEdit = (category: {
     _id: Id<"categories">;
     title: string;
@@ -100,21 +82,12 @@ export function CategoryList({ categories }: CategoryListProps) {
     setIsSubmitting(true);
 
     try {
-      // Auto-generate slug from the updated title
-      const newSlug = generateSlug(editTitle);
-      
-      // Additional validation to ensure slug is valid
-      if (newSlug.length < 3) {
-        throw new Error("Não foi possível gerar um slug válido a partir do título");
-      }
-      
       // Ensure iconUrl is passed correctly (empty string becomes undefined)
       const iconUrlToSave = editIconUrl && editIconUrl.trim() !== "" ? editIconUrl.trim() : undefined;
       
       await updateCategory({
         id: editingCategory,
         title: editTitle,
-        slug: newSlug,
         description: editDescription,
         iconUrl: iconUrlToSave,
       });

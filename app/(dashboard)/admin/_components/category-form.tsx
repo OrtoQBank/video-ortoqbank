@@ -18,7 +18,6 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Field,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -28,9 +27,9 @@ import { ImageUpload } from "@/components/ui/image-upload";
 
 const formSchema = z.object({
   title: z.string().min(3, "Título deve ter pelo menos 3 caracteres"),
-  slug: z.string().min(3, "Slug deve ter pelo menos 3 caracteres"),
   description: z.string().min(10, "Descrição deve ter pelo menos 10 caracteres"),
   iconUrl: z.string().url("URL do ícone deve ser válida").or(z.literal("")).optional(),
+
 });
 
 interface CategoryFormProps {
@@ -47,29 +46,10 @@ export function CategoryForm({ onSuccess }: CategoryFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
-      slug: "",
       description: "",
       iconUrl: "",
     },
   });
-
-  // Auto-gerar slug a partir do título
-  const generateSlug = (title: string) => {
-    const slug = title
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-    
-    // Ensure slug meets minimum length requirement (3 characters)
-    // If the generated slug is too short, use a fallback based on timestamp
-    if (slug.length < 3) {
-      return `categoria-${Date.now()}`;
-    }
-    
-    return slug;
-  };
 
   async function onSubmit(data: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
@@ -77,10 +57,8 @@ export function CategoryForm({ onSuccess }: CategoryFormProps) {
     setCreatedCategory(false);
     
     try {
-      // Get the next position automatically
       await createCategory({
         title: data.title,
-        slug: data.slug,
         description: data.description,
         iconUrl: data.iconUrl || undefined,
       });
@@ -139,8 +117,7 @@ export function CategoryForm({ onSuccess }: CategoryFormProps) {
                     autoComplete="off"
                     onChange={(e) => {
                       field.onChange(e);
-                      // Auto-generate slug
-                      form.setValue("slug", generateSlug(e.target.value));
+                 
                     }}
                   />
                   {fieldState.invalid && (
@@ -150,15 +127,7 @@ export function CategoryForm({ onSuccess }: CategoryFormProps) {
               )}
             />
 
-            {/* Hidden slug field - auto-generated from title */}
-            <Controller
-              name="slug"
-              control={form.control}
-              render={({ field }) => (
-                <input type="hidden" {...field} />
-              )}
-            />
-
+        
             {/* Description */}
             <Controller
               name="description"

@@ -37,9 +37,7 @@ import { Doc } from "@/convex/_generated/dataModel";
 const formSchema = z.object({
   categoryId: z.string().min(1, "Selecione uma categoria"),
   title: z.string().min(3, "Título deve ter pelo menos 3 caracteres"),
-  slug: z.string().min(3, "Slug deve ter pelo menos 3 caracteres"),
   description: z.string().min(10, "Descrição deve ter pelo menos 10 caracteres"),
-  orderIndex: z.number().min(0, "Ordem deve ser 0 ou maior"),
 });
 
 interface ModuleFormProps {
@@ -58,21 +56,9 @@ export function ModuleForm({ categories, onSuccess }: ModuleFormProps) {
     defaultValues: {
       categoryId: "",
       title: "",
-      slug: "",
       description: "",
-      orderIndex: 0,
     },
   });
-
-  // Auto-gerar slug a partir do título
-  const generateSlug = (title: string) => {
-    return title
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-  };
 
   async function onSubmit(data: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
@@ -80,10 +66,7 @@ export function ModuleForm({ categories, onSuccess }: ModuleFormProps) {
       await createModule({
         categoryId: data.categoryId as Id<"categories">,
         title: data.title,
-        slug: data.slug,
         description: data.description,
-        order_index: data.orderIndex,
-        totalLessonVideos: 0,
       });
 
       setCreatedModule(true);
@@ -162,37 +145,7 @@ export function ModuleForm({ categories, onSuccess }: ModuleFormProps) {
                     {...field}
                     placeholder="Ex: Anatomia do Sistema Musculoesquelético"
                     autoComplete="off"
-                    onChange={(e) => {
-                      field.onChange(e);
-                      // Auto-generate slug
-                      form.setValue("slug", generateSlug(e.target.value));
-                    }}
                   />
-                  <FieldDescription>
-                    Slug gerado: {generateSlug(field.value || "")}
-                  </FieldDescription>
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
-                </Field>
-              )}
-            />
-
-            {/* Slug */}
-            <Controller
-              name="slug"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Slug</FieldLabel>
-                  <Input
-                    {...field}
-                    placeholder="anatomia-do-sistema-musculoesqueletico"
-                    autoComplete="off"
-                  />
-                  <FieldDescription>
-                    URL amigável para o módulo
-                  </FieldDescription>
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
                   )}
@@ -212,30 +165,6 @@ export function ModuleForm({ categories, onSuccess }: ModuleFormProps) {
                     placeholder="Breve descrição do módulo"
                     autoComplete="off"
                   />
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
-                </Field>
-              )}
-            />
-
-            {/* Order Index */}
-            <Controller
-              name="orderIndex"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Ordem</FieldLabel>
-                  <Input
-                    {...field}
-                    type="number"
-                    min={0}
-                    placeholder="0"
-                    onChange={(e) =>
-                      field.onChange(parseInt(e.target.value) || 0)
-                    }
-                  />
-                  <FieldDescription>Ordem de exibição</FieldDescription>
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
                   )}

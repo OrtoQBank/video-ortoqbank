@@ -137,11 +137,20 @@ async function getNextPosition(ctx: MutationCtx): Promise<number> {
   return nextPosition;
 }
 
+// Helper function to generate slug from title
+function generateSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 // Mutation para criar uma nova categoria
 export const create = mutation({
   args: {
     title: v.string(),
-    slug: v.string(),
     description: v.string(),
     iconUrl: v.optional(v.string()),
   },
@@ -152,18 +161,21 @@ export const create = mutation({
       throw new Error("Título deve ter pelo menos 3 caracteres");
     }
     
-    if (args.slug.trim().length < 3) {
-      throw new Error("Slug deve ter pelo menos 3 caracteres");
-    }
-    
     if (args.description.trim().length < 10) {
       throw new Error("Descrição deve ter pelo menos 10 caracteres");
+    }
+
+    // Auto-generate slug from title
+    const slug = generateSlug(args.title);
+    
+    if (slug.length < 3) {
+      throw new Error("Não foi possível gerar um slug válido a partir do título");
     }
 
     // Verificar se já existe uma categoria com o mesmo slug
     const existing = await ctx.db
       .query("categories")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+      .withIndex("by_slug", (q) => q.eq("slug", slug))
       .first();
 
     if (existing) {
@@ -176,7 +188,7 @@ export const create = mutation({
     // Insert with the calculated position
     const categoryId = await ctx.db.insert("categories", {
       title: args.title,
-      slug: args.slug,
+      slug: slug,
       description: args.description,
       position: nextPosition,
       iconUrl: args.iconUrl,
@@ -200,7 +212,6 @@ export const update = mutation({
   args: {
     id: v.id("categories"),
     title: v.string(),
-    slug: v.string(),
     description: v.string(),
     iconUrl: v.optional(v.string()),
   },
@@ -211,18 +222,21 @@ export const update = mutation({
       throw new Error("Título deve ter pelo menos 3 caracteres");
     }
     
-    if (args.slug.trim().length < 3) {
-      throw new Error("Slug deve ter pelo menos 3 caracteres");
-    }
-    
     if (args.description.trim().length < 10) {
       throw new Error("Descrição deve ter pelo menos 10 caracteres");
+    }
+
+    // Auto-generate slug from title
+    const slug = generateSlug(args.title);
+    
+    if (slug.length < 3) {
+      throw new Error("Não foi possível gerar um slug válido a partir do título");
     }
 
     // Verificar se já existe outra categoria com o mesmo slug
     const existing = await ctx.db
       .query("categories")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+      .withIndex("by_slug", (q) => q.eq("slug", slug))
       .first();
 
     if (existing && existing._id !== args.id) {
@@ -239,7 +253,7 @@ export const update = mutation({
     // Note: iconUrl is always included (even if undefined) to allow clearing the icon
     await ctx.db.patch(args.id, {
       title: args.title,
-      slug: args.slug,
+      slug: slug,
       description: args.description,
       iconUrl: args.iconUrl,
     });

@@ -44,7 +44,7 @@ export function CategoriesInner({ preloadedCategories, initialProgress }: Catego
       {/* Sidebar trigger no canto */}
       <SidebarTrigger className="absolute top-6 left-6 text-blue-brand hover:text-blue-brand-dark hover:bg-blue-brand-light z-10" />
 
-      <div className="px-48 pb-4 pt-20">
+      <div className="px-42 pb-4 pt-14">
         {/* Barra de pesquisa com progresso total - alinhado com o grid */}
         <div className="mb-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           <div className="col-span-1">

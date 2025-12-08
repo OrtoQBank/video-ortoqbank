@@ -37,10 +37,8 @@ export function ModuleList({ modules, categories }: ModuleListProps) {
   const [editingModule, setEditingModule] = useState<Id<"modules"> | null>(null);
   const [editCategoryId, setEditCategoryId] = useState("");
   const [editTitle, setEditTitle] = useState("");
-  const [editSlug, setEditSlug] = useState("");
   const [editDescription, setEditDescription] = useState("");
-  const [editOrderIndex, setEditOrderIndex] = useState("");
-  const [editTotalLessons, setEditTotalLessons] = useState("");
+  const [editOrderIndex, setEditOrderIndex] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleEdit = (module: {
@@ -55,16 +53,14 @@ export function ModuleList({ modules, categories }: ModuleListProps) {
     setEditingModule(module._id);
     setEditCategoryId(module.categoryId);
     setEditTitle(module.title);
-    setEditSlug(module.slug);
     setEditDescription(module.description);
-    setEditOrderIndex(module.order_index.toString());
-    setEditTotalLessons(module.totalLessonVideos.toString());
+    setEditOrderIndex(module.order_index);
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!editingModule || !editCategoryId || !editTitle || !editSlug || !editDescription || !editOrderIndex) {
+    if (!editingModule || !editCategoryId || !editTitle || !editDescription) {
       toast({
         title: "Erro",
         description: "Preencha todos os campos obrigatórios",
@@ -80,10 +76,8 @@ export function ModuleList({ modules, categories }: ModuleListProps) {
         id: editingModule,
         categoryId: editCategoryId as any,
         title: editTitle,
-        slug: editSlug,
         description: editDescription,
-        order_index: parseInt(editOrderIndex),
-        totalLessonVideos: parseInt(editTotalLessons),
+        order_index: editOrderIndex,
       });
 
       toast({
@@ -131,22 +125,22 @@ export function ModuleList({ modules, categories }: ModuleListProps) {
 
   return (
     <>
-      <Card>
-        <CardHeader>
+      <Card className="w-full">
+        <CardHeader className="pb-4">
           <CardTitle>Módulos Cadastrados</CardTitle>
           <CardDescription>
             {modules.length} {modules.length === 1 ? "módulo" : "módulos"} no sistema
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
+        <CardContent className="pt-0">
+          <div className="space-y-2 max-h-[310px] overflow-auto pr-2">
             {modules.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nenhum módulo cadastrado ainda.</p>
             ) : (
               modules.map((module) => (
                 <div
                   key={module._id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors"
                 >
                   <div className="flex-1">
                     <h3 className="font-semibold">{module.title}</h3>
@@ -156,9 +150,6 @@ export function ModuleList({ modules, categories }: ModuleListProps) {
                     <div className="flex gap-3 mt-1 flex-wrap">
                       <span className="text-xs text-muted-foreground">
                         Categoria: {getCategoryName(module.categoryId)}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        Ordem: {module.order_index}
                       </span>
                       <span className="text-xs text-muted-foreground">
                         {module.totalLessonVideos} {module.totalLessonVideos === 1 ? "aula" : "aulas"}
@@ -224,41 +215,10 @@ export function ModuleList({ modules, categories }: ModuleListProps) {
             </div>
 
             <div>
-              <label className="text-sm font-medium">Slug *</label>
-              <Input
-                value={editSlug}
-                onChange={(e) => setEditSlug(e.target.value)}
-                disabled={isSubmitting}
-              />
-            </div>
-
-            <div>
               <label className="text-sm font-medium">Descrição *</label>
               <Input
                 value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
-                disabled={isSubmitting}
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Ordem *</label>
-              <Input
-                type="number"
-                value={editOrderIndex}
-                onChange={(e) => setEditOrderIndex(e.target.value)}
-                min="1"
-                disabled={isSubmitting}
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Total de Aulas</label>
-              <Input
-                type="number"
-                value={editTotalLessons}
-                onChange={(e) => setEditTotalLessons(e.target.value)}
-                min="0"
                 disabled={isSubmitting}
               />
             </div>

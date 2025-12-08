@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type MutationCtx } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 
@@ -73,6 +73,70 @@ export const getBySlug = query({
   },
 });
 
+/**
+ * Atomically get and increment the category position counter.
+ * Uses a unique index to ensure single-counter document and atomic patch operations.
+ */
+async function getNextPosition(ctx: MutationCtx): Promise<number> {
+  const COUNTER_ID = "global";
+  
+  // Query for the counter document using unique index
+  let counter = await ctx.db
+    .query("categoryPositionCounter")
+    .withIndex("by_counterId", (q) => q.eq("counterId", COUNTER_ID))
+    .unique();
+  
+  // Initialize counter if it doesn't exist
+  if (!counter) {
+    // Get current max position to initialize counter
+    const maxPositionCategory = await ctx.db
+      .query("categories")
+      .withIndex("by_position")
+      .order("desc")
+      .first();
+    const initialPosition = (maxPositionCategory?.position ?? 0) + 1;
+    
+    // Try to create the counter
+    try {
+      await ctx.db.insert("categoryPositionCounter", {
+        counterId: COUNTER_ID,
+        nextPosition: initialPosition,
+      });
+    } catch (error) {
+      // Another request may have created it concurrently, re-query
+      counter = await ctx.db
+        .query("categoryPositionCounter")
+        .withIndex("by_counterId", (q) => q.eq("counterId", COUNTER_ID))
+        .unique();
+      
+      if (!counter) {
+        throw new Error("Failed to initialize position counter");
+      }
+    }
+    
+    // Re-query to get the counter (either we created it or another request did)
+    counter = await ctx.db
+      .query("categoryPositionCounter")
+      .withIndex("by_counterId", (q) => q.eq("counterId", COUNTER_ID))
+      .unique();
+    
+    if (!counter) {
+      throw new Error("Failed to retrieve position counter after initialization");
+    }
+  }
+  
+  // Read current value and compute next
+  const currentPosition = counter.nextPosition;
+  const nextPosition = currentPosition + 1;
+  
+  // Atomically update the counter using patch
+  await ctx.db.patch(counter._id, {
+    nextPosition: nextPosition,
+  });
+  
+  return nextPosition;
+}
+
 // Mutation para criar uma nova categoria
 export const create = mutation({
   args: {
@@ -106,52 +170,22 @@ export const create = mutation({
       throw new Error("Já existe uma categoria com este slug");
     }
 
-    // Auto-assign position with retry logic to handle concurrent insertions
-    // This prevents race conditions where multiple simultaneous creates
-    // could calculate the same position value
-    let categoryId: Id<"categories"> | null = null;
-    const maxRetries = 5;
-    
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      // Get the current max position (fresh read on each attempt)
-      const allCategories = await ctx.db.query("categories").collect();
-      const maxPosition = allCategories.length > 0 
-        ? Math.max(...allCategories.map(c => c.position))
-        : 0;
-      const nextPosition = maxPosition + 1;
+    // Atomically get the next position using the counter
+    const nextPosition = await getNextPosition(ctx);
 
-      // Insert with the calculated position
-      categoryId = await ctx.db.insert("categories", {
-        title: args.title,
-        slug: args.slug,
-        description: args.description,
-        position: nextPosition,
-        iconUrl: args.iconUrl,
-      });
+    // Insert with the calculated position
+    const categoryId = await ctx.db.insert("categories", {
+      title: args.title,
+      slug: args.slug,
+      description: args.description,
+      position: nextPosition,
+      iconUrl: args.iconUrl,
+    });
 
-      // Verify no concurrent insertion created a duplicate position
-      // by checking if another category was created with the same position
-      // in the small time window between our read and insert
-      const categoriesWithSamePosition = await ctx.db
-        .query("categories")
-        .withIndex("by_position", (q) => q.eq("position", nextPosition))
-        .collect();
-
-      // If we're the only one with this position, we're done
-      if (categoriesWithSamePosition.length === 1) {
-        break;
-      }
-
-      // Conflict detected - another concurrent insert got the same position
-      // Delete our insert and retry with a fresh position calculation
-      await ctx.db.delete(categoryId);
-      categoryId = null;
-      
-      // The next iteration will re-read the categories and calculate a new position
-    }
-
-    if (!categoryId) {
-      throw new Error("Não foi possível criar a categoria devido a conflitos concorrentes. Tente novamente.");
+    // Final verification: ensure our inserted category has the expected position
+    const insertedCategory = await ctx.db.get(categoryId);
+    if (!insertedCategory || insertedCategory.position !== nextPosition) {
+      throw new Error("Failed to verify category insertion with expected position");
     }
 
     // Update contentStats

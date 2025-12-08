@@ -171,6 +171,13 @@ export default defineSchema({
     updatedAt: v.number(), // timestamp of last update
   }),
 
+  // Category position counter (atomic counter for category positions)
+  categoryPositionCounter: defineTable({
+    counterId: v.string(), // unique identifier to enforce single-counter document
+    nextPosition: v.number(), // next available position for categories
+  })
+    .index("by_counterId", ["counterId"]),
+
   // Lesson feedback (user feedback/questions about lessons)
   lessonFeedback: defineTable({
     userId: v.string(), // clerkUserId

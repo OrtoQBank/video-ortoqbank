@@ -67,6 +67,10 @@ export function ImageUpload({
       
       const authData = await authResponse.json();
 
+      if (!authData.token || !authData.signature || authData.expire == null) {
+        throw new Error("Dados de autenticação incompletos");
+      }
+
       // Get public key from the API response (from IMAGEKIT_PUBLIC_KEY in .env)
       const publicKey = authData.publicKey;
       if (!publicKey) {

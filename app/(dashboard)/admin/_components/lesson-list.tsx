@@ -104,7 +104,7 @@ function EditLessonForm({
       const tagsArray = formData.tags
         ? formData.tags
             .split(",")
-            .map((tag: string | undefined) => tag?.trim())
+            .map((tag: string) => tag.trim())
             .filter(Boolean)
         : [];
 
@@ -427,27 +427,53 @@ function EditLessonForm({
         <Label>Gerenciar Vídeo</Label>
         {currentVideoId && !showUploader ? (
           <div className="space-y-2">
-            <div className="flex items-center gap-2 p-3 rounded-lg">
-              <CheckCircleIcon className="h-5 w-5 text-green-600" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-green-900">
-                  Vídeo vinculado
-                </p>
-                {video && (
+            {video === undefined ? (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-gray-100">
+                <LoaderIcon className="h-5 w-5 text-gray-600 animate-spin" />
+                <p className="text-sm text-gray-700">Carregando informações do vídeo...</p>
+              </div>
+            ) : video === null ? (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-yellow-50 border border-yellow-200">
+                <XCircleIcon className="h-5 w-5 text-yellow-600" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-yellow-900">
+                    Vídeo não encontrado
+                  </p>
+                  <p className="text-xs text-yellow-700">
+                    O vídeo foi deletado ou não existe mais no sistema
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleRemoveVideo}
+                  title="Remover referência"
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200">
+                <CheckCircleIcon className="h-5 w-5 text-green-600" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-green-900">
+                    Vídeo vinculado
+                  </p>
                   <p className="text-xs text-green-700">
                     Status: {video.status === "ready" ? "Pronto" : video.status === "processing" ? "Processando" : video.status}
                   </p>
-                )}
+                </div>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleRemoveVideo}
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                </Button>
               </div>
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                onClick={handleRemoveVideo}
-              >
-                <Trash2 className="h-4 w-4 mr-1" />
-              </Button>
-            </div>
+            )}
           </div>
         ) : showUploader ? (
           <div className="space-y-3 p-4 border rounded-lg bg-muted/50">

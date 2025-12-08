@@ -26,22 +26,23 @@ export default function Dashboard({
     : null;
   const completedCount = preloadedCompletedCount
     ? usePreloadedQuery(preloadedCompletedCount)
-    : null;
+    : 0;
   const viewedCount = preloadedViewedCount
     ? usePreloadedQuery(preloadedViewedCount)
-    : null;
+    : 0;
 
-  // Handle loading state
+  // Handle loading state - only hide if not authenticated
   if (
-    globalProgress === null ||
-    completedCount === null ||
-    viewedCount === null ||
+    preloadedCompletedCount === null ||
+    preloadedViewedCount === null ||
     contentStats === undefined
   ) {
     return null;
   }
 
   const totalLessons = contentStats?.totalLessons || 0;
+  const progressPercent = globalProgress?.progressPercent || 0;
+  const completedLessonsCount = completedCount || 0;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -51,7 +52,7 @@ export default function Dashboard({
           <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{completedCount}</div>
+          <div className="text-2xl font-bold">{completedLessonsCount}</div>
           <p className="text-xs text-muted-foreground">
             de {totalLessons} {totalLessons === 1 ? "aula" : "aulas"}
           </p>
@@ -64,8 +65,8 @@ export default function Dashboard({
           <TrendingUp className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{globalProgress?.progressPercent || 0}%</div>
-          <Progress value={globalProgress?.progressPercent || 0} className="mt-2" />
+          <div className="text-2xl font-bold">{progressPercent}%</div>
+          <Progress value={progressPercent} className="mt-2" />
         </CardContent>
       </Card>
 

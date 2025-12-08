@@ -3,24 +3,40 @@ import { mutation, query, internalMutation } from "./_generated/server";
 
 /**
  * Get content statistics
+ * Always calculates dynamically to ensure accuracy
  */
 export const get = query({
   args: {},
-  returns: v.union(
-    v.object({
-      _id: v.id("contentStats"),
-      _creationTime: v.number(),
-      totalLessons: v.number(),
-      totalModules: v.number(),
-      totalCategories: v.number(),
-      updatedAt: v.number(),
-    }),
-    v.null()
-  ),
+  returns: v.object({
+    _id: v.id("contentStats"),
+    _creationTime: v.number(),
+    totalLessons: v.number(),
+    totalModules: v.number(),
+    totalCategories: v.number(),
+    updatedAt: v.number(),
+  }),
   handler: async (ctx) => {
-    // There should only be one contentStats document
-    const stats = await ctx.db.query("contentStats").first();
-    return stats;
+    // Always calculate current content dynamically for accuracy
+    const allLessons = await ctx.db
+      .query("lessons")
+      .withIndex("by_isPublished", (q) => q.eq("isPublished", true))
+      .collect();
+    
+    const modules = await ctx.db.query("modules").collect();
+    const categories = await ctx.db.query("categories").collect();
+    
+    // Get cached stats for ID and creation time
+    const cachedStats = await ctx.db.query("contentStats").first();
+    
+    // Return calculated stats
+    return {
+      _id: cachedStats?._id || ("placeholder" as any),
+      _creationTime: cachedStats?._creationTime || Date.now(),
+      totalLessons: allLessons.length,
+      totalModules: modules.length,
+      totalCategories: categories.length,
+      updatedAt: Date.now(),
+    };
   },
 });
 

@@ -13,6 +13,8 @@ import {
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
+import { ErrorModal } from "@/components/ui/error-modal";
 import {
   Select,
   SelectContent,
@@ -48,6 +50,7 @@ interface ModuleFormProps {
 export function ModuleForm({ categories, onSuccess }: ModuleFormProps) {
   const createModule = useMutation(api.modules.create);
   const { toast } = useToast();
+  const { error, showError, hideError } = useErrorModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdModule, setCreatedModule] = useState(false);
 
@@ -85,12 +88,10 @@ export function ModuleForm({ categories, onSuccess }: ModuleFormProps) {
       // Reset success state after 3 seconds
       setTimeout(() => setCreatedModule(false), 3000);
     } catch (error) {
-      toast({
-        title: "❌ Erro ao criar módulo",
-        description:
-          error instanceof Error ? error.message : "Erro desconhecido",
-        variant: "destructive",
-      });
+      showError(
+        error instanceof Error ? error.message : "Erro desconhecido",
+        "Erro ao criar módulo"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -206,6 +207,13 @@ export function ModuleForm({ categories, onSuccess }: ModuleFormProps) {
           </div>
         )}
       </CardContent>
+
+      <ErrorModal
+        open={error.isOpen}
+        onOpenChange={hideError}
+        title={error.title}
+        message={error.message}
+      />
     </Card>
   );
 }

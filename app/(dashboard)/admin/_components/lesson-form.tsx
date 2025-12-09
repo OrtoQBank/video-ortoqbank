@@ -13,6 +13,8 @@ import {
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
+import { ErrorModal } from "@/components/ui/error-modal";
 import {
   Select,
   SelectContent,
@@ -52,6 +54,7 @@ interface LessonFormProps {
 export function LessonForm({ modules }: LessonFormProps) {
   const createLesson = useMutation(api.lessons.create);
   const { toast } = useToast();
+  const { error, showError, hideError } = useErrorModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdLessonId, setCreatedLessonId] = useState<Id<"lessons"> | null>(
     null,
@@ -98,12 +101,10 @@ export function LessonForm({ modules }: LessonFormProps) {
 
       form.reset();
     } catch (error) {
-      toast({
-        title: "❌ Erro ao criar aula",
-        description:
-          error instanceof Error ? error.message : "Erro desconhecido",
-        variant: "destructive",
-      });
+      showError(
+        error instanceof Error ? error.message : "Erro desconhecido",
+        "Erro ao criar aula"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -247,6 +248,13 @@ export function LessonForm({ modules }: LessonFormProps) {
           </div>
         )}
       </CardContent>
+
+      <ErrorModal
+        open={error.isOpen}
+        onOpenChange={hideError}
+        title={error.title}
+        message={error.message}
+      />
     </Card>
   );
 }

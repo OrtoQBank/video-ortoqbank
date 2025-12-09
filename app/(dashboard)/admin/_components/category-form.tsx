@@ -13,6 +13,8 @@ import {
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
+import { ErrorModal } from "@/components/ui/error-modal";
 import * as z from "zod";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -39,6 +41,7 @@ interface CategoryFormProps {
 export function CategoryForm({ onSuccess }: CategoryFormProps) {
   const createCategory = useMutation(api.categories.create);
   const { toast } = useToast();
+  const { error, showError, hideError } = useErrorModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdCategory, setCreatedCategory] = useState(false);
 
@@ -79,12 +82,10 @@ export function CategoryForm({ onSuccess }: CategoryFormProps) {
       // Reset success state after 3 seconds
       setTimeout(() => setCreatedCategory(false), 3000);
     } catch (error) {
-      toast({
-        title: "❌ Erro ao criar categoria",
-        description:
-          error instanceof Error ? error.message : "Erro desconhecido",
-        variant: "destructive",
-      });
+      showError(
+        error instanceof Error ? error.message : "Erro desconhecido",
+        "Erro ao criar categoria"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -202,6 +203,13 @@ export function CategoryForm({ onSuccess }: CategoryFormProps) {
           </div>
         )}
       </CardContent>
+
+      <ErrorModal
+        open={error.isOpen}
+        onOpenChange={hideError}
+        title={error.title}
+        message={error.message}
+      />
     </Card>
   );
 }

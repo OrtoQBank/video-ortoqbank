@@ -6,6 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
+import { useConfirmModal } from "@/hooks/use-confirm-modal";
+import { ErrorModal } from "@/components/ui/error-modal";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { Edit, Trash2 } from "lucide-react";
 import {
   Dialog,
@@ -33,6 +37,8 @@ export function ModuleList({ modules, categories }: ModuleListProps) {
   const updateModule = useMutation(api.modules.update);
   const deleteModule = useMutation(api.modules.remove);
   const { toast } = useToast();
+  const { error, showError, hideError } = useErrorModal();
+  const { confirm, showConfirm, hideConfirm } = useConfirmModal();
 
   const [editingModule, setEditingModule] = useState<Id<"modules"> | null>(null);
   const [editCategoryId, setEditCategoryId] = useState("");
@@ -59,13 +65,9 @@ export function ModuleList({ modules, categories }: ModuleListProps) {
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!editingModule || !editCategoryId || !editTitle || !editDescription) {
-      toast({
-        title: "Erro",
-        description: "Preencha todos os campos obrigatórios",
-        variant: "destructive",
-      });
+      showError("Preencha todos os campos obrigatórios", "Campos obrigatórios");
       return;
     }
 
@@ -87,35 +89,34 @@ export function ModuleList({ modules, categories }: ModuleListProps) {
 
       setEditingModule(null);
     } catch (error) {
-      toast({
-        title: "Erro",
-        description: error instanceof Error ? error.message : "Erro ao atualizar módulo",
-        variant: "destructive",
-      });
+      showError(
+        error instanceof Error ? error.message : "Erro ao atualizar módulo",
+        "Erro ao atualizar módulo"
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDelete = async (id: Id<"modules">, title: string) => {
-    if (!confirm(`Tem certeza que deseja deletar o módulo "${title}"?`)) {
-      return;
-    }
-
-    try {
-      await deleteModule({ id });
-      
-      toast({
-        title: "Sucesso",
-        description: "Módulo deletado com sucesso!",
-      });
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: error instanceof Error ? error.message : "Erro ao deletar módulo",
-        variant: "destructive",
-      });
-    }
+  const handleDelete = (id: Id<"modules">, title: string) => {
+    showConfirm(
+      `Tem certeza que deseja deletar o módulo "${title}"?`,
+      async () => {
+        try {
+          await deleteModule({ id });
+          toast({
+            title: "Sucesso",
+            description: "Módulo deletado com sucesso!",
+          });
+        } catch (error) {
+          showError(
+            error instanceof Error ? error.message : "Erro ao deletar módulo",
+            "Erro ao deletar módulo"
+          );
+        }
+      },
+      "Deletar módulo"
+    );
   };
 
   const getCategoryName = (categoryId: Id<"categories">) => {
@@ -240,6 +241,21 @@ export function ModuleList({ modules, categories }: ModuleListProps) {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ErrorModal
+        open={error.isOpen}
+        onOpenChange={hideError}
+        title={error.title}
+        message={error.message}
+      />
+
+      <ConfirmModal
+        open={confirm.isOpen}
+        onOpenChange={hideConfirm}
+        title={confirm.title}
+        message={confirm.message}
+        onConfirm={confirm.onConfirm}
+      />
     </>
   );
 }

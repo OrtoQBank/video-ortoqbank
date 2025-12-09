@@ -6,6 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
+import { useConfirmModal } from "@/hooks/use-confirm-modal";
+import { ErrorModal } from "@/components/ui/error-modal";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { Edit, Trash2 } from "lucide-react";
 import {
   Dialog,
@@ -26,6 +30,8 @@ export function CategoryList({ categories }: CategoryListProps) {
   const updateCategory = useMutation(api.categories.update);
   const deleteCategory = useMutation(api.categories.remove);
   const { toast } = useToast();
+  const { error, showError, hideError } = useErrorModal();
+  const { confirm, showConfirm, hideConfirm } = useConfirmModal();
 
   const [editingCategory, setEditingCategory] = useState<Id<"categories"> | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -50,41 +56,27 @@ export function CategoryList({ categories }: CategoryListProps) {
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!editingCategory || !editTitle || !editDescription) {
-      toast({
-        title: "Erro",
-        description: "Preencha todos os campos obrigatórios",
-        variant: "destructive",
-      });
+      showError("Preencha todos os campos obrigatórios", "Campos obrigatórios");
       return;
     }
 
-    // Validate minimum field lengths
     if (editTitle.trim().length < 3) {
-      toast({
-        title: "Erro",
-        description: "O título deve ter pelo menos 3 caracteres",
-        variant: "destructive",
-      });
+      showError("O título deve ter pelo menos 3 caracteres", "Título inválido");
       return;
     }
 
     if (editDescription.trim().length < 10) {
-      toast({
-        title: "Erro",
-        description: "A descrição deve ter pelo menos 10 caracteres",
-        variant: "destructive",
-      });
+      showError("A descrição deve ter pelo menos 10 caracteres", "Descrição inválida");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // Ensure iconUrl is passed correctly (empty string becomes undefined)
       const iconUrlToSave = editIconUrl && editIconUrl.trim() !== "" ? editIconUrl.trim() : undefined;
-      
+
       await updateCategory({
         id: editingCategory,
         title: editTitle,
@@ -99,35 +91,34 @@ export function CategoryList({ categories }: CategoryListProps) {
 
       setEditingCategory(null);
     } catch (error) {
-      toast({
-        title: "Erro",
-        description: error instanceof Error ? error.message : "Erro ao atualizar categoria",
-        variant: "destructive",
-      });
+      showError(
+        error instanceof Error ? error.message : "Erro ao atualizar categoria",
+        "Erro ao atualizar categoria"
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDelete = async (id: Id<"categories">, title: string) => {
-    if (!confirm(`Tem certeza que deseja deletar a categoria "${title}"?`)) {
-      return;
-    }
-
-    try {
-      await deleteCategory({ id });
-      
-      toast({
-        title: "Sucesso",
-        description: "Categoria deletada com sucesso!",
-      });
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: error instanceof Error ? error.message : "Erro ao deletar categoria",
-        variant: "destructive",
-      });
-    }
+  const handleDelete = (id: Id<"categories">, title: string) => {
+    showConfirm(
+      `Tem certeza que deseja deletar a categoria "${title}"?`,
+      async () => {
+        try {
+          await deleteCategory({ id });
+          toast({
+            title: "Sucesso",
+            description: "Categoria deletada com sucesso!",
+          });
+        } catch (error) {
+          showError(
+            error instanceof Error ? error.message : "Erro ao deletar categoria",
+            "Erro ao deletar categoria"
+          );
+        }
+      },
+      "Deletar categoria"
+    );
   };
 
   return (
@@ -247,6 +238,21 @@ export function CategoryList({ categories }: CategoryListProps) {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ErrorModal
+        open={error.isOpen}
+        onOpenChange={hideError}
+        title={error.title}
+        message={error.message}
+      />
+
+      <ConfirmModal
+        open={confirm.isOpen}
+        onOpenChange={hideConfirm}
+        title={confirm.title}
+        message={confirm.message}
+        onConfirm={confirm.onConfirm}
+      />
     </>
   );
 }

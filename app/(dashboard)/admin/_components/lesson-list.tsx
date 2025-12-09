@@ -29,6 +29,10 @@ import {
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
+import { useConfirmModal } from "@/hooks/use-confirm-modal";
+import { ErrorModal } from "@/components/ui/error-modal";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
 import {
   Edit,
   Trash2,
@@ -64,6 +68,8 @@ function EditLessonForm({
   const updateLesson = useMutation(api.lessons.update);
   const togglePublish = useMutation(api.lessons.togglePublish);
   const { toast } = useToast();
+  const { error, showError, hideError } = useErrorModal();
+  const { confirm, showConfirm, hideConfirm } = useConfirmModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showUploader, setShowUploader] = useState(false);
   const [currentVideoId, setCurrentVideoId] = useState(lesson.videoId);
@@ -109,23 +115,20 @@ function EditLessonForm({
 
       onSuccess();
     } catch (error) {
-      toast({
-        title: "Erro",
-        description:
-          error instanceof Error ? error.message : "Erro ao atualizar aula",
-        variant: "destructive",
-      });
+      showError(
+        error instanceof Error ? error.message : "Erro ao atualizar aula",
+        "Erro ao atualizar aula"
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleRemoveVideo = async () => {
-    if (!confirm("Tem certeza que deseja remover o vídeo desta aula?")) {
-      return;
-    }
-
-    try {
+  const handleRemoveVideo = () => {
+    showConfirm(
+      "Tem certeza que deseja remover o vídeo desta aula?",
+      async () => {
+        try {
       const tagsArray = formData.tags
         ? formData.tags
             .split(",")
@@ -151,37 +154,28 @@ function EditLessonForm({
         title: "Sucesso",
         description: "Vídeo removido da aula com sucesso!",
       });
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description:
-          error instanceof Error ? error.message : "Erro ao remover vídeo",
-        variant: "destructive",
-      });
-    }
+        } catch (error) {
+          showError(
+            error instanceof Error ? error.message : "Erro ao remover vídeo",
+            "Erro ao remover vídeo"
+          );
+        }
+      },
+      "Remover vídeo"
+    );
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      // Validate file type
       if (!selectedFile.type.startsWith("video/")) {
-        toast({
-          title: "Erro",
-          description: "Por favor, selecione um arquivo de vídeo",
-          variant: "destructive",
-        });
+        showError("Por favor, selecione um arquivo de vídeo", "Arquivo inválido");
         return;
       }
 
-      // Validate file size (5GB limit)
       const maxSize = 5 * 1024 * 1024 * 1024;
       if (selectedFile.size > maxSize) {
-        toast({
-          title: "Erro",
-          description: "O arquivo é muito grande (máximo 5GB)",
-          variant: "destructive",
-        });
+        showError("O arquivo é muito grande (máximo 5GB)", "Arquivo muito grande");
         return;
       }
 
@@ -191,11 +185,7 @@ function EditLessonForm({
 
   const handleUploadVideo = async () => {
     if (!uploadFile) {
-      toast({
-        title: "Erro",
-        description: "Selecione um arquivo de vídeo",
-        variant: "destructive",
-      });
+      showError("Selecione um arquivo de vídeo", "Arquivo não selecionado");
       return;
     }
 
@@ -268,12 +258,10 @@ function EditLessonForm({
         description: "Vídeo associado à aula com sucesso!",
       });
     } catch (error) {
-      toast({
-        title: "Erro no upload",
-        description:
-          error instanceof Error ? error.message : "Erro desconhecido",
-        variant: "destructive",
-      });
+      showError(
+        error instanceof Error ? error.message : "Erro desconhecido",
+        "Erro no upload"
+      );
     } finally {
       setIsUploading(false);
     }
@@ -288,12 +276,10 @@ function EditLessonForm({
       });
       onSuccess();
     } catch (error) {
-      toast({
-        title: "Erro",
-        description:
-          error instanceof Error ? error.message : "Erro ao atualizar status",
-        variant: "destructive",
-      });
+      showError(
+        error instanceof Error ? error.message : "Erro ao atualizar status",
+        "Erro ao atualizar status"
+      );
     }
   };
 
@@ -518,6 +504,21 @@ function EditLessonForm({
           {isSubmitting ? "Salvando..." : "Salvar Alterações"}
         </Button>
       </div>
+
+      <ErrorModal
+        open={error.isOpen}
+        onOpenChange={hideError}
+        title={error.title}
+        message={error.message}
+      />
+
+      <ConfirmModal
+        open={confirm.isOpen}
+        onOpenChange={hideConfirm}
+        title={confirm.title}
+        message={confirm.message}
+        onConfirm={confirm.onConfirm}
+      />
     </form>
   );
 }
@@ -672,30 +673,31 @@ export function LessonList({ lessons }: LessonListProps) {
   const markVideoAsReady = useMutation(api.videos.markAsReady);
   const updateLesson = useMutation(api.lessons.update);
   const { toast } = useToast();
+  const { error, showError, hideError } = useErrorModal();
+  const { confirm, showConfirm, hideConfirm } = useConfirmModal();
 
   const [uploadingLesson, setUploadingLesson] = useState<any | null>(null);
   const [editingLesson, setEditingLesson] = useState<any | null>(null);
 
-  const handleDelete = async (id: any, title: string) => {
-    if (!confirm(`Tem certeza que deseja deletar a aula "${title}"?`)) {
-      return;
-    }
-
-    try {
-      await deleteLesson({ id });
-
-      toast({
-        title: "Sucesso",
-        description: "Aula deletada com sucesso!",
-      });
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description:
-          error instanceof Error ? error.message : "Erro ao deletar aula",
-        variant: "destructive",
-      });
-    }
+  const handleDelete = (id: any, title: string) => {
+    showConfirm(
+      `Tem certeza que deseja deletar a aula "${title}"?`,
+      async () => {
+        try {
+          await deleteLesson({ id });
+          toast({
+            title: "Sucesso",
+            description: "Aula deletada com sucesso!",
+          });
+        } catch (error) {
+          showError(
+            error instanceof Error ? error.message : "Erro ao deletar aula",
+            "Erro ao deletar aula"
+          );
+        }
+      },
+      "Deletar aula"
+    );
   };
 
   const handleTogglePublish = async (
@@ -705,18 +707,15 @@ export function LessonList({ lessons }: LessonListProps) {
   ) => {
     try {
       const newStatus = await togglePublish({ id });
-
       toast({
         title: "Sucesso",
         description: `Aula "${title}" ${newStatus ? "publicada" : "despublicada"} com sucesso!`,
       });
     } catch (error) {
-      toast({
-        title: "Erro",
-        description:
-          error instanceof Error ? error.message : "Erro ao atualizar aula",
-        variant: "destructive",
-      });
+      showError(
+        error instanceof Error ? error.message : "Erro ao atualizar aula",
+        "Erro ao atualizar aula"
+      );
     }
   };
 
@@ -731,12 +730,10 @@ export function LessonList({ lessons }: LessonListProps) {
         description: `Vídeo da aula "${lessonTitle}" marcado como pronto!`,
       });
     } catch (error) {
-      toast({
-        title: "Erro",
-        description:
-          error instanceof Error ? error.message : "Erro ao atualizar vídeo",
-        variant: "destructive",
-      });
+      showError(
+        error instanceof Error ? error.message : "Erro ao atualizar vídeo",
+        "Erro ao atualizar vídeo"
+      );
     }
   };
 
@@ -762,14 +759,10 @@ export function LessonList({ lessons }: LessonListProps) {
         description: `Status do vídeo "${lessonTitle}" atualizado para: ${data.status}`,
       });
     } catch (error) {
-      toast({
-        title: "Erro",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Erro ao verificar status do vídeo",
-        variant: "destructive",
-      });
+      showError(
+        error instanceof Error ? error.message : "Erro ao verificar status do vídeo",
+        "Erro ao verificar status"
+      );
     }
   };
 
@@ -808,12 +801,10 @@ export function LessonList({ lessons }: LessonListProps) {
 
       setUploadingLesson(null);
     } catch (error) {
-      toast({
-        title: "Erro ao vincular vídeo",
-        description:
-          error instanceof Error ? error.message : "Erro desconhecido",
-        variant: "destructive",
-      });
+      showError(
+        error instanceof Error ? error.message : "Erro desconhecido",
+        "Erro ao vincular vídeo"
+      );
     }
   };
 
@@ -903,6 +894,21 @@ export function LessonList({ lessons }: LessonListProps) {
           )}
         </DialogContent>
       </Dialog>
+
+      <ErrorModal
+        open={error.isOpen}
+        onOpenChange={hideError}
+        title={error.title}
+        message={error.message}
+      />
+
+      <ConfirmModal
+        open={confirm.isOpen}
+        onOpenChange={hideConfirm}
+        title={confirm.title}
+        message={confirm.message}
+        onConfirm={confirm.onConfirm}
+      />
     </>
   );
 }

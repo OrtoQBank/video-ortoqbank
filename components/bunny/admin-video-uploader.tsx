@@ -11,6 +11,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
+import { ErrorModal } from "@/components/ui/error-modal";
 import { uploadVideoToBunny } from "@/app/actions/bunny";
 import { Upload } from "lucide-react";
 
@@ -26,28 +28,19 @@ export default function AdminVideoUploader({
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
+  const { error, showError, hideError } = useErrorModal();
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      // Validate file type
       if (!selectedFile.type.startsWith("video/")) {
-        toast({
-          title: "Erro",
-          description: "Por favor, selecione um arquivo de vídeo",
-          variant: "destructive",
-        });
+        showError("Por favor, selecione um arquivo de vídeo", "Arquivo inválido");
         return;
       }
 
-      // Validate file size (5GB limit)
       const maxSize = 5 * 1024 * 1024 * 1024;
       if (selectedFile.size > maxSize) {
-        toast({
-          title: "Erro",
-          description: "O arquivo é muito grande (máximo 5GB)",
-          variant: "destructive",
-        });
+        showError("O arquivo é muito grande (máximo 5GB)", "Arquivo muito grande");
         return;
       }
 
@@ -59,11 +52,7 @@ export default function AdminVideoUploader({
     e.preventDefault();
 
     if (!file) {
-      toast({
-        title: "Erro",
-        description: "Selecione um arquivo de vídeo",
-        variant: "destructive",
-      });
+      showError("Selecione um arquivo de vídeo", "Arquivo não selecionado");
       return;
     }
 
@@ -101,8 +90,6 @@ export default function AdminVideoUploader({
 
       const uploadResult = await uploadVideoToBunny(formData);
 
-      console.log("Upload result:", uploadResult);
-
       if (!uploadResult.success) {
         throw new Error(uploadResult.error || "Falha no upload");
       }
@@ -119,67 +106,72 @@ export default function AdminVideoUploader({
         });
       }
 
-      // Reset form
       setFile(null);
     } catch (error) {
-      toast({
-        title: "Erro",
-        description: error instanceof Error ? error.message : "Erro no upload",
-        variant: "destructive",
-      });
+      showError(
+        error instanceof Error ? error.message : "Erro no upload",
+        "Erro no upload"
+      );
     } finally {
       setIsUploading(false);
     }
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Upload de Vídeo</CardTitle>
-        <CardDescription>
-          Selecione o arquivo de vídeo para a aula:{" "}
-          <strong>{lessonTitle}</strong>
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* File input */}
-          <div>
-            <label className="text-sm font-medium">Arquivo de Vídeo</label>
-            <Input
-              type="file"
-              accept="video/*"
-              onChange={handleFileSelect}
-              disabled={isUploading}
-              className="mt-1"
-            />
-            {file && (
-              <p className="text-xs text-muted-foreground mt-2">
-                📁 {file.name} ({(file.size / (1024 * 1024)).toFixed(2)} MB)
-              </p>
-            )}
-          </div>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Upload de Vídeo</CardTitle>
+          <CardDescription>
+            Selecione o arquivo de vídeo para a aula:{" "}
+            <strong>{lessonTitle}</strong>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Arquivo de Vídeo</label>
+              <Input
+                type="file"
+                accept="video/*"
+                onChange={handleFileSelect}
+                disabled={isUploading}
+                className="mt-1"
+              />
+              {file && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  📁 {file.name} ({(file.size / (1024 * 1024)).toFixed(2)} MB)
+                </p>
+              )}
+            </div>
 
-          {/* Submit button */}
-          <Button
-            type="submit"
-            disabled={isUploading || !file}
-            className="w-full"
-          >
-            {isUploading ? (
-              <>
-                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                Enviando...
-              </>
-            ) : (
-              <>
-                <Upload className="mr-2 h-4 w-4" />
-                Fazer Upload
-              </>
-            )}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+            <Button
+              type="submit"
+              disabled={isUploading || !file}
+              className="w-full"
+            >
+              {isUploading ? (
+                <>
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Enviando...
+                </>
+              ) : (
+                <>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Fazer Upload
+                </>
+              )}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <ErrorModal
+        open={error.isOpen}
+        onOpenChange={hideError}
+        title={error.title}
+        message={error.message}
+      />
+    </>
   );
 }

@@ -108,7 +108,7 @@ export function FavoritesInner({ initialFavorites, watchAlsoVideos }: { initialF
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto p-8">
+      <div className="max-w-7xl mx-auto p-8 pb-24 md:pb-8">
         {/* Favorites Section */}
         <section className="mb-12">
           <div className="flex items-center gap-2 mb-6">

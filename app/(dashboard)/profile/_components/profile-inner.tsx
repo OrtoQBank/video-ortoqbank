@@ -65,7 +65,7 @@ export default function ProfileInner({
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto p-8 space-y-6">
+      <div className="max-w-7xl mx-auto p-8 pb-24 md:pb-8 space-y-6">
         {/* User Info Card */}
         <UserInfos preloadedUserData={preloadedUserData} />
 

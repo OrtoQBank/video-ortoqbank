@@ -34,7 +34,7 @@ export function AdminInner({
       </div>
 
       {/* Content */}
-      <div className="p-8">
+      <div className="p-8 pb-24 md:pb-8">
         <div className="max-w-7xl mx-auto">
           <Tabs defaultValue="categories" className="w-full">
             <TabsList className="grid w-full grid-cols-3 mb-8">

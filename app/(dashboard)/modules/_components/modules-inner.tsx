@@ -272,7 +272,7 @@ export function ModulesInner({
         {/* Right Content - Video Player */}
         <div className="flex-1 overflow-y-auto">
           {currentLesson ? (
-            <div className="p-6">
+            <div className="p-6 pb-24 md:pb-6">
               {/* Video Player with Watermark */}
               {currentLesson.videoId ? (
                 <div className="mb-6">

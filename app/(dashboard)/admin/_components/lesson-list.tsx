@@ -623,29 +623,29 @@ function LessonItem({
     switch (video.status) {
       case "ready":
         return (
-          <Badge className="bg-green-500 hover:bg-green-600 text-white">
-            <CheckCircleIcon size={12} className="mr-1" />
-            Vídeo Pronto
+          <Badge className="bg-green-500 hover:bg-green-600 text-white text-[10px] h-4 px-1.5">
+            <CheckCircleIcon size={10} className="mr-0.5" />
+            Pronto
           </Badge>
         );
       case "processing":
         return (
-          <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white">
-            <LoaderIcon size={12} className="mr-1 animate-spin" />
+          <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white text-[10px] h-4 px-1.5">
+            <LoaderIcon size={10} className="mr-0.5 animate-spin" />
             Processando
           </Badge>
         );
       case "failed":
         return (
-          <Badge className="bg-red-500 hover:bg-red-600 text-white">
-            <XCircleIcon size={12} className="mr-1" />
+          <Badge className="bg-red-500 hover:bg-red-600 text-white text-[10px] h-4 px-1.5">
+            <XCircleIcon size={10} className="mr-0.5" />
             Falhou
           </Badge>
         );
       default:
         return (
-          <Badge className="bg-gray-500 hover:bg-gray-600 text-white">
-            <ClockIcon size={12} className="mr-1" />
+          <Badge className="bg-gray-500 hover:bg-gray-600 text-white text-[10px] h-4 px-1.5">
+            <ClockIcon size={10} className="mr-0.5" />
             Enviando
           </Badge>
         );
@@ -664,27 +664,27 @@ function LessonItem({
   };
 
   return (
-    <div className="flex items-center gap-2 p-4 border rounded-lg hover:bg-accent/50 transition-colors">
+    <div className="flex items-center gap-2 p-2 border rounded-md hover:bg-accent/50 transition-colors">
       {isEditOrderMode && (
-        <div className="p-1 shrink-0">
-          <GripVertical className="h-5 w-5 text-muted-foreground" />
+        <div className="p-0.5 shrink-0">
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
         </div>
       )}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1 flex-wrap">
-          <h3 className="font-semibold truncate">{lesson.title}</h3>
+        <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+          <h3 className="text-sm font-semibold truncate">{lesson.title}</h3>
           <Badge
             variant={lesson.isPublished ? "default" : "secondary"}
-            className="shrink-0"
+            className="shrink-0 text-[10px] h-4 px-1.5"
           >
             {lesson.isPublished ? "Publicada" : "Rascunho"}
           </Badge>
           {lesson.videoId && getVideoStatusBadge()}
         </div>
-        <p className="text-sm text-muted-foreground line-clamp-1">
+        <p className="text-xs text-muted-foreground line-clamp-1">
           {lesson.description}
         </p>
-        <div className="flex gap-3 mt-1 flex-wrap text-xs text-muted-foreground">
+        <div className="flex gap-2 mt-0.5 flex-wrap text-xs text-muted-foreground">
           <span>Módulo: {getModuleName(lesson.moduleId)}</span>
           <span>Aula #{lesson.lessonNumber}</span>
           <span>Duração: {formatDuration(lesson.durationSeconds)}</span>
@@ -694,48 +694,51 @@ function LessonItem({
         </div>
       </div>
       {!isEditOrderMode && (
-        <div className="flex gap-2 shrink-0 flex-wrap">
+        <div className="flex gap-1.5 shrink-0 flex-wrap">
         {!lesson.videoId && (
           <Button
             variant="default"
             size="sm"
             onClick={() => onUploadVideo(lesson)}
             title="Fazer upload de vídeo"
-            className="text-xs"
+            className="text-[10px] h-7 px-2"
           >
             <Upload className="h-3 w-3 mr-1" />
-            Upload Vídeo
+            Upload
           </Button>
         )}
         <Button
           variant="outline"
           size="icon"
+          className="h-7 w-7"
           onClick={() => onEditLesson?.(lesson)}
           title="Editar aula"
         >
-          <Edit className="h-4 w-4" />
+          <Edit className="h-3 w-3" />
         </Button>
         <Button
           variant="outline"
           size="icon"
+          className="h-7 w-7"
           onClick={() =>
             onTogglePublish(lesson._id, lesson.title, lesson.isPublished)
           }
           title={lesson.isPublished ? "Despublicar (Rascunho)" : "Publicar"}
         >
           {lesson.isPublished ? (
-            <Eye className="h-4 w-4 text-green-600" />
+            <Eye className="h-3 w-3 text-green-600" />
           ) : (
-            <EyeOff className="h-4 w-4 text-gray-400" />
+            <EyeOff className="h-3 w-3 text-gray-400" />
           )}
         </Button>
         <Button
           variant="outline"
           size="icon"
+          className="h-7 w-7"
           onClick={() => onDelete(lesson._id, lesson.title)}
           title="Deletar"
         >
-          <Trash2 className="h-4 w-4 text-destructive" />
+          <Trash2 className="h-3 w-3 text-destructive" />
         </Button>
         </div>
       )}
@@ -763,7 +766,7 @@ export function LessonList({ lessons }: LessonListProps) {
   
   // Edit order mode state
   const [isEditOrderMode, setIsEditOrderMode] = useState(false);
-  const [orderedLessons, setOrderedLessons] = useState<any[]>(lessons);
+  const [orderedLessonsByModule, setOrderedLessonsByModule] = useState<Record<string, any[]>>({});
   const [isSavingOrder, setIsSavingOrder] = useState(false);
 
   // DND sensors
@@ -774,10 +777,27 @@ export function LessonList({ lessons }: LessonListProps) {
     })
   );
 
-  // Update ordered lessons when lessons prop changes
+  // Group lessons by module and update when lessons or modules change
   useEffect(() => {
-    setOrderedLessons(lessons);
-  }, [lessons]);
+    if (!modules) return;
+    
+    const grouped: Record<string, any[]> = {};
+    
+    // Group lessons by module
+    lessons.forEach(lesson => {
+      if (!grouped[lesson.moduleId]) {
+        grouped[lesson.moduleId] = [];
+      }
+      grouped[lesson.moduleId].push(lesson);
+    });
+    
+    // Sort lessons within each module by order_index
+    Object.keys(grouped).forEach(moduleId => {
+      grouped[moduleId].sort((a, b) => a.order_index - b.order_index);
+    });
+    
+    setOrderedLessonsByModule(grouped);
+  }, [lessons, modules]);
 
   const handleDelete = (id: any, title: string) => {
     showConfirm(
@@ -908,15 +928,19 @@ export function LessonList({ lessons }: LessonListProps) {
     }
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = (moduleId: string) => (event: DragEndEvent) => {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      setOrderedLessons((items) => {
-        const oldIndex = items.findIndex((item) => item._id === active.id);
-        const newIndex = items.findIndex((item) => item._id === over.id);
+      setOrderedLessonsByModule((prev) => {
+        const moduleLessons = prev[moduleId] || [];
+        const oldIndex = moduleLessons.findIndex((item) => item._id === active.id);
+        const newIndex = moduleLessons.findIndex((item) => item._id === over.id);
 
-        return arrayMove(items, oldIndex, newIndex);
+        return {
+          ...prev,
+          [moduleId]: arrayMove(moduleLessons, oldIndex, newIndex),
+        };
       });
     }
   };
@@ -924,11 +948,17 @@ export function LessonList({ lessons }: LessonListProps) {
   const handleSaveOrder = async () => {
     setIsSavingOrder(true);
     try {
-      // Create updates array with new order_index
-      const updates = orderedLessons.map((lesson, index) => ({
-        id: lesson._id,
-        order_index: index,
-      }));
+      // Create updates array with new order_index for all lessons
+      const updates: { id: any; order_index: number }[] = [];
+      
+      Object.entries(orderedLessonsByModule).forEach(([moduleId, moduleLessons]) => {
+        moduleLessons.forEach((lesson, index) => {
+          updates.push({
+            id: lesson._id,
+            order_index: index,
+          });
+        });
+      });
 
       await reorderLessons({ updates });
 
@@ -949,7 +979,21 @@ export function LessonList({ lessons }: LessonListProps) {
   };
 
   const handleCancelOrder = () => {
-    setOrderedLessons(lessons);
+    // Rebuild the grouped structure from original lessons
+    const grouped: Record<string, any[]> = {};
+    
+    lessons.forEach(lesson => {
+      if (!grouped[lesson.moduleId]) {
+        grouped[lesson.moduleId] = [];
+      }
+      grouped[lesson.moduleId].push(lesson);
+    });
+    
+    Object.keys(grouped).forEach(moduleId => {
+      grouped[moduleId].sort((a, b) => a.order_index - b.order_index);
+    });
+    
+    setOrderedLessonsByModule(grouped);
     setIsEditOrderMode(false);
   };
 
@@ -957,16 +1001,23 @@ export function LessonList({ lessons }: LessonListProps) {
     return <div>Carregando módulos...</div>;
   }
 
+  // Get modules that have lessons (sorted by order_index)
+  const modulesWithLessons = (modules || [])
+    .filter(module => orderedLessonsByModule[module._id]?.length > 0)
+    .sort((a, b) => a.order_index - b.order_index);
+
+  const getModuleName = (moduleId: string) => {
+    const module = modules?.find(m => m._id === moduleId);
+    return module?.title || "Módulo desconhecido";
+  };
+
   return (
     <>
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-0">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Aulas Cadastradas</CardTitle>
-              <CardDescription>
-                {lessons.length} {lessons.length === 1 ? "aula" : "aulas"} no sistema
-              </CardDescription>
             </div>
             <div className="flex gap-2">
               {!isEditOrderMode ? (
@@ -1000,53 +1051,76 @@ export function LessonList({ lessons }: LessonListProps) {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+        <CardContent className="pt-0">
+          <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
             {lessons.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 Nenhuma aula cadastrada ainda.
               </p>
-            ) : isEditOrderMode ? (
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={orderedLessons.map(lesson => lesson._id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  {orderedLessons.map((lesson) => (
-                    <SortableLessonItem
-                      key={lesson._id}
-                      lesson={lesson}
-                      modules={modules || []}
-                      isEditOrderMode={isEditOrderMode}
-                      onEditLesson={handleEditLesson}
-                      onDelete={handleDelete}
-                      onTogglePublish={handleTogglePublish}
-                      onMarkVideoAsReady={handleMarkVideoAsReady}
-                      onCheckVideoStatus={handleCheckVideoStatus}
-                      onUploadVideo={handleUploadVideo}
-                    />
-                  ))}
-                </SortableContext>
-              </DndContext>
             ) : (
-              orderedLessons.map((lesson) => (
-                <LessonItem
-                  key={lesson._id}
-                  lesson={lesson}
-                  modules={modules || []}
-                  isEditOrderMode={isEditOrderMode}
-                  onEditLesson={handleEditLesson}
-                  onDelete={handleDelete}
-                  onTogglePublish={handleTogglePublish}
-                  onMarkVideoAsReady={handleMarkVideoAsReady}
-                  onCheckVideoStatus={handleCheckVideoStatus}
-                  onUploadVideo={handleUploadVideo}
-                />
-              ))
+              modulesWithLessons.map((module) => {
+                const moduleLessons = orderedLessonsByModule[module._id] || [];
+                
+                return (
+                  <div key={module._id} className="space-y-1.5">
+                    {/* Module Header */}
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xs font-semibold text-primary uppercase tracking-wide">
+                        {module.title}
+                      </h3>
+                      <div className="flex-1 h-px bg-border" />
+                    </div>
+                    
+                    {/* Lessons for this module */}
+                    {isEditOrderMode ? (
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd(module._id)}
+                      >
+                        <SortableContext
+                          items={moduleLessons.map(lesson => lesson._id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <div className="space-y-1.5">
+                            {moduleLessons.map((lesson) => (
+                              <SortableLessonItem
+                                key={lesson._id}
+                                lesson={lesson}
+                                modules={modules || []}
+                                isEditOrderMode={isEditOrderMode}
+                                onEditLesson={handleEditLesson}
+                                onDelete={handleDelete}
+                                onTogglePublish={handleTogglePublish}
+                                onMarkVideoAsReady={handleMarkVideoAsReady}
+                                onCheckVideoStatus={handleCheckVideoStatus}
+                                onUploadVideo={handleUploadVideo}
+                              />
+                            ))}
+                          </div>
+                        </SortableContext>
+                      </DndContext>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {moduleLessons.map((lesson) => (
+                          <LessonItem
+                            key={lesson._id}
+                            lesson={lesson}
+                            modules={modules || []}
+                            isEditOrderMode={isEditOrderMode}
+                            onEditLesson={handleEditLesson}
+                            onDelete={handleDelete}
+                            onTogglePublish={handleTogglePublish}
+                            onMarkVideoAsReady={handleMarkVideoAsReady}
+                            onCheckVideoStatus={handleCheckVideoStatus}
+                            onUploadVideo={handleUploadVideo}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
             )}
           </div>
         </CardContent>

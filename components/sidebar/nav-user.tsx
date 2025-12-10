@@ -1,35 +1,36 @@
 'use client';
 
 import { UserButton, useUser } from '@clerk/nextjs';
-import { useRef } from 'react';
 
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from '@/components/ui/sidebar';
 
 export default function NavUser() {
   const { user } = useUser();
- const userButtonRef = useRef<HTMLDivElement>(null);
+  const { state } = useSidebar();
 
   if (!user) return;
-
-  const handleButtonClick = () => {
-    // Find the button element inside the UserButton container and click it
-    const buttonElement = userButtonRef.current?.querySelector('button');
-    buttonElement?.click();
-  };
 
   return (
     <SidebarMenu>
       <SidebarMenuItem>
+        {/* Expanded version */}
         <SidebarMenuButton
           size="lg"
-          className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-          onClick={handleButtonClick}
+          className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:hidden"
+          onClick={(e) => {
+            // Find and click the UserButton inside
+            const buttonElement = (e.currentTarget as HTMLElement).querySelector('button');
+            if (buttonElement) {
+              buttonElement.click();
+            }
+          }}
         >
-          <div ref={userButtonRef}>
+          <div>
             <UserButton />
           </div>
           <div className="grid flex-1 text-left text-sm leading-tight">
@@ -39,6 +40,11 @@ export default function NavUser() {
             </span>
           </div>
         </SidebarMenuButton>
+
+        {/* Collapsed version - direct UserButton without wrapper */}
+        <div className="hidden group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2">
+          <UserButton />
+        </div>
       </SidebarMenuItem>
     </SidebarMenu>
   );

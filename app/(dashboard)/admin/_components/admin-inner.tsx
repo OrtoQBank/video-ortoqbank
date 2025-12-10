@@ -6,7 +6,7 @@ import { ModuleForm } from "./module-form";
 import { ModuleList } from "./module-list";
 import { LessonForm } from "././lesson-form";
 import { LessonList } from "./lesson-list";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Preloaded, usePreloadedQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -27,6 +27,7 @@ export function AdminInner({
   const categories = usePreloadedQuery(preloadedCategories);
   const modules = usePreloadedQuery(preloadedModules);
   const lessons = usePreloadedQuery(preloadedLessons);
+  const { state } = useSidebar();
   
   const [tab, setTab] = useQueryState(
     "tab",
@@ -40,10 +41,12 @@ export function AdminInner({
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white relative">
+      {/* Sidebar trigger - follows sidebar position */}
+      <SidebarTrigger className={`hidden md:inline-flex fixed top-2 h-6 w-6 text-blue-brand hover:text-blue-brand-dark hover:bg-blue-brand-light transition-[left] duration-200 ease-linear z-10 ${state === 'collapsed' ? 'left-[calc(var(--sidebar-width-icon)+0.25rem)]' : 'left-[calc(var(--sidebar-width)+0.25rem)]'}`} />
+      
       {/* Header */}
       <div className="py-6 px-8 flex items-center gap-3 border-b">
-        <SidebarTrigger className="text-blue-brand hover:text-blue-brand-dark hover:bg-blue-brand-light" />
         <h1 className="text-2xl font-bold">Administração</h1>
       </div>
 

@@ -5,7 +5,7 @@ import { SearchBar } from "./search-bar";
 import { CategoriesCard } from "./categories-card";
 import { Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Preloaded, usePreloadedQuery, useQuery } from "convex/react";
@@ -34,6 +34,7 @@ export function CategoriesInner({
     : null;
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
+  const { state } = useSidebar();
 
   // Buscar categorias usando a query avançada
   const searchResults = useQuery(
@@ -60,8 +61,8 @@ export function CategoriesInner({
 
   return (
     <div className="min-h-screen bg-white relative">
-      {/* Sidebar trigger no canto */}
-      <SidebarTrigger className="absolute top-4 left-4 md:top-6 md:left-6 text-blue-brand hover:text-blue-brand-dark hover:bg-blue-brand-light z-10" />
+      {/* Sidebar trigger - follows sidebar position */}
+      <SidebarTrigger className={`hidden md:inline-flex fixed top-2 h-6 w-6 text-blue-brand hover:text-blue-brand-dark hover:bg-blue-brand-light transition-[left] duration-200 ease-linear z-10 ${state === 'collapsed' ? 'left-[calc(var(--sidebar-width-icon)+0.25rem)]' : 'left-[calc(var(--sidebar-width)+0.25rem)]'}`} />
 
       <div className="px-12 sm:px-16 md:px-24 lg:px-24 xl:px-42 pb-24 md:pb-4 pt-16 md:pt-14">
         {/* Barra de pesquisa com progresso total - alinhado com o grid */}

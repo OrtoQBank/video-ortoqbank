@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { useRouter } from "next/navigation";
 import {
   Preloaded,
@@ -37,6 +37,7 @@ export function ModulesInner({
   const modules = usePreloadedQuery(preloadedModules);
   const router = useRouter();
   const { user } = useUser();
+  const { state } = useSidebar();
 
   const [expandedModules, setExpandedModules] = useState<Set<string>>(
     new Set(),
@@ -279,10 +280,12 @@ export function ModulesInner({
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white relative">
+      {/* Sidebar trigger - follows sidebar position */}
+      <SidebarTrigger className={`hidden md:inline-flex fixed top-2 h-6 w-6 text-blue-brand hover:text-blue-brand-dark hover:bg-blue-brand-light transition-[left] duration-200 ease-linear z-10 ${state === 'collapsed' ? 'left-[calc(var(--sidebar-width-icon)+0.25rem)]' : 'left-[calc(var(--sidebar-width)+0.25rem)]'}`} />
+      
       {/* Header */}
       <div className="py-4 px-6 flex items-center gap-4 border-b">
-        <SidebarTrigger className="text-blue-brand hover:text-blue-brand-dark hover:bg-blue-brand-light" />
         <Button
           variant="ghost"
           size="icon"

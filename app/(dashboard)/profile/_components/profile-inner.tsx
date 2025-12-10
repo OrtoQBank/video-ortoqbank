@@ -2,7 +2,7 @@
 
 import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { useRouter } from "next/navigation";
 import { Preloaded } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -43,13 +43,16 @@ export default function ProfileInner({
   preloadedRecentViews,
 }: ProfileInnerProps) {
   const router = useRouter();
+  const { state } = useSidebar();
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white relative">
+      {/* Sidebar trigger - follows sidebar position */}
+      <SidebarTrigger className={`hidden md:inline-flex fixed top-2 h-6 w-6 text-blue-brand hover:text-blue-brand-dark hover:bg-blue-brand-light transition-[left] duration-200 ease-linear z-10 ${state === 'collapsed' ? 'left-[calc(var(--sidebar-width-icon)+0.25rem)]' : 'left-[calc(var(--sidebar-width)+0.25rem)]'}`} />
+      
       {/* Header */}
       <div className="border-b">
         <div className="p-6 flex items-center gap-4">
-          <SidebarTrigger className="text-blue-brand hover:text-blue-brand-dark hover:bg-blue-brand-light" />
           <Button
             variant="ghost"
             size="icon"

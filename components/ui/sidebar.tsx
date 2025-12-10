@@ -292,7 +292,7 @@ const SidebarTrigger = React.forwardRef<
       data-sidebar="trigger"
       variant="ghost"
       size="icon"
-      className={cn('h-7 w-7', className)}
+      className={cn('h-6 w-6', className)}
       onClick={event => {
         onClick?.(event);
         toggleSidebar();
@@ -301,7 +301,7 @@ const SidebarTrigger = React.forwardRef<
     >
       <SquareArrowRight
         className={cn(
-          'transition-transform duration-300 ease-in-out',
+          'h-4 w-4 transition-transform duration-300 ease-in-out',
           open ? 'rotate-180' : 'rotate-0',
         )}
       />

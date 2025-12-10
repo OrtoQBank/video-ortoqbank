@@ -13,11 +13,25 @@ import { api } from "@/convex/_generated/api";
 
 interface CategoriesInnerProps {
   preloadedCategories: Preloaded<typeof api.categories.listPublished>;
-  initialProgress: number;
+  preloadedContentStats: Preloaded<typeof api.contentStats.get> | null;
+  preloadedCompletedCount: Preloaded<typeof api.progress.getCompletedPublishedLessonsCount> | null;
 }
 
-export function CategoriesInner({ preloadedCategories, initialProgress }: CategoriesInnerProps) {
+export function CategoriesInner({ 
+  preloadedCategories, 
+  preloadedContentStats,
+  preloadedCompletedCount 
+}: CategoriesInnerProps) {
   const categories = usePreloadedQuery(preloadedCategories);
+  
+  // Load progress data if available
+  const contentStats = preloadedContentStats
+    ? usePreloadedQuery(preloadedContentStats)
+    : null;
+  
+  const completedCountResult = preloadedCompletedCount
+    ? usePreloadedQuery(preloadedCompletedCount)
+    : null;
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
 
@@ -55,7 +69,10 @@ export function CategoriesInner({ preloadedCategories, initialProgress }: Catego
           </div>
           <div className="hidden lg:block"></div>
           <div className="col-span-1">
-            <ProgressBar/>
+            <ProgressBar 
+              totalLessons={contentStats?.totalLessons ?? 0}
+              completedLessons={completedCountResult ?? 0}
+            />
           </div>
         </div>
 

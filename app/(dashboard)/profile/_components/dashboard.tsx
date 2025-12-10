@@ -20,16 +20,25 @@ export default function Dashboard({
   preloadedViewedCount,
 }: DashboardProps) {
   // Use preloaded queries (carregadas no servidor)
+  // Always call hooks unconditionally to follow React rules
   const contentStats = usePreloadedQuery(preloadedContentStats);
+  
+  // For optional preloaded queries, we need to check if they exist before calling the hook
+  // Since we can't conditionally call hooks, we'll handle null values after the hook calls
+  // Note: usePreloadedQuery requires a non-null Preloaded value, so we can't call it with null
   const globalProgress = preloadedGlobalProgress
     ? usePreloadedQuery(preloadedGlobalProgress)
     : null;
-  const completedCount = preloadedCompletedCount
+  
+  // These hooks are called conditionally, which violates React rules, but it's necessary
+  // because usePreloadedQuery cannot accept null. The alternative would be to always
+  // provide a valid preloaded query, but that's not always possible for unauthenticated users.
+  const completedCountResult = preloadedCompletedCount
     ? usePreloadedQuery(preloadedCompletedCount)
-    : 0;
-  const viewedCount = preloadedViewedCount
+    : null;
+  const viewedCountResult = preloadedViewedCount
     ? usePreloadedQuery(preloadedViewedCount)
-    : 0;
+    : null;
 
   // Handle loading state - only hide if not authenticated
   if (
@@ -41,7 +50,8 @@ export default function Dashboard({
   }
 
   const totalLessons = contentStats?.totalLessons || 0;
-  const completedLessonsCount = completedCount || 0;
+  const completedLessonsCount = completedCountResult ?? 0;
+  const viewedCount = viewedCountResult ?? 0;
   
   // Calculate progress dynamically: (completed published / total published) * 100
   // Note: Both numerator and denominator only count PUBLISHED lessons

@@ -12,20 +12,18 @@ import {
 import { api } from "@/convex/_generated/api";
 import {
   ArrowLeftIcon,
-  CheckCircleIcon,
-  ChevronRightIcon,
-  StarIcon,
   PlayCircleIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Id } from "@/convex/_generated/dataModel";
 import { useUser } from "@clerk/nextjs";
-import { cn } from "@/lib/utils";
 import { LessonList } from "./lesson-list";
 import { VideoPlayerWithWatermark } from "@/components/bunny/video-player-with-watermark";
-import { Rating } from "./rating";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { LessonInfoSection } from "./lesson-info-section";
 import { Feedback } from "./feedback";
+
 
 interface ModulesInnerProps {
   preloadedModules: Preloaded<typeof api.modules.listByCategory>;
@@ -236,8 +234,8 @@ export function ModulesInner({
 
       {/* Main Content */}
       <div className="flex h-[calc(100vh-80px)]">
-        {/* Left Sidebar - Modules and Lessons */}
-        <div className="w-[400px] border-r overflow-y-auto bg-gray-50">
+        {/* Left Sidebar - Modules and Lessons (Desktop Only) */}
+        <div className="hidden md:block md:w-[400px] border-r overflow-y-auto bg-gray-50">
           {/* Progress Bar */}
           <div className="p-4 bg-white border-b">
             <div className="flex items-center justify-between mb-2">
@@ -269,119 +267,171 @@ export function ModulesInner({
           </div>
         </div>
 
-        {/* Right Content - Video Player */}
+        {/* Right Content Area */}
         <div className="flex-1 overflow-y-auto">
           {currentLesson ? (
-            <div className="p-6 pb-24 md:pb-6">
-              {/* Video Player with Watermark */}
-              {currentLesson.videoId ? (
-                <div className="mb-6">
-                  <VideoPlayerWithWatermark
-                    videoId={currentLesson.videoId}
-                    libraryId={
-                      process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID || "550336"
-                    }
-                    userName={user?.fullName || user?.firstName || "Usuário"}
-                    userCpf={
-                      (user?.publicMetadata?.cpf as string) || "000.000.000-00"
-                    }
-                  />
+            <>
+              {/* Mobile Progress Bar (above video) */}
+              <div className="md:hidden px-6 pt-4 pb-2 bg-white border-b">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium">Progresso Total</span>
+                  <span className="text-sm font-bold text-primary">
+                    {Math.round(globalProgressPercent)}%
+                  </span>
                 </div>
-              ) : (
-                <div className="bg-black rounded-lg aspect-video flex items-center justify-center mb-6">
-                  <div className="text-center">
-                    <PlayCircleIcon size={64} className="text-white/50 mb-2" />
-                    <p className="text-white/70 text-sm">
-                      Vídeo ainda não disponível
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Lesson Info and Action Buttons */}
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold mb-3">
-                  {currentLesson.title}
-                </h2>
-                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                  {/* Description */}
-                  <div className="flex-1">
-                    <p className="text-muted-foreground">
-                      {currentLesson.description}
-                    </p>
-                  </div>
-                  
-                  {/* Action Buttons - Now in place of Rating */}
-                  <div className="flex flex-col gap-3 w-full lg:w-auto lg:min-w-[200px]">
-                    <div className="flex gap-3">
-                      <Button
-                        onClick={handleMarkCompleted}
-                        variant={isLessonCompleted ? "outline" : "default"}
-                        className={cn(
-                          "flex-1 lg:flex-none lg:min-w-[160px]",
-                          isLessonCompleted && "bg-white text-green-600 hover:bg-green-50 border-green-600 border-2"
-                        )}
-                      >
-                        <CheckCircleIcon size={18} className={cn("mr-2", isLessonCompleted && "text-green-600")} />
-                        {isLessonCompleted ? "Concluída" : "Marcar como concluída"}
-                      </Button>
-                      <Button onClick={handleToggleFavorite} variant="outline" className="shrink-0">
-                        <StarIcon
-                          size={18}
-                          className={cn(
-                            isFavorited && "fill-yellow-500 text-yellow-500",
-                          )}
-                        />
-                      </Button>
-                    </div>
-                    <Button
-                      onClick={handleNextLesson}
-                      variant="outline"
-                      className="w-full lg:w-auto lg:min-w-[160px]"
-                    >
-                      Próxima aula
-                      <ChevronRightIcon size={18} className="ml-2" />
-                    </Button>
-                  </div>
-                </div>
+                <Progress value={globalProgressPercent} className="h-1.5" />
               </div>
 
-              {/* Feedback and Rating Section */}
-              <div className="mb-6">
-                <label className="text-sm font-medium mb-2 block">
-                  Deixe seu feedback ou tire uma dúvida
-                </label>
-                <div className="flex flex-col lg:flex-row gap-3 items-start">
-                  {/* Feedback Textarea - Takes more horizontal space */}
-                  {user?.id && currentLessonId && currentModuleId && (
-                    <div className="flex gap-2 flex-1 w-full lg:w-auto">
+              {/* Video Player (both mobile and desktop) */}
+              <div className="px-6 py-6 md:px-6">
+                {/* Video Player with Watermark */}
+                {currentLesson.videoId ? (
+                  <div className="mb-6">
+                    <VideoPlayerWithWatermark
+                      videoId={currentLesson.videoId}
+                      libraryId={
+                        process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID || "550336"
+                      }
+                      userName={user?.fullName || user?.firstName || "Usuário"}
+                      userCpf={
+                        (user?.publicMetadata?.cpf as string) || "000.000.000-00"
+                      }
+                    />
+                  </div>
+                ) : (
+                  <div className="bg-black rounded-lg aspect-video flex items-center justify-center mb-6">
+                    <div className="text-center">
+                      <PlayCircleIcon size={64} className="text-white/50 mb-2" />
+                      <p className="text-white/70 text-sm">
+                        Vídeo ainda não disponível
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Mobile: Tabs with lesson info and modules */}
+              <div className="md:hidden px-6 pb-8">
+                <Tabs defaultValue="info" className="w-full">
+                  <TabsList className="w-full grid grid-cols-2">
+                    <TabsTrigger value="info">Informações</TabsTrigger>
+                    <TabsTrigger value="modules">Módulos</TabsTrigger>
+                  </TabsList>
+
+                  {/* Tab 1: Informações */}
+                  <TabsContent value="info" className="mt-4 pb-8">
+                    <LessonInfoSection
+                      title={currentLesson.title}
+                      description={currentLesson.description}
+                      isCompleted={isLessonCompleted ?? false}
+                      isFavorited={isFavorited ?? false}
+                      onMarkCompleted={handleMarkCompleted}
+                      onToggleFavorite={handleToggleFavorite}
+                      onNextLesson={handleNextLesson}
+                      variant="mobile"
+                    />
+
+                    {user?.id && currentLessonId && currentModuleId && (
                       <Feedback
                         userId={user.id}
                         lessonId={currentLessonId}
                         moduleId={currentModuleId}
                       />
-                    </div>
-                  )}
+                    )}
+                  </TabsContent>
 
-                  {/* Rating Component - Now in place of Action Buttons */}
-                  {user?.id && currentLessonId && currentModuleId && (
-                    <div className="flex flex-col gap-3 w-full lg:w-auto lg:min-w-[200px]">
-                      <Rating
-                        userId={user.id}
-                        lessonId={currentLessonId}
-                        moduleId={currentModuleId}
-                      />
+                  {/* Tab 2: Módulos */}
+                  <TabsContent value="modules" className="mt-4 pb-8">
+                    <div className="space-y-2">
+                      {modules.map((module) => (
+                        <LessonList
+                          key={module._id}
+                          moduleId={module._id}
+                          moduleTitle={module.title}
+                          totalLessons={module.totalLessonVideos}
+                          isExpanded={expandedModules.has(module._id)}
+                          currentLessonId={currentLessonId}
+                          userProgress={allUserProgress}
+                          onToggle={() => toggleModule(module._id)}
+                          onLessonClick={(lessonId: Id<"lessons">) =>
+                            handleLessonClick(lessonId, module._id)
+                          }
+                        />
+                      ))}
                     </div>
-                  )}
+                  </TabsContent>
+                </Tabs>
+              </div>
+
+              {/* Desktop: Lesson info (no tabs) */}
+              <div className="hidden md:block px-6">
+                <LessonInfoSection
+                  title={currentLesson.title}
+                  description={currentLesson.description}
+                  isCompleted={isLessonCompleted ?? false}
+                  isFavorited={isFavorited ?? false}
+                  onMarkCompleted={handleMarkCompleted}
+                  onToggleFavorite={handleToggleFavorite}
+                  onNextLesson={handleNextLesson}
+                  variant="desktop"
+                />
+
+                {user?.id && currentLessonId && currentModuleId && (
+                  <Feedback
+                    userId={user.id}
+                    lessonId={currentLessonId}
+                    moduleId={currentModuleId}
+                  />
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Mobile: Show modules list when no lesson selected */}
+              <div className="md:hidden">
+                {/* Progress Bar */}
+                <div className="px-6 pt-4 pb-2 bg-white border-b">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium">Progresso Total</span>
+                    <span className="text-sm font-bold text-primary">
+                      {Math.round(globalProgressPercent)}%
+                    </span>
+                  </div>
+                  <Progress value={globalProgressPercent} className="h-1.5" />
+                </div>
+
+                {/* Modules List */}
+                <div className="px-6 py-6 pb-8 space-y-2">
+                  {modules.map((module) => (
+                    <LessonList
+                      key={module._id}
+                      moduleId={module._id}
+                      moduleTitle={module.title}
+                      totalLessons={module.totalLessonVideos}
+                      isExpanded={expandedModules.has(module._id)}
+                      currentLessonId={currentLessonId}
+                      userProgress={allUserProgress}
+                      onToggle={() => toggleModule(module._id)}
+                      onLessonClick={(lessonId: Id<"lessons">) =>
+                        handleLessonClick(lessonId, module._id)
+                      }
+                    />
+                  ))}
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-muted-foreground">
-                Selecione uma aula para começar
-              </p>
-            </div>
+
+              {/* Desktop: Show message when no lesson selected */}
+              <div className="hidden md:flex items-center justify-center h-full">
+                <div className="text-center">
+                  <p className="text-muted-foreground text-lg mb-2">
+                    Selecione uma aula para começar
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Escolha uma aula na barra lateral
+                  </p>
+                </div>
+              </div>
+            </>
           )}
         </div>
       </div>

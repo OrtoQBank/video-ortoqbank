@@ -47,7 +47,7 @@ export function Feedback({
   };
 
   return (
-    <>
+    <div className="flex gap-2 w-full">
       <Textarea
         placeholder="Digite seu feedback ou dúvida aqui..."
         value={feedbackText}
@@ -64,7 +64,7 @@ export function Feedback({
       >
         <SendIcon size={18} />
       </Button>
-    </>
+    </div>
   );
 }
 

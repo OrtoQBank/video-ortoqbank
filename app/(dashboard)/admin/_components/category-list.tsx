@@ -287,13 +287,10 @@ export function CategoryList({ categories }: CategoryListProps) {
   return (
     <>
       <Card className="w-full">
-        <CardHeader className="pb-4">
+        <CardHeader className="pb-0">
           <div className="flex items-center justify-between">
             <div>
           <CardTitle>Categorias Cadastradas</CardTitle>
-          <CardDescription>
-            {categories.length} {categories.length === 1 ? "categoria" : "categorias"} no sistema
-          </CardDescription>
             </div>
             <div className="flex gap-2">
               {!isEditOrderMode ? (

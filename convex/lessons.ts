@@ -387,3 +387,26 @@ export const togglePublish = mutation({
     return newPublishStatus;
   },
 });
+
+// Mutation para reordenar lessons
+export const reorder = mutation({
+  args: {
+    updates: v.array(
+      v.object({
+        id: v.id("lessons"),
+        order_index: v.number(),
+      })
+    ),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    // Update all lesson order_index
+    for (const update of args.updates) {
+      await ctx.db.patch(update.id, {
+        order_index: update.order_index,
+      });
+    }
+
+    return null;
+  },
+});

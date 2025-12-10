@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMutation } from "convex/react";
@@ -10,7 +10,7 @@ import { useErrorModal } from "@/hooks/use-error-modal";
 import { useConfirmModal } from "@/hooks/use-confirm-modal";
 import { ErrorModal } from "@/components/ui/error-modal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2, GripVertical, Check, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -27,15 +27,118 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { cn } from "@/lib/utils";
 
 interface ModuleListProps {
   modules: Doc<"modules">[];
   categories: Doc<"categories">[];
 }
 
+interface SortableModuleItemProps {
+  module: Doc<"modules">;
+  isEditOrderMode: boolean;
+  onEdit: (module: Doc<"modules">) => void;
+  onDelete: (id: Id<"modules">, title: string) => void;
+  getCategoryName: (categoryId: Id<"categories">) => string;
+}
+
+function SortableModuleItem({ 
+  module, 
+  isEditOrderMode, 
+  onEdit, 
+  onDelete,
+  getCategoryName 
+}: SortableModuleItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: module._id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...(isEditOrderMode ? { ...attributes, ...listeners } : {})}
+      className={cn(
+        "flex items-center gap-2 p-2 border rounded-md transition-colors",
+        isEditOrderMode && "cursor-grab active:cursor-grabbing hover:bg-accent/50",
+        !isEditOrderMode && "hover:bg-accent/50",
+        isDragging && "opacity-50 ring-2 ring-primary"
+      )}
+    >
+      {isEditOrderMode && (
+        <div className="p-0.5">
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <h3 className="text-sm font-semibold truncate">{module.title}</h3>
+        <p className="text-xs text-muted-foreground line-clamp-1">
+          {module.description}
+        </p>
+        <div className="flex gap-2 mt-0.5 flex-wrap">
+          <span className="text-xs text-muted-foreground">
+            Categoria: {getCategoryName(module.categoryId)}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {module.totalLessonVideos} {module.totalLessonVideos === 1 ? "aula" : "aulas"}
+          </span>
+        </div>
+      </div>
+      {!isEditOrderMode && (
+        <div className="flex gap-1.5 shrink-0">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => onEdit(module)}
+          >
+            <Edit className="h-3 w-3" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => onDelete(module._id, module.title)}
+          >
+            <Trash2 className="h-3 w-3 text-destructive" />
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ModuleList({ modules, categories }: ModuleListProps) {
   const updateModule = useMutation(api.modules.update);
   const deleteModule = useMutation(api.modules.remove);
+  const reorderModules = useMutation(api.modules.reorder);
   const { toast } = useToast();
   const { error, showError, hideError } = useErrorModal();
   const { confirm, showConfirm, hideConfirm } = useConfirmModal();
@@ -46,6 +149,46 @@ export function ModuleList({ modules, categories }: ModuleListProps) {
   const [editDescription, setEditDescription] = useState("");
   const [editOrderIndex, setEditOrderIndex] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Edit order mode state
+  const [isEditOrderMode, setIsEditOrderMode] = useState(false);
+   const [orderedModulesByCategory, setOrderedModulesByCategory] = useState<Record<string, Doc<"modules">[]>>({});
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
+
+  // DND sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Group modules by category and update when modules or categories change
+  useEffect(() => {
+    const grouped: Record<string, Doc<"modules">[]> = {};
+    
+    // Sort categories by position
+    const sortedCategories = [...categories].sort((a, b) => a.position - b.position);
+    
+    // Initialize with empty arrays for all categories
+    sortedCategories.forEach(cat => {
+      grouped[cat._id] = [];
+    });
+    
+    // Group modules by category and sort by order_index
+    modules.forEach(module => {
+      if (grouped[module.categoryId]) {
+        grouped[module.categoryId].push(module);
+      }
+    });
+    
+    // Sort modules within each category by order_index
+    Object.keys(grouped).forEach(categoryId => {
+      grouped[categoryId].sort((a, b) => a.order_index - b.order_index);
+    });
+    
+    setOrderedModulesByCategory(grouped);
+  }, [modules, categories]);
 
   const handleEdit = (module: {
     _id: Id<"modules">;
@@ -119,6 +262,79 @@ export function ModuleList({ modules, categories }: ModuleListProps) {
     );
   };
 
+  const handleDragEnd = (categoryId: string) => (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      setOrderedModulesByCategory((prev) => {
+        const categoryModules = prev[categoryId] || [];
+        const oldIndex = categoryModules.findIndex((item) => item._id === active.id);
+        const newIndex = categoryModules.findIndex((item) => item._id === over.id);
+
+        return {
+          ...prev,
+          [categoryId]: arrayMove(categoryModules, oldIndex, newIndex),
+        };
+      });
+    }
+  };
+
+  const handleSaveOrder = async () => {
+    setIsSavingOrder(true);
+    try {
+      // Create updates array with new order_index for all modules
+      const updates: { id: Id<"modules">; order_index: number }[] = [];
+      
+      Object.entries(orderedModulesByCategory).forEach(([categoryId, categoryModules]) => {
+        categoryModules.forEach((mod, index) => {
+          updates.push({
+            id: mod._id,
+            order_index: index,
+          });
+        });
+      });
+
+      await reorderModules({ updates });
+
+      toast({
+        title: "Sucesso",
+        description: "Ordem dos módulos atualizada!",
+      });
+
+      setIsEditOrderMode(false);
+    } catch (error) {
+      showError(
+        error instanceof Error ? error.message : "Erro ao salvar ordem",
+        "Erro ao salvar ordem"
+      );
+    } finally {
+      setIsSavingOrder(false);
+    }
+  };
+
+  const handleCancelOrder = () => {
+    // Rebuild the grouped structure from original modules
+    const grouped: Record<string, Doc<"modules">[]> = {};
+    const sortedCategories = [...categories].sort((a, b) => a.position - b.position);
+    
+    sortedCategories.forEach(cat => {
+      grouped[cat._id] = [];
+    });
+    
+    modules.forEach(module => {
+      if (grouped[module.categoryId]) {
+        grouped[module.categoryId].push(module);
+      }
+    });
+    
+    Object.keys(grouped).forEach(categoryId => {
+      grouped[categoryId].sort((a, b) => a.order_index - b.order_index);
+    });
+    
+    setOrderedModulesByCategory(grouped);
+    setIsEditOrderMode(false);
+  };
+
   const getCategoryName = (categoryId: Id<"categories">) => {
     const category = categories.find(c => c._id === categoryId);
     return category?.title || "Categoria desconhecida";
@@ -127,54 +343,110 @@ export function ModuleList({ modules, categories }: ModuleListProps) {
   return (
     <>
       <Card className="w-full">
-        <CardHeader className="pb-4">
-          <CardTitle>Módulos Cadastrados</CardTitle>
-          <CardDescription>
-            {modules.length} {modules.length === 1 ? "módulo" : "módulos"} no sistema
-          </CardDescription>
+        <CardHeader className="pb-0">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Módulos Cadastrados</CardTitle>
+             
+            </div>
+            <div className="flex gap-2">
+              {!isEditOrderMode ? (
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditOrderMode(true)}
+                  disabled={modules.length === 0}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Editar Ordem
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={handleCancelOrder}
+                    disabled={isSavingOrder}
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleSaveOrder}
+                    disabled={isSavingOrder}
+                  >
+                    <Check className="h-4 w-4 mr-2" />
+                    {isSavingOrder ? "Salvando..." : "Salvar Ordem"}
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="pt-0">
-          <div className="space-y-2 max-h-[310px] overflow-auto pr-2">
+          <div className="space-y-4 max-h-[330px] overflow-auto pr-2">
             {modules.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nenhum módulo cadastrado ainda.</p>
             ) : (
-              modules.map((module) => (
-                <div
-                  key={module._id}
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors"
-                >
-                  <div className="flex-1">
-                    <h3 className="font-semibold">{module.title}</h3>
-                    <p className="text-sm text-muted-foreground line-clamp-1">
-                      {module.description}
-                    </p>
-                    <div className="flex gap-3 mt-1 flex-wrap">
-                      <span className="text-xs text-muted-foreground">
-                        Categoria: {getCategoryName(module.categoryId)}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {module.totalLessonVideos} {module.totalLessonVideos === 1 ? "aula" : "aulas"}
-                      </span>
+              categories
+                .sort((a, b) => a.position - b.position)
+                .map((category) => {
+                  const categoryModules = orderedModulesByCategory[category._id] || [];
+                  
+                  return (
+                    <div key={category._id} className="space-y-1.5">
+                      {/* Category Header */}
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-xs font-semibold text-primary uppercase tracking-wide">
+                          {category.title}
+                        </h3>
+                        <div className="flex-1 h-px bg-border" />
+                      </div>
+                      
+                      {/* Modules for this category */}
+                      {categoryModules.length === 0 ? (
+                        <p className="text-xs text-muted-foreground ml-3 italic">
+                          Nenhum módulo nesta categoria
+                        </p>
+                      ) : isEditOrderMode ? (
+                        <DndContext
+                          sensors={sensors}
+                          collisionDetection={closestCenter}
+                          onDragEnd={handleDragEnd(category._id)}
+                        >
+                          <SortableContext
+                            items={categoryModules.map(mod => mod._id)}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            <div className="space-y-1.5">
+                              {categoryModules.map((module) => (
+                                <SortableModuleItem
+                                  key={module._id}
+                                  module={module}
+                                  isEditOrderMode={isEditOrderMode}
+                                  onEdit={handleEdit}
+                                  onDelete={handleDelete}
+                                  getCategoryName={getCategoryName}
+                                />
+                              ))}
+                            </div>
+                          </SortableContext>
+                        </DndContext>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {categoryModules.map((module) => (
+                            <SortableModuleItem
+                              key={module._id}
+                              module={module}
+                              isEditOrderMode={isEditOrderMode}
+                              onEdit={handleEdit}
+                              onDelete={handleDelete}
+                              getCategoryName={getCategoryName}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleEdit(module)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleDelete(module._id, module.title)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
-              ))
+                  );
+                })
             )}
           </div>
         </CardContent>

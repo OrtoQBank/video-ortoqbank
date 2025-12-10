@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -44,10 +44,31 @@ import {
   ClockIcon,
   RefreshCw,
   Upload,
+  GripVertical,
+  Check,
+  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Id, Doc } from "@/convex/_generated/dataModel";
 import AdminVideoUploader from "@/components/bunny/admin-video-uploader";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { cn } from "@/lib/utils";
 
 interface LessonListProps {
   lessons: Doc<"lessons">[];
@@ -510,9 +531,10 @@ function EditLessonForm({
   );
 }
 
-function LessonItem({
+function SortableLessonItem({
   lesson,
   modules,
+  isEditOrderMode,
   onEditLesson,
   onDelete,
   onTogglePublish,
@@ -522,6 +544,67 @@ function LessonItem({
 }: {
   lesson: any;
   modules: any[];
+  isEditOrderMode: boolean;
+  onEditLesson?: (lesson: any) => void;
+  onDelete: (id: any, title: string) => void;
+  onTogglePublish: (id: any, title: string, currentStatus: boolean) => void;
+  onMarkVideoAsReady: (videoId: string, lessonTitle: string) => void;
+  onCheckVideoStatus: (videoId: string, lessonTitle: string) => Promise<void>;
+  onUploadVideo: (lesson: any) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: lesson._id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...(isEditOrderMode ? { ...attributes, ...listeners } : {})}
+      className={cn(
+        isEditOrderMode && "cursor-grab active:cursor-grabbing",
+        isDragging && "opacity-50 ring-2 ring-primary"
+      )}
+    >
+      <LessonItem
+        lesson={lesson}
+        modules={modules}
+        isEditOrderMode={isEditOrderMode}
+        onEditLesson={onEditLesson}
+        onDelete={onDelete}
+        onTogglePublish={onTogglePublish}
+        onMarkVideoAsReady={onMarkVideoAsReady}
+        onCheckVideoStatus={onCheckVideoStatus}
+        onUploadVideo={onUploadVideo}
+      />
+    </div>
+  );
+}
+
+function LessonItem({
+  lesson,
+  modules,
+  isEditOrderMode,
+  onEditLesson,
+  onDelete,
+  onTogglePublish,
+  onMarkVideoAsReady,
+  onCheckVideoStatus,
+  onUploadVideo,
+}: {
+  lesson: any;
+  modules: any[];
+  isEditOrderMode?: boolean;
   onEditLesson?: (lesson: any) => void;
   onDelete: (id: any, title: string) => void;
   onTogglePublish: (id: any, title: string, currentStatus: boolean) => void;
@@ -581,7 +664,12 @@ function LessonItem({
   };
 
   return (
-    <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors">
+    <div className="flex items-center gap-2 p-4 border rounded-lg hover:bg-accent/50 transition-colors">
+      {isEditOrderMode && (
+        <div className="p-1 shrink-0">
+          <GripVertical className="h-5 w-5 text-muted-foreground" />
+        </div>
+      )}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1 flex-wrap">
           <h3 className="font-semibold truncate">{lesson.title}</h3>
@@ -605,7 +693,8 @@ function LessonItem({
           )}
         </div>
       </div>
-      <div className="flex gap-2 shrink-0 flex-wrap">
+      {!isEditOrderMode && (
+        <div className="flex gap-2 shrink-0 flex-wrap">
         {!lesson.videoId && (
           <Button
             variant="default"
@@ -648,7 +737,8 @@ function LessonItem({
         >
           <Trash2 className="h-4 w-4 text-destructive" />
         </Button>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -659,6 +749,7 @@ export function LessonList({ lessons }: LessonListProps) {
   const togglePublish = useMutation(api.lessons.togglePublish);
   const markVideoAsReady = useMutation(api.videos.markAsReady);
   const updateLesson = useMutation(api.lessons.update);
+  const reorderLessons = useMutation(api.lessons.reorder);
   const { toast } = useToast();
   const { error, showError, hideError } = useErrorModal();
   const { confirm, showConfirm, hideConfirm } = useConfirmModal();
@@ -669,6 +760,24 @@ export function LessonList({ lessons }: LessonListProps) {
 
   const [uploadingLesson, setUploadingLesson] = useState<any | null>(null);
   const [editingLesson, setEditingLesson] = useState<any | null>(null);
+  
+  // Edit order mode state
+  const [isEditOrderMode, setIsEditOrderMode] = useState(false);
+  const [orderedLessons, setOrderedLessons] = useState<any[]>(lessons);
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
+
+  // DND sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Update ordered lessons when lessons prop changes
+  useEffect(() => {
+    setOrderedLessons(lessons);
+  }, [lessons]);
 
   const handleDelete = (id: any, title: string) => {
     showConfirm(
@@ -799,6 +908,51 @@ export function LessonList({ lessons }: LessonListProps) {
     }
   };
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      setOrderedLessons((items) => {
+        const oldIndex = items.findIndex((item) => item._id === active.id);
+        const newIndex = items.findIndex((item) => item._id === over.id);
+
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
+
+  const handleSaveOrder = async () => {
+    setIsSavingOrder(true);
+    try {
+      // Create updates array with new order_index
+      const updates = orderedLessons.map((lesson, index) => ({
+        id: lesson._id,
+        order_index: index,
+      }));
+
+      await reorderLessons({ updates });
+
+      toast({
+        title: "Sucesso",
+        description: "Ordem das aulas atualizada!",
+      });
+
+      setIsEditOrderMode(false);
+    } catch (error) {
+      showError(
+        error instanceof Error ? error.message : "Erro ao salvar ordem",
+        "Erro ao salvar ordem"
+      );
+    } finally {
+      setIsSavingOrder(false);
+    }
+  };
+
+  const handleCancelOrder = () => {
+    setOrderedLessons(lessons);
+    setIsEditOrderMode(false);
+  };
+
   if (modules === undefined) {
     return <div>Carregando módulos...</div>;
   }
@@ -807,11 +961,44 @@ export function LessonList({ lessons }: LessonListProps) {
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Aulas Cadastradas</CardTitle>
-          <CardDescription>
-            {lessons.length} {lessons.length === 1 ? "aula" : "aulas"} no
-            sistema
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Aulas Cadastradas</CardTitle>
+              <CardDescription>
+                {lessons.length} {lessons.length === 1 ? "aula" : "aulas"} no sistema
+              </CardDescription>
+            </div>
+            <div className="flex gap-2">
+              {!isEditOrderMode ? (
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditOrderMode(true)}
+                  disabled={lessons.length === 0}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Editar Ordem
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={handleCancelOrder}
+                    disabled={isSavingOrder}
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleSaveOrder}
+                    disabled={isSavingOrder}
+                  >
+                    <Check className="h-4 w-4 mr-2" />
+                    {isSavingOrder ? "Salvando..." : "Salvar Ordem"}
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
@@ -819,12 +1006,39 @@ export function LessonList({ lessons }: LessonListProps) {
               <p className="text-sm text-muted-foreground">
                 Nenhuma aula cadastrada ainda.
               </p>
+            ) : isEditOrderMode ? (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={orderedLessons.map(lesson => lesson._id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {orderedLessons.map((lesson) => (
+                    <SortableLessonItem
+                      key={lesson._id}
+                      lesson={lesson}
+                      modules={modules || []}
+                      isEditOrderMode={isEditOrderMode}
+                      onEditLesson={handleEditLesson}
+                      onDelete={handleDelete}
+                      onTogglePublish={handleTogglePublish}
+                      onMarkVideoAsReady={handleMarkVideoAsReady}
+                      onCheckVideoStatus={handleCheckVideoStatus}
+                      onUploadVideo={handleUploadVideo}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
             ) : (
-              lessons.map((lesson) => (
+              orderedLessons.map((lesson) => (
                 <LessonItem
                   key={lesson._id}
                   lesson={lesson}
                   modules={modules || []}
+                  isEditOrderMode={isEditOrderMode}
                   onEditLesson={handleEditLesson}
                   onDelete={handleDelete}
                   onTogglePublish={handleTogglePublish}

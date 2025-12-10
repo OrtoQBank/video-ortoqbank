@@ -228,3 +228,26 @@ export const remove = mutation({
   },
 });
 
+// Mutation para reordenar módulos
+export const reorder = mutation({
+  args: {
+    updates: v.array(
+      v.object({
+        id: v.id("modules"),
+        order_index: v.number(),
+      })
+    ),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    // Update all module order_index
+    for (const update of args.updates) {
+      await ctx.db.patch(update.id, {
+        order_index: update.order_index,
+      });
+    }
+
+    return null;
+  },
+});
+

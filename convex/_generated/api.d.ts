@@ -19,6 +19,7 @@ import type * as myFunctions from "../myFunctions.js";
 import type * as progress from "../progress.js";
 import type * as ratings from "../ratings.js";
 import type * as recentViews from "../recentViews.js";
+import type * as search from "../search.js";
 import type * as seed from "../seed.js";
 import type * as userAccess from "../userAccess.js";
 import type * as userAdmin from "../userAdmin.js";
@@ -43,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   progress: typeof progress;
   ratings: typeof ratings;
   recentViews: typeof recentViews;
+  search: typeof search;
   seed: typeof seed;
   userAccess: typeof userAccess;
   userAdmin: typeof userAdmin;

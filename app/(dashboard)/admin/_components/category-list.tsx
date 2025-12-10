@@ -153,6 +153,7 @@ export function CategoryList({ categories }: CategoryListProps) {
   const [editDescription, setEditDescription] = useState("");
   const [editIconUrl, setEditIconUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isImageUploading, setIsImageUploading] = useState(false);
   
   // Edit order mode state
   const [isEditOrderMode, setIsEditOrderMode] = useState(false);
@@ -460,7 +461,13 @@ export function CategoryList({ categories }: CategoryListProps) {
                 disabled={isSubmitting}
                 folder="/categories"
                 id="category-edit-image-upload"
+                onUploadStateChange={setIsImageUploading}
               />
+              {isImageUploading && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Aguarde o upload da imagem terminar antes de salvar...
+                </p>
+              )}
             </div>
 
             <div className="flex gap-2">
@@ -468,13 +475,17 @@ export function CategoryList({ categories }: CategoryListProps) {
                 type="button"
                 variant="outline"
                 onClick={() => setEditingCategory(null)}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isImageUploading}
                 className="flex-1"
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isSubmitting} className="flex-1">
-                {isSubmitting ? "Salvando..." : "Salvar"}
+              <Button 
+                type="submit" 
+                disabled={isSubmitting || isImageUploading} 
+                className="flex-1"
+              >
+                {isImageUploading ? "Enviando imagem..." : isSubmitting ? "Salvando..." : "Salvar"}
               </Button>
             </div>
           </form>

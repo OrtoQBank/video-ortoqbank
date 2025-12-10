@@ -14,6 +14,7 @@ interface ImageUploadProps {
   disabled?: boolean;
   folder?: string;
   id?: string;
+  onUploadStateChange?: (isUploading: boolean) => void;
 }
 
 export function ImageUpload({
@@ -23,6 +24,7 @@ export function ImageUpload({
   disabled,
   folder = "/categories",
   id = "image-upload",
+  onUploadStateChange,
 }: ImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string>(value || "");
@@ -47,9 +49,12 @@ export function ImageUpload({
       return;
     }
 
-    setIsUploading(true);
-
     try {
+      setIsUploading(true);
+      if (onUploadStateChange) {
+        onUploadStateChange(true);
+      }
+
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewUrl(reader.result as string);
@@ -106,6 +111,9 @@ export function ImageUpload({
       setPreviewUrl(value || "");
     } finally {
       setIsUploading(false);
+      if (onUploadStateChange) {
+        onUploadStateChange(false);
+      }
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }

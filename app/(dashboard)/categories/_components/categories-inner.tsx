@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Preloaded, usePreloadedQuery } from "convex/react";
+import { Preloaded, usePreloadedQuery, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
 interface CategoriesInnerProps {
@@ -35,6 +35,12 @@ export function CategoriesInner({
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
 
+  // Buscar categorias usando a query avançada
+  const searchResults = useQuery(
+    api.search.searchCategories,
+    searchQuery ? { query: searchQuery } : "skip"
+  );
+
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     console.log("Pesquisando por:", query);
@@ -44,13 +50,9 @@ export function CategoriesInner({
     router.push(`/modules/${categoryId}`);
   };
 
-  // Filtrar categorias baseado na busca
-  const filteredCategories = searchQuery
-    ? categories.filter(
-        (category) =>
-          category.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          category.description.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+  // Usar resultados da busca avançada se houver query, senão mostrar todas
+  const filteredCategories = searchQuery && searchResults 
+    ? searchResults 
     : categories;
 
   // Placeholder cards quando não há categorias
@@ -64,8 +66,19 @@ export function CategoriesInner({
       <div className="px-12 sm:px-16 md:px-24 lg:px-24 xl:px-42 pb-24 md:pb-4 pt-16 md:pt-14">
         {/* Barra de pesquisa com progresso total - alinhado com o grid */}
         <div className="mb-4 md:mb-6 grid grid-cols-1 lg:grid-cols-3 gap-3">
-          <div className="col-span-1">
+          <div className="col-span-1 flex items-center gap-2">
             <SearchBar onSearch={handleSearch} />
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setSearchQuery("");
+                }}
+                className="text-blue-brand hover:text-blue-brand-dark hover:bg-transparent px-3 whitespace-nowrap shrink-0"
+              >
+                Limpar filtro
+              </Button>
+            )}
           </div>
           <div className="hidden lg:block"></div>
           <div className="col-span-1">
@@ -77,28 +90,43 @@ export function CategoriesInner({
         </div>
 
         {/* Grid de cards - 3 linhas de 3 categorias sem scroll */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-          {filteredCategories.length > 0 ? (
-            filteredCategories.map((category) => (
-            <CategoriesCard
-              key={category._id}
-              title={category.title}
-              description={category.description}
-              imageUrl={category.iconUrl}
-              onClick={() => handleCategoryClick(category._id)}
-            />
-            ))
-          ) : (
-            placeholderCards.map((index) => (
-              <div
-                key={`placeholder-${index}`}
-                className="border-2 border-dashed border-muted-foreground/20 rounded-lg h-[140px] md:h-[160px] flex items-center justify-center bg-muted/5"
-              >
-                <p className="text-xs text-muted-foreground/40">Adicionar categoria</p>
-              </div>
-            ))
-          )}
-        </div>
+        {searchQuery && searchResults === undefined ? (
+          <div 
+            className="flex items-center justify-center py-12"
+            role="status"
+            aria-live="polite"
+            aria-busy="true"
+            aria-label="Pesquisando categorias"
+          >
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-brand mx-auto mb-4" aria-hidden="true"></div>
+              <p className="text-muted-foreground">Pesquisando...</p>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+            {filteredCategories.length > 0 ? (
+              filteredCategories.map((category) => (
+              <CategoriesCard
+                key={category._id}
+                title={category.title}
+                description={category.description}
+                imageUrl={category.iconUrl}
+                onClick={() => handleCategoryClick(category._id)}
+              />
+              ))
+            ) : (
+              placeholderCards.map((index) => (
+                <div
+                  key={`placeholder-${index}`}
+                  className="border-2 border-dashed border-muted-foreground/20 rounded-lg h-[140px] md:h-[160px] flex items-center justify-center bg-muted/5"
+                >
+                  <p className="text-xs text-muted-foreground/40">Adicionar categoria</p>
+                </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

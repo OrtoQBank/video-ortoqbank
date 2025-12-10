@@ -44,6 +44,7 @@ export function CategoryForm({ onSuccess }: CategoryFormProps) {
   const { error, showError, hideError } = useErrorModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdCategory, setCreatedCategory] = useState(false);
+  const [isImageUploading, setIsImageUploading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -161,7 +162,13 @@ export function CategoryForm({ onSuccess }: CategoryFormProps) {
                     disabled={isSubmitting}
                     folder="/categories"
                     id="category-form-image-upload"
+                    onUploadStateChange={setIsImageUploading}
                   />
+                  {isImageUploading && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Aguarde o upload da imagem terminar antes de criar...
+                    </p>
+                  )}
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
                   )}
@@ -176,12 +183,14 @@ export function CategoryForm({ onSuccess }: CategoryFormProps) {
               type="button"
               variant="outline"
               onClick={() => form.reset()}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isImageUploading}
             >
               Limpar
             </Button>
-            <Button type="submit" disabled={isSubmitting} className="flex-1">
-              {isSubmitting ? (
+            <Button type="submit" disabled={isSubmitting || isImageUploading} className="flex-1">
+              {isImageUploading ? (
+                "Enviando imagem..."
+              ) : isSubmitting ? (
                 "Criando..."
               ) : createdCategory ? (
                 <>

@@ -39,6 +39,9 @@ export function CategoriesInner({ preloadedCategories, initialProgress }: Catego
       )
     : categories;
 
+  // Placeholder cards quando não há categorias
+  const placeholderCards = Array.from({ length: 9 }, (_, i) => i);
+
   return (
     <div className="min-h-screen bg-white relative">
       {/* Sidebar trigger no canto */}
@@ -58,7 +61,8 @@ export function CategoriesInner({ preloadedCategories, initialProgress }: Catego
 
         {/* Grid de cards - 3 linhas de 3 categorias sem scroll */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-          {filteredCategories.map((category) => (
+          {filteredCategories.length > 0 ? (
+            filteredCategories.map((category) => (
             <CategoriesCard
               key={category._id}
               title={category.title}
@@ -66,7 +70,17 @@ export function CategoriesInner({ preloadedCategories, initialProgress }: Catego
               imageUrl={category.iconUrl}
               onClick={() => handleCategoryClick(category._id)}
             />
-          ))}
+            ))
+          ) : (
+            placeholderCards.map((index) => (
+              <div
+                key={`placeholder-${index}`}
+                className="border-2 border-dashed border-muted-foreground/20 rounded-lg h-[140px] md:h-[160px] flex items-center justify-center bg-muted/5"
+              >
+                <p className="text-xs text-muted-foreground/40">Adicionar categoria</p>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

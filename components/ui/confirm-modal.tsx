@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect, useRef } from "react"
 import {
   Dialog,
   DialogContent,
@@ -14,7 +15,7 @@ interface ConfirmModalProps {
   onOpenChange: (open: boolean) => void
   title?: string
   message: string
-  onConfirm: () => void
+  onConfirm: () => void | Promise<void>
   confirmText?: string
   cancelText?: string
 }
@@ -28,9 +29,45 @@ export function ConfirmModal({
   confirmText = "Confirmar",
   cancelText = "Cancelar",
 }: ConfirmModalProps) {
-  const handleConfirm = () => {
-    onConfirm()
-    onOpenChange(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const mountedRef = useRef(true)
+
+  // Reset state when modal opens
+  useEffect(() => {
+    if (open) {
+      setLoading(false)
+      setError(null)
+    }
+  }, [open])
+
+  // Track mount status
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
+
+  const handleConfirm = async () => {
+    if (!mountedRef.current) return
+    
+    setLoading(true)
+    setError(null)
+    try {
+      await onConfirm()
+      if (mountedRef.current) {
+        onOpenChange(false)
+      }
+    } catch (err) {
+      if (mountedRef.current) {
+        setError(err instanceof Error ? err.message : "Ocorreu um erro ao confirmar a ação")
+      }
+    } finally {
+      if (mountedRef.current) {
+        setLoading(false)
+      }
+    }
   }
 
   return (
@@ -44,19 +81,28 @@ export function ConfirmModal({
             {message}
           </DialogDescription>
         </DialogHeader>
+        {error && (
+          <div className="mt-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+            <p className="text-sm text-red-600 dark:text-red-400 text-center">
+              {error}
+            </p>
+          </div>
+        )}
         <div className="flex justify-center gap-4 pt-4">
           <Button
             onClick={() => onOpenChange(false)}
             variant="outline"
             className="px-8"
+            disabled={loading}
           >
             {cancelText}
           </Button>
           <Button
             onClick={handleConfirm}
             className="bg-blue-brand hover:bg-blue-brand-dark text-white px-8"
+            disabled={loading}
           >
-            {confirmText}
+            {loading ? "Processando..." : confirmText}
           </Button>
         </div>
       </DialogContent>

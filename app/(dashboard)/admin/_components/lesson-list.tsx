@@ -59,17 +59,19 @@ function EditLessonForm({
   modules,
   onSuccess,
   onCancel,
+  onShowError,
+  onShowConfirm,
 }: {
   lesson: any;
   modules: any[];
   onSuccess: () => void;
   onCancel: () => void;
+  onShowError: (message: string, title?: string) => void;
+  onShowConfirm: (message: string, onConfirm: () => void | Promise<void>, title?: string) => void;
 }) {
   const updateLesson = useMutation(api.lessons.update);
   const togglePublish = useMutation(api.lessons.togglePublish);
   const { toast } = useToast();
-  const { error, showError, hideError } = useErrorModal();
-  const { confirm, showConfirm, hideConfirm } = useConfirmModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showUploader, setShowUploader] = useState(false);
   const [currentVideoId, setCurrentVideoId] = useState(lesson.videoId);
@@ -115,7 +117,7 @@ function EditLessonForm({
 
       onSuccess();
     } catch (error) {
-      showError(
+      onShowError(
         error instanceof Error ? error.message : "Erro ao atualizar aula",
         "Erro ao atualizar aula"
       );
@@ -125,7 +127,7 @@ function EditLessonForm({
   };
 
   const handleRemoveVideo = () => {
-    showConfirm(
+    onShowConfirm(
       "Tem certeza que deseja remover o vídeo desta aula?",
       async () => {
         try {
@@ -155,7 +157,7 @@ function EditLessonForm({
         description: "Vídeo removido da aula com sucesso!",
       });
         } catch (error) {
-          showError(
+          onShowError(
             error instanceof Error ? error.message : "Erro ao remover vídeo",
             "Erro ao remover vídeo"
           );
@@ -169,13 +171,13 @@ function EditLessonForm({
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       if (!selectedFile.type.startsWith("video/")) {
-        showError("Por favor, selecione um arquivo de vídeo", "Arquivo inválido");
+        onShowError("Por favor, selecione um arquivo de vídeo", "Arquivo inválido");
         return;
       }
 
       const maxSize = 5 * 1024 * 1024 * 1024;
       if (selectedFile.size > maxSize) {
-        showError("O arquivo é muito grande (máximo 5GB)", "Arquivo muito grande");
+        onShowError("O arquivo é muito grande (máximo 5GB)", "Arquivo muito grande");
         return;
       }
 
@@ -185,7 +187,7 @@ function EditLessonForm({
 
   const handleUploadVideo = async () => {
     if (!uploadFile) {
-      showError("Selecione um arquivo de vídeo", "Arquivo não selecionado");
+      onShowError("Selecione um arquivo de vídeo", "Arquivo não selecionado");
       return;
     }
 
@@ -258,7 +260,7 @@ function EditLessonForm({
         description: "Vídeo associado à aula com sucesso!",
       });
     } catch (error) {
-      showError(
+      onShowError(
         error instanceof Error ? error.message : "Erro desconhecido",
         "Erro no upload"
       );
@@ -276,7 +278,7 @@ function EditLessonForm({
       });
       onSuccess();
     } catch (error) {
-      showError(
+      onShowError(
         error instanceof Error ? error.message : "Erro ao atualizar status",
         "Erro ao atualizar status"
       );
@@ -504,21 +506,6 @@ function EditLessonForm({
           {isSubmitting ? "Salvando..." : "Salvar Alterações"}
         </Button>
       </div>
-
-      <ErrorModal
-        open={error.isOpen}
-        onOpenChange={hideError}
-        title={error.title}
-        message={error.message}
-      />
-
-      <ConfirmModal
-        open={confirm.isOpen}
-        onOpenChange={hideConfirm}
-        title={confirm.title}
-        message={confirm.message}
-        onConfirm={confirm.onConfirm}
-      />
     </form>
   );
 }
@@ -675,6 +662,10 @@ export function LessonList({ lessons }: LessonListProps) {
   const { toast } = useToast();
   const { error, showError, hideError } = useErrorModal();
   const { confirm, showConfirm, hideConfirm } = useConfirmModal();
+
+  // Separate modal state for EditLessonForm to avoid nesting
+  const { error: editError, showError: showEditError, hideError: hideEditError } = useErrorModal();
+  const { confirm: editConfirm, showConfirm: showEditConfirm, hideConfirm: hideEditConfirm } = useConfirmModal();
 
   const [uploadingLesson, setUploadingLesson] = useState<any | null>(null);
   const [editingLesson, setEditingLesson] = useState<any | null>(null);
@@ -890,11 +881,14 @@ export function LessonList({ lessons }: LessonListProps) {
                 });
               }}
               onCancel={() => setEditingLesson(null)}
+              onShowError={showEditError}
+              onShowConfirm={showEditConfirm}
             />
           )}
         </DialogContent>
       </Dialog>
 
+      {/* LessonList modals */}
       <ErrorModal
         open={error.isOpen}
         onOpenChange={hideError}
@@ -908,6 +902,22 @@ export function LessonList({ lessons }: LessonListProps) {
         title={confirm.title}
         message={confirm.message}
         onConfirm={confirm.onConfirm}
+      />
+
+      {/* EditLessonForm modals - rendered at same level to avoid nesting */}
+      <ErrorModal
+        open={editError.isOpen}
+        onOpenChange={hideEditError}
+        title={editError.title}
+        message={editError.message}
+      />
+
+      <ConfirmModal
+        open={editConfirm.isOpen}
+        onOpenChange={hideEditConfirm}
+        title={editConfirm.title}
+        message={editConfirm.message}
+        onConfirm={editConfirm.onConfirm}
       />
     </>
   );

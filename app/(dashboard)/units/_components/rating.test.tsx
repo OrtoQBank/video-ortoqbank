@@ -16,7 +16,7 @@ vi.mock("convex/react", () => ({
 describe("Rating", () => {
   const mockUserId = "user-123";
   const mockLessonId = "lesson-123" as Id<"lessons">;
-  const mockModuleId = "module-123" as Id<"modules">;
+  const mockUnitId = "unit-123" as Id<"units">;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -28,7 +28,7 @@ describe("Rating", () => {
       <Rating
         userId={mockUserId}
         lessonId={mockLessonId}
-        moduleId={mockModuleId}
+        unitId={mockUnitId}
       />
     );
 
@@ -45,7 +45,7 @@ describe("Rating", () => {
       <Rating
         userId={mockUserId}
         lessonId={mockLessonId}
-        moduleId={mockModuleId}
+        unitId={mockUnitId}
       />
     );
 
@@ -66,7 +66,7 @@ describe("Rating", () => {
       <Rating
         userId={mockUserId}
         lessonId={mockLessonId}
-        moduleId={mockModuleId}
+        unitId={mockUnitId}
       />
     );
 
@@ -84,7 +84,7 @@ describe("Rating", () => {
       expect(mockSubmitRating).toHaveBeenCalledWith({
         userId: mockUserId,
         lessonId: mockLessonId,
-        moduleId: mockModuleId,
+        unitId: mockUnitId,
         rating: 4,
       });
     });
@@ -96,7 +96,7 @@ describe("Rating", () => {
       _creationTime: Date.now(),
       userId: mockUserId,
       lessonId: mockLessonId,
-      moduleId: mockModuleId,
+      unitId: mockUnitId,
       rating: 5,
       createdAt: Date.now(),
     });
@@ -105,7 +105,7 @@ describe("Rating", () => {
       <Rating
         userId={mockUserId}
         lessonId={mockLessonId}
-        moduleId={mockModuleId}
+        unitId={mockUnitId}
       />
     );
 
@@ -121,7 +121,7 @@ describe("Rating", () => {
       _creationTime: Date.now(),
       userId: mockUserId,
       lessonId: mockLessonId,
-      moduleId: mockModuleId,
+      unitId: mockUnitId,
       rating: 3,
       createdAt: Date.now(),
     });
@@ -130,7 +130,7 @@ describe("Rating", () => {
       <Rating
         userId={mockUserId}
         lessonId={mockLessonId}
-        moduleId={mockModuleId}
+        unitId={mockUnitId}
       />
     );
 

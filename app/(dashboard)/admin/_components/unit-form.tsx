@@ -24,17 +24,17 @@ const formSchema = z.object({
   description: z.string().min(10, "Descrição deve ter pelo menos 10 caracteres"),
 });
 
-interface ModuleFormProps {
+interface UnitFormProps {
   categories: Doc<"categories">[];
   onSuccess?: () => void;
 }
 
-export function ModuleForm({ categories, onSuccess }: ModuleFormProps) {
-  const createModule = useMutation(api.modules.create);
+export function UnitForm({ categories, onSuccess }: UnitFormProps) {
+  const createUnit = useMutation(api.units.create);
   const { toast } = useToast();
   const { error, showError, hideError } = useErrorModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [createdModule, setCreatedModule] = useState(false);
+  const [createdUnit, setCreatedUnit] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -48,16 +48,16 @@ export function ModuleForm({ categories, onSuccess }: ModuleFormProps) {
   async function onSubmit(data: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
-      await createModule({
+      await createUnit({
         categoryId: data.categoryId as Id<"categories">,
         title: data.title,
         description: data.description,
       });
 
-      setCreatedModule(true);
+      setCreatedUnit(true);
 
       toast({
-        title: "✅ Módulo criado com sucesso!",
+        title: "✅ Unidade criada com sucesso!",
         description: `${data.title} foi criado.`,
       });
 
@@ -68,11 +68,11 @@ export function ModuleForm({ categories, onSuccess }: ModuleFormProps) {
       }
 
       // Reset success state after 3 seconds
-      setTimeout(() => setCreatedModule(false), 3000);
+      setTimeout(() => setCreatedUnit(false), 3000);
     } catch (error) {
       showError(
         error instanceof Error ? error.message : "Erro desconhecido",
-        "Erro ao criar módulo"
+        "Erro ao criar unidade"
       );
     } finally {
       setIsSubmitting(false);
@@ -84,9 +84,9 @@ export function ModuleForm({ categories, onSuccess }: ModuleFormProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <BookOpenIcon className="h-5 w-5" />
-          Novo Módulo
+          Nova Unidade
         </CardTitle>
-        <CardDescription>Adicione um novo módulo ao sistema</CardDescription>
+        <CardDescription>Adicione uma nova unidade ao sistema</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -169,22 +169,22 @@ export function ModuleForm({ categories, onSuccess }: ModuleFormProps) {
             <Button type="submit" disabled={isSubmitting} className="flex-1">
               {isSubmitting ? (
                 "Criando..."
-              ) : createdModule ? (
+              ) : createdUnit ? (
                 <>
                   <CheckCircle2Icon className="mr-2 h-4 w-4" />
-                  Módulo Criado!
+                  Unidade Criada!
                 </>
               ) : (
-                "Criar Módulo"
+                "Criar Unidade"
               )}
             </Button>
           </div>
         </form>
 
-        {createdModule && (
+        {createdUnit && (
           <div className="mt-6 rounded-lg border border-green-500/20 bg-green-500/10 p-4">
             <p className="text-sm text-green-700 dark:text-green-400">
-              ✅ Módulo criado com sucesso! Visualize na lista ao lado.
+              ✅ Unidade criada com sucesso! Visualize na lista ao lado.
             </p>
           </div>
         )}

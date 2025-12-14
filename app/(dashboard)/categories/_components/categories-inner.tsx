@@ -16,18 +16,18 @@ interface CategoriesInnerProps {
   preloadedCompletedCount: Preloaded<typeof api.progress.getCompletedPublishedLessonsCount> | null;
 }
 
-export function CategoriesInner({ 
-  preloadedCategories, 
+export function CategoriesInner({
+  preloadedCategories,
   preloadedContentStats,
-  preloadedCompletedCount 
+  preloadedCompletedCount
 }: CategoriesInnerProps) {
   const categories = usePreloadedQuery(preloadedCategories);
-  
+
   // Load progress data if available
   const contentStats = preloadedContentStats
     ? usePreloadedQuery(preloadedContentStats)
     : null;
-  
+
   const completedCountResult = preloadedCompletedCount
     ? usePreloadedQuery(preloadedCompletedCount)
     : null;
@@ -47,12 +47,12 @@ export function CategoriesInner({
   };
 
   const handleCategoryClick = (categoryId: string) => {
-    router.push(`/modules/${categoryId}`);
+    router.push(`/units/${categoryId}`);
   };
 
   // Usar resultados da busca avançada se houver query, senão mostrar todas
-  const filteredCategories = searchQuery && searchResults 
-    ? searchResults 
+  const filteredCategories = searchQuery && searchResults
+    ? searchResults
     : categories;
 
   // Placeholder cards quando não há categorias
@@ -82,7 +82,7 @@ export function CategoriesInner({
           </div>
           <div className="hidden lg:block"></div>
           <div className="col-span-1">
-            <ProgressBar 
+            <ProgressBar
               totalLessons={contentStats?.totalLessons ?? 0}
               completedLessons={completedCountResult ?? 0}
             />
@@ -91,7 +91,7 @@ export function CategoriesInner({
 
         {/* Grid de cards - 3 linhas de 3 categorias sem scroll */}
         {searchQuery && searchResults === undefined ? (
-          <div 
+          <div
             className="flex items-center justify-center py-12"
             role="status"
             aria-live="polite"
@@ -107,13 +107,13 @@ export function CategoriesInner({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
             {filteredCategories.length > 0 ? (
               filteredCategories.map((category) => (
-              <CategoriesCard
-                key={category._id}
-                title={category.title}
-                description={category.description}
-                imageUrl={category.iconUrl}
-                onClick={() => handleCategoryClick(category._id)}
-              />
+                <CategoriesCard
+                  key={category._id}
+                  title={category.title}
+                  description={category.description}
+                  imageUrl={category.iconUrl}
+                  onClick={() => handleCategoryClick(category._id)}
+                />
               ))
             ) : (
               placeholderCards.map((index) => (

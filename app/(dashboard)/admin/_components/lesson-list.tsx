@@ -17,7 +17,7 @@ import { ErrorModal } from "@/components/ui/error-modal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { EditIcon, Trash2Icon, EyeIcon, EyeOffIcon, CheckCircleIcon, LoaderIcon, XCircleIcon, ClockIcon, RefreshCwIcon, UploadIcon, GripVerticalIcon, XIcon, CheckIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Doc } from "@/convex/_generated/dataModel";
+import { Doc, Id } from "@/convex/_generated/dataModel";
 import AdminVideoUploader from "@/components/bunny/admin-video-uploader";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -26,19 +26,19 @@ import { cn } from "@/lib/utils";
 
 interface LessonListProps {
   lessons: Doc<"lessons">[];
-  onEditLesson?: (lesson: any) => void;
+  onEditLesson?: (lesson: Doc<"lessons">) => void;
 }
 
 function EditLessonForm({
   lesson,
-  modules,
+  units,
   onSuccess,
   onCancel,
   onShowError,
   onShowConfirm,
 }: {
-  lesson: any;
-  modules: any[];
+  lesson: Doc<"lessons">;
+  units: Doc<"units">[];
   onSuccess: () => void;
   onCancel: () => void;
   onShowError: (message: string, title?: string) => void;
@@ -53,7 +53,7 @@ function EditLessonForm({
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [formData, setFormData] = useState({
-    moduleId: lesson.moduleId,
+    unitId: lesson.unitId,
     title: lesson.title,
     description: lesson.description,
     lessonNumber: lesson.lessonNumber,
@@ -72,14 +72,14 @@ function EditLessonForm({
     try {
       const tagsArray = formData.tags
         ? formData.tags
-            .split(",")
-            .map((tag: string) => tag.trim())
-            .filter(Boolean)
+          .split(",")
+          .map((tag: string) => tag.trim())
+          .filter(Boolean)
         : [];
 
       await updateLesson({
         id: lesson._id,
-        moduleId: formData.moduleId,
+        unitId: formData.unitId,
         title: formData.title,
         description: formData.description,
         durationSeconds: lesson.durationSeconds,
@@ -106,31 +106,31 @@ function EditLessonForm({
       "Tem certeza que deseja remover o vídeo desta aula?",
       async () => {
         try {
-      const tagsArray = formData.tags
-        ? formData.tags
-            .split(",")
-            .map((tag: string) => tag.trim())
-            .filter(Boolean)
-        : [];
+          const tagsArray = formData.tags
+            ? formData.tags
+              .split(",")
+              .map((tag: string) => tag.trim())
+              .filter(Boolean)
+            : [];
 
-      await updateLesson({
-        id: lesson._id,
-        moduleId: formData.moduleId,
-        title: formData.title,
-        description: formData.description,
-        durationSeconds: lesson.durationSeconds,
-        order_index: lesson.order_index,
-        lessonNumber: formData.lessonNumber,
-        isPublished: lesson.isPublished,
-        tags: tagsArray.length > 0 ? tagsArray : undefined,
-        videoId: undefined,
-      });
+          await updateLesson({
+            id: lesson._id,
+            unitId: formData.unitId,
+            title: formData.title,
+            description: formData.description,
+            durationSeconds: lesson.durationSeconds,
+            order_index: lesson.order_index,
+            lessonNumber: formData.lessonNumber,
+            isPublished: lesson.isPublished,
+            tags: tagsArray.length > 0 ? tagsArray : undefined,
+            videoId: undefined,
+          });
 
-      setCurrentVideoId(undefined);
-      toast({
-        title: "Sucesso",
-        description: "Vídeo removido da aula com sucesso!",
-      });
+          setCurrentVideoId(undefined);
+          toast({
+            title: "Sucesso",
+            description: "Vídeo removido da aula com sucesso!",
+          });
         } catch (error) {
           onShowError(
             error instanceof Error ? error.message : "Erro ao remover vídeo",
@@ -208,14 +208,14 @@ function EditLessonForm({
       // Step 3: Update lesson with videoId
       const tagsArray = formData.tags
         ? formData.tags
-            .split(",")
-            .map((tag: string) => tag.trim())
-            .filter(Boolean)
+          .split(",")
+          .map((tag: string) => tag.trim())
+          .filter(Boolean)
         : [];
 
       await updateLesson({
         id: lesson._id,
-        moduleId: formData.moduleId,
+        unitId: formData.unitId,
         title: formData.title,
         description: formData.description,
         durationSeconds: lesson.durationSeconds,
@@ -229,7 +229,7 @@ function EditLessonForm({
       setCurrentVideoId(videoId);
       setShowUploader(false);
       setUploadFile(null);
-      
+
       toast({
         title: "✅ Vídeo enviado!",
         description: "Vídeo associado à aula com sucesso!",
@@ -263,18 +263,18 @@ function EditLessonForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="edit-module">Módulo</Label>
+        <Label htmlFor="edit-unit">Unidade</Label>
         <Select
-          value={formData.moduleId}
-          onValueChange={(value) => setFormData({ ...formData, moduleId: value })}
+          value={formData.unitId}
+          onValueChange={(value) => setFormData({ ...formData, unitId: value as Id<"units"> })}
         >
-          <SelectTrigger id="edit-module">
-            <SelectValue placeholder="Selecione um módulo" />
+          <SelectTrigger id="edit-unit">
+            <SelectValue placeholder="Selecione uma unidade" />
           </SelectTrigger>
           <SelectContent>
-            {modules.map((module) => (
-              <SelectItem key={module._id} value={module._id}>
-                {module.title}
+            {units.map((unit) => (
+              <SelectItem key={unit._id} value={unit._id}>
+                {unit.title}
               </SelectItem>
             ))}
           </SelectContent>
@@ -365,7 +365,7 @@ function EditLessonForm({
                 <div className="flex-1">
                   <p className="text-sm font-medium text-green-900">
                     Vídeo vinculado
-                  </p> 
+                  </p>
                   <p className="text-xs text-green-700">
                     Status: {video.status === "ready" ? "Pronto" : video.status === "processing" ? "Processando" : video.status}
                   </p>
@@ -389,7 +389,7 @@ function EditLessonForm({
                 Selecione o arquivo de vídeo para: <strong>{formData.title}</strong>
               </p>
             </div>
-            
+
             <div className="space-y-2">
               <Input
                 type="file"
@@ -487,7 +487,7 @@ function EditLessonForm({
 
 function SortableLessonItem({
   lesson,
-  modules,
+  units,
   isEditOrderMode,
   onEditLesson,
   onDelete,
@@ -496,15 +496,15 @@ function SortableLessonItem({
   onCheckVideoStatus,
   onUploadVideo,
 }: {
-  lesson: any;
-  modules: any[];
+  lesson: Doc<"lessons">;
+  units: Doc<"units">[];
   isEditOrderMode: boolean;
-  onEditLesson?: (lesson: any) => void;
-  onDelete: (id: any, title: string) => void;
-  onTogglePublish: (id: any, title: string, currentStatus: boolean) => void;
+  onEditLesson?: (lesson: Doc<"lessons">) => void;
+  onDelete: (id: Id<"lessons">, title: string) => void;
+  onTogglePublish: (id: Id<"lessons">, title: string, currentStatus: boolean) => void;
   onMarkVideoAsReady: (videoId: string, lessonTitle: string) => void;
   onCheckVideoStatus: (videoId: string, lessonTitle: string) => Promise<void>;
-  onUploadVideo: (lesson: any) => void;
+  onUploadVideo: (lesson: Doc<"lessons">) => void;
 }) {
   const {
     attributes,
@@ -532,7 +532,7 @@ function SortableLessonItem({
     >
       <LessonItem
         lesson={lesson}
-        modules={modules}
+        units={units}
         isEditOrderMode={isEditOrderMode}
         onEditLesson={onEditLesson}
         onDelete={onDelete}
@@ -547,7 +547,7 @@ function SortableLessonItem({
 
 function LessonItem({
   lesson,
-  modules,
+  units,
   isEditOrderMode,
   onEditLesson,
   onDelete,
@@ -556,15 +556,15 @@ function LessonItem({
   onCheckVideoStatus,
   onUploadVideo,
 }: {
-  lesson: any;
-  modules: any[];
+  lesson: Doc<"lessons">;
+  units: Doc<"units">[];
   isEditOrderMode?: boolean;
-  onEditLesson?: (lesson: any) => void;
-  onDelete: (id: any, title: string) => void;
-  onTogglePublish: (id: any, title: string, currentStatus: boolean) => void;
+  onEditLesson?: (lesson: Doc<"lessons">) => void;
+  onDelete: (id: Id<"lessons">, title: string) => void;
+  onTogglePublish: (id: Id<"lessons">, title: string, currentStatus: boolean) => void;
   onMarkVideoAsReady: (videoId: string, lessonTitle: string) => void;
   onCheckVideoStatus: (videoId: string, lessonTitle: string) => Promise<void>;
-  onUploadVideo: (lesson: any) => void;
+  onUploadVideo: (lesson: Doc<"lessons">) => void;
 }) {
   const video = useQuery(
     api.videos.getByVideoId,
@@ -606,9 +606,9 @@ function LessonItem({
     }
   };
 
-  const getModuleName = (moduleId: any) => {
-    const module = modules?.find((m) => m._id === moduleId);
-    return module?.title || "Módulo desconhecido";
+  const getUnitName = (unitId: Id<"units">) => {
+    const unit = units?.find((u) => u._id === unitId);
+    return unit?.title || "Unidade desconhecida";
   };
 
   const formatDuration = (seconds: number) => {
@@ -639,7 +639,7 @@ function LessonItem({
           {lesson.description}
         </p>
         <div className="flex gap-2 mt-0.5 flex-wrap text-xs text-muted-foreground">
-          <span>Módulo: {getModuleName(lesson.moduleId)}</span>
+          <span>Unidade: {getUnitName(lesson.unitId)}</span>
           <span>Aula #{lesson.lessonNumber}</span>
           <span>Duração: {formatDuration(lesson.durationSeconds)}</span>
           {lesson.tags && lesson.tags.length > 0 && (
@@ -693,7 +693,7 @@ function LessonItem({
               onClick={() => onDelete(lesson._id, lesson.title)}
               title="Deletar"
             >
-                <Trash2Icon className="h-3 w-3 text-destructive" />
+              <Trash2Icon className="h-3 w-3 text-destructive" />
             </Button>
           </div>
         </div>
@@ -703,7 +703,7 @@ function LessonItem({
 }
 
 export function LessonList({ lessons }: LessonListProps) {
-  const modules = useQuery(api.modules.list);
+  const units = useQuery(api.units.list);
   const categories = useQuery(api.categories.list);
   const deleteLesson = useMutation(api.lessons.remove);
   const togglePublish = useMutation(api.lessons.togglePublish);
@@ -718,12 +718,12 @@ export function LessonList({ lessons }: LessonListProps) {
   const { error: editError, showError: showEditError, hideError: hideEditError } = useErrorModal();
   const { confirm: editConfirm, showConfirm: showEditConfirm, hideConfirm: hideEditConfirm } = useConfirmModal();
 
-  const [uploadingLesson, setUploadingLesson] = useState<any | null>(null);
-  const [editingLesson, setEditingLesson] = useState<any | null>(null);
-  
+  const [uploadingLesson, setUploadingLesson] = useState<Doc<"lessons"> | null>(null);
+  const [editingLesson, setEditingLesson] = useState<Doc<"lessons"> | null>(null);
+
   // Edit order mode state
   const [isEditOrderMode, setIsEditOrderMode] = useState(false);
-  const [orderedLessonsByModule, setOrderedLessonsByModule] = useState<Record<string, any[]>>({});
+  const [orderedLessonsByUnit, setOrderedLessonsByUnit] = useState<Record<string, Doc<"lessons">[]>>({});
   const [isSavingOrder, setIsSavingOrder] = useState(false);
 
   // DND sensors
@@ -734,29 +734,29 @@ export function LessonList({ lessons }: LessonListProps) {
     })
   );
 
-  // Group lessons by module and update when lessons or modules change
+  // Group lessons by unit and update when lessons or units change
   useEffect(() => {
-    if (!modules) return;
-    
-    const grouped: Record<string, any[]> = {};
-    
-    // Group lessons by module
-    lessons.forEach(lesson => {
-      if (!grouped[lesson.moduleId]) {
-        grouped[lesson.moduleId] = [];
-      }
-      grouped[lesson.moduleId].push(lesson);
-    });
-    
-    // Sort lessons within each module by order_index
-    Object.keys(grouped).forEach(moduleId => {
-      grouped[moduleId].sort((a, b) => a.order_index - b.order_index);
-    });
-    
-    setOrderedLessonsByModule(grouped);
-  }, [lessons, modules]);
+    if (!units) return;
 
-  const handleDelete = (id: any, title: string) => {
+    const grouped: Record<string, Doc<"lessons">[]> = {};
+
+    // Group lessons by unit
+    lessons.forEach(lesson => {
+      if (!grouped[lesson.unitId]) {
+        grouped[lesson.unitId] = [];
+      }
+      grouped[lesson.unitId].push(lesson);
+    });
+
+    // Sort lessons within each unit by order_index
+    Object.keys(grouped).forEach(unitId => {
+      grouped[unitId].sort((a, b) => a.order_index - b.order_index);
+    });
+
+    setOrderedLessonsByUnit(grouped);
+  }, [lessons, units]);
+
+  const handleDelete = (id: Id<"lessons">, title: string) => {
     showConfirm(
       `Tem certeza que deseja deletar a aula "${title}"?`,
       async () => {
@@ -778,7 +778,7 @@ export function LessonList({ lessons }: LessonListProps) {
   };
 
   const handleTogglePublish = async (
-    id: any,
+    id: Id<"lessons">,
     title: string,
     currentStatus: boolean,
   ) => {
@@ -843,11 +843,11 @@ export function LessonList({ lessons }: LessonListProps) {
     }
   };
 
-  const handleUploadVideo = (lesson: any) => {
+  const handleUploadVideo = (lesson: Doc<"lessons">) => {
     setUploadingLesson(lesson);
   };
 
-  const handleEditLesson = (lesson: any) => {
+  const handleEditLesson = (lesson: Doc<"lessons">) => {
     setEditingLesson(lesson);
   };
 
@@ -860,7 +860,7 @@ export function LessonList({ lessons }: LessonListProps) {
     try {
       await updateLesson({
         id: uploadingLesson._id,
-        moduleId: uploadingLesson.moduleId,
+        unitId: uploadingLesson.unitId,
         title: uploadingLesson.title,
         description: uploadingLesson.description,
         durationSeconds: uploadingLesson.durationSeconds,
@@ -885,18 +885,18 @@ export function LessonList({ lessons }: LessonListProps) {
     }
   };
 
-  const handleDragEnd = (moduleId: string) => (event: DragEndEvent) => {
+  const handleDragEnd = (unitId: string) => (event: DragEndEvent) => {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      setOrderedLessonsByModule((prev) => {
-        const moduleLessons = prev[moduleId] || [];
-        const oldIndex = moduleLessons.findIndex((item) => item._id === active.id);
-        const newIndex = moduleLessons.findIndex((item) => item._id === over.id);
+      setOrderedLessonsByUnit((prev) => {
+        const unitLessons = prev[unitId] || [];
+        const oldIndex = unitLessons.findIndex((item) => item._id === active.id);
+        const newIndex = unitLessons.findIndex((item) => item._id === over.id);
 
         return {
           ...prev,
-          [moduleId]: arrayMove(moduleLessons, oldIndex, newIndex),
+          [unitId]: arrayMove(unitLessons, oldIndex, newIndex),
         };
       });
     }
@@ -906,10 +906,10 @@ export function LessonList({ lessons }: LessonListProps) {
     setIsSavingOrder(true);
     try {
       // Create updates array with new order_index for all lessons
-      const updates: { id: any; order_index: number }[] = [];
-      
-      Object.entries(orderedLessonsByModule).forEach(([moduleId, moduleLessons]) => {
-        moduleLessons.forEach((lesson, index) => {
+      const updates: { id: Id<"lessons">; order_index: number }[] = [];
+
+      Object.entries(orderedLessonsByUnit).forEach(([unitId, unitLessons]) => {
+        unitLessons.forEach((lesson, index) => {
           updates.push({
             id: lesson._id,
             order_index: index,
@@ -937,52 +937,52 @@ export function LessonList({ lessons }: LessonListProps) {
 
   const handleCancelOrder = () => {
     // Rebuild the grouped structure from original lessons
-    const grouped: Record<string, any[]> = {};
-    
+    const grouped: Record<string, Doc<"lessons">[]> = {};
+
     lessons.forEach(lesson => {
-      if (!grouped[lesson.moduleId]) {
-        grouped[lesson.moduleId] = [];
+      if (!grouped[lesson.unitId]) {
+        grouped[lesson.unitId] = [];
       }
-      grouped[lesson.moduleId].push(lesson);
+      grouped[lesson.unitId].push(lesson);
     });
-    
-    Object.keys(grouped).forEach(moduleId => {
-      grouped[moduleId].sort((a, b) => a.order_index - b.order_index);
+
+    Object.keys(grouped).forEach(unitId => {
+      grouped[unitId].sort((a, b) => a.order_index - b.order_index);
     });
-    
-    setOrderedLessonsByModule(grouped);
+
+    setOrderedLessonsByUnit(grouped);
     setIsEditOrderMode(false);
   };
 
-  if (modules === undefined || categories === undefined) {
-    return <div>Carregando módulos e categorias...</div>;
+  if (units === undefined || categories === undefined) {
+    return <div>Carregando unidades e categorias...</div>;
   }
 
-  // Group modules by category, then sort both categories and modules by their order fields
-  const categoriesWithModules = (categories || [])
+  // Group lessons by category, then sort both categories and lessons by their order fields
+  const categoriesWithUnits = (categories || [])
     .sort((a, b) => a.position - b.position) // Categories use 'position'
     .map(category => ({
       category,
-      modules: (modules || [])
-        .filter(module => 
-          module.categoryId === category._id && 
-          orderedLessonsByModule[module._id]?.length > 0
+      units: (units || [])
+        .filter(unit =>
+          unit.categoryId === category._id &&
+          orderedLessonsByUnit[unit._id]?.length > 0
         )
-        .sort((a, b) => a.order_index - b.order_index) // Modules use 'order_index'
+        .sort((a, b) => a.order_index - b.order_index) // Units use 'order_index'
     }))
-    .filter(group => group.modules.length > 0);
+    .filter(group => group.units.length > 0);
 
-  // Modules without a category
-  const uncategorizedModules = (modules || [])
-    .filter(module => 
-      !module.categoryId && 
-      orderedLessonsByModule[module._id]?.length > 0
+  // Units without a category
+  const uncategorizedUnits = (units || [])
+    .filter(unit =>
+      !unit.categoryId &&
+      orderedLessonsByUnit[unit._id]?.length > 0
     )
     .sort((a, b) => a.order_index - b.order_index);
 
-  const getModuleName = (moduleId: string) => {
-    const module = modules?.find(m => m._id === moduleId);
-    return module?.title || "Módulo desconhecido";
+  const getUnitName = (unitId: string) => {
+    const unit = units?.find(u => u._id === unitId);
+    return unit?.title || "Unidade desconhecida";
   };
 
   return (
@@ -991,7 +991,7 @@ export function LessonList({ lessons }: LessonListProps) {
         <CardHeader className="pb-0">
           <div className="flex items-center justify-between">
             <div>
-          <CardTitle>Aulas Cadastradas</CardTitle>
+              <CardTitle>Aulas Cadastradas</CardTitle>
             </div>
             <div className="flex gap-2">
               {!isEditOrderMode ? (
@@ -1033,7 +1033,7 @@ export function LessonList({ lessons }: LessonListProps) {
               </p>
             ) : (
               <>
-                {categoriesWithModules.map((group) => (
+                {categoriesWithUnits.map((group) => (
                   <div key={group.category._id} className="space-y-3">
                     {/* Category Header */}
                     <div className="flex items-center gap-2 pt-2">
@@ -1043,37 +1043,37 @@ export function LessonList({ lessons }: LessonListProps) {
                       <div className="flex-1 h-[2px] bg-border" />
                     </div>
 
-                    {/* Modules within this category */}
-                    {group.modules.map((module) => {
-                      const moduleLessons = orderedLessonsByModule[module._id] || [];
-                      
+                    {/* Units within this category */}
+                    {group.units.map((unit) => {
+                      const unitLessons = orderedLessonsByUnit[unit._id] || [];
+
                       return (
-                        <div key={module._id} className="space-y-1.5 pl-2">
-                          {/* Module Header */}
+                        <div key={unit._id} className="space-y-1.5 pl-2">
+                          {/* Unit Header */}
                           <div className="flex items-center gap-2">
                             <h3 className="text-xs font-semibold text-primary uppercase tracking-wide">
-                              {module.title}
+                              {unit.title}
                             </h3>
                             <div className="flex-1 h-px bg-border" />
                           </div>
-                          
-                          {/* Lessons for this module */}
+
+                          {/* Lessons for this unit */}
                           {isEditOrderMode ? (
                             <DndContext
                               sensors={sensors}
                               collisionDetection={closestCenter}
-                              onDragEnd={handleDragEnd(module._id)}
+                              onDragEnd={handleDragEnd(unit._id)}
                             >
                               <SortableContext
-                                items={moduleLessons.map(lesson => lesson._id)}
+                                items={unitLessons.map(lesson => lesson._id)}
                                 strategy={verticalListSortingStrategy}
                               >
                                 <div className="space-y-1.5">
-                                  {moduleLessons.map((lesson) => (
+                                  {unitLessons.map((lesson) => (
                                     <SortableLessonItem
                                       key={lesson._id}
                                       lesson={lesson}
-                                      modules={modules || []}
+                                      units={units || []}
                                       isEditOrderMode={isEditOrderMode}
                                       onEditLesson={handleEditLesson}
                                       onDelete={handleDelete}
@@ -1088,11 +1088,11 @@ export function LessonList({ lessons }: LessonListProps) {
                             </DndContext>
                           ) : (
                             <div className="space-y-1.5">
-                              {moduleLessons.map((lesson) => (
+                              {unitLessons.map((lesson) => (
                                 <LessonItem
                                   key={lesson._id}
                                   lesson={lesson}
-                                  modules={modules || []}
+                                  units={units || []}
                                   isEditOrderMode={isEditOrderMode}
                                   onEditLesson={handleEditLesson}
                                   onDelete={handleDelete}
@@ -1110,8 +1110,8 @@ export function LessonList({ lessons }: LessonListProps) {
                   </div>
                 ))}
 
-                {/* Uncategorized Modules Section */}
-                {uncategorizedModules.length > 0 && (
+                {/* Uncategorized Units Section */}
+                {uncategorizedUnits.length > 0 && (
                   <div className="space-y-3">
                     {/* Uncategorized Header */}
                     <div className="flex items-center gap-2 pt-2">
@@ -1121,37 +1121,37 @@ export function LessonList({ lessons }: LessonListProps) {
                       <div className="flex-1 h-[2px] bg-border" />
                     </div>
 
-                    {/* Uncategorized Modules */}
-                    {uncategorizedModules.map((module) => {
-                      const moduleLessons = orderedLessonsByModule[module._id] || [];
-                      
+                    {/* Uncategorized Units */}
+                    {uncategorizedUnits.map((unit) => {
+                      const unitLessons = orderedLessonsByUnit[unit._id] || [];
+
                       return (
-                        <div key={module._id} className="space-y-1.5 pl-2">
-                          {/* Module Header */}
+                        <div key={unit._id} className="space-y-1.5 pl-2">
+                          {/* Unit Header */}
                           <div className="flex items-center gap-2">
                             <h3 className="text-xs font-semibold text-primary uppercase tracking-wide">
-                              {module.title}
+                              {unit.title}
                             </h3>
                             <div className="flex-1 h-px bg-border" />
                           </div>
-                          
-                          {/* Lessons for this module */}
+
+                          {/* Lessons for this unit */}
                           {isEditOrderMode ? (
                             <DndContext
                               sensors={sensors}
                               collisionDetection={closestCenter}
-                              onDragEnd={handleDragEnd(module._id)}
+                              onDragEnd={handleDragEnd(unit._id)}
                             >
                               <SortableContext
-                                items={moduleLessons.map(lesson => lesson._id)}
+                                items={unitLessons.map(lesson => lesson._id)}
                                 strategy={verticalListSortingStrategy}
                               >
                                 <div className="space-y-1.5">
-                                  {moduleLessons.map((lesson) => (
+                                  {unitLessons.map((lesson) => (
                                     <SortableLessonItem
                                       key={lesson._id}
                                       lesson={lesson}
-                                      modules={modules || []}
+                                      units={units || []}
                                       isEditOrderMode={isEditOrderMode}
                                       onEditLesson={handleEditLesson}
                                       onDelete={handleDelete}
@@ -1166,11 +1166,11 @@ export function LessonList({ lessons }: LessonListProps) {
                             </DndContext>
                           ) : (
                             <div className="space-y-1.5">
-                              {moduleLessons.map((lesson) => (
+                              {unitLessons.map((lesson) => (
                                 <LessonItem
                                   key={lesson._id}
                                   lesson={lesson}
-                                  modules={modules || []}
+                                  units={units || []}
                                   isEditOrderMode={isEditOrderMode}
                                   onEditLesson={handleEditLesson}
                                   onDelete={handleDelete}
@@ -1221,13 +1221,13 @@ export function LessonList({ lessons }: LessonListProps) {
           <DialogHeader>
             <DialogTitle>Editar Aula</DialogTitle>
             <DialogDescription>
-              Edite as informações da aula "{editingLesson?.title}"
+              Edite as informações da aula &quot;{editingLesson?.title}&quot;
             </DialogDescription>
           </DialogHeader>
           {editingLesson && (
             <EditLessonForm
               lesson={editingLesson}
-              modules={modules || []}
+              units={units || []}
               onSuccess={() => {
                 setEditingLesson(null);
                 toast({

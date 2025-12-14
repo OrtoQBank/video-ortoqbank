@@ -52,7 +52,7 @@ export function SearchBar({
 
   // Mostrar sugestões quando há resultados
   useEffect(() => {
-    if (suggestions && (suggestions.modules.length > 0 || suggestions.lessons.length > 0)) {
+    if (suggestions && (suggestions.units.length > 0 || suggestions.lessons.length > 0)) {
       setShowSuggestions(true);
     } else {
       setShowSuggestions(false);
@@ -67,10 +67,10 @@ export function SearchBar({
     }
   };
 
-  const handleModuleClick = (categoryId: string) => {
+  const handleUnitClick = (categoryId: string) => {
     setShowSuggestions(false);
     setQuery("");
-    router.push(`/modules/${categoryId}`);
+    router.push(`/units/${categoryId}`);
   };
 
   const handleLessonClick = (lessonId: string) => {
@@ -83,7 +83,7 @@ export function SearchBar({
     setQuery(e.target.value);
   };
 
-  const hasSuggestions = suggestions && (suggestions.modules.length > 0 || suggestions.lessons.length > 0);
+  const hasSuggestions = suggestions && (suggestions.units.length > 0 || suggestions.lessons.length > 0);
 
   return (
     <form onSubmit={handleSubmit} className="w-full relative" ref={wrapperRef}>
@@ -108,30 +108,30 @@ export function SearchBar({
       {/* Dropdown de sugestões */}
       {showSuggestions && hasSuggestions && (
         <div className="absolute top-full mt-2 w-full bg-white rounded-lg shadow-lg border border-gray-200 max-h-96 overflow-y-auto z-50">
-          {suggestions.modules.length > 0 && (
+          {suggestions.units.length > 0 && (
             <div className="p-2">
               <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Módulos
               </div>
-              {suggestions.modules.map((module) => (
+              {suggestions.units.map((unit) => (
                 <button
-                  key={module._id}
+                  key={unit._id}
                   type="button"
-                  onClick={() => handleModuleClick(module.categoryId)}
+                  onClick={() => handleUnitClick(unit.categoryId)}
                   className="w-full text-left px-3 py-2.5 hover:bg-blue-50 rounded-md transition-colors group"
                 >
                   <div className="flex items-start gap-3">
                     <BookOpenIcon className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-sm text-gray-900 group-hover:text-blue-700 truncate">
-                        {module.title}
+                        {unit.title}
                       </div>
                       <div className="text-xs text-gray-500 truncate mt-0.5">
-                        {module.categoryTitle}
+                        {unit.categoryTitle}
                       </div>
-                      {module.description && (
+                      {unit.description && (
                         <div className="text-xs text-gray-400 line-clamp-1 mt-1">
-                          {module.description}
+                          {unit.description}
                         </div>
                       )}
                     </div>
@@ -142,7 +142,7 @@ export function SearchBar({
           )}
 
           {suggestions.lessons.length > 0 && (
-            <div className={cn("p-2", suggestions.modules.length > 0 && "border-t")}>
+            <div className={cn("p-2", suggestions.units.length > 0 && "border-t")}>
               <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Aulas
               </div>
@@ -160,7 +160,7 @@ export function SearchBar({
                         {lesson.title}
                       </div>
                       <div className="text-xs text-gray-500 truncate mt-0.5">
-                        {lesson.moduleTitle} • {lesson.categoryTitle}
+                        {lesson.unitTitle} • {lesson.categoryTitle}
                       </div>
                       {lesson.description && (
                         <div className="text-xs text-gray-400 line-clamp-1 mt-1">

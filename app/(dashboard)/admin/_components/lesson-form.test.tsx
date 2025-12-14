@@ -3,9 +3,9 @@ import { LessonForm } from "./lesson-form";
 
 describe("LessonForm", () => {
   it("should render", () => {
-    render(<LessonForm modules={[]} />);
+    render(<LessonForm units={[]} />);
     expect(screen.getByText("Criar Nova Aula")).toBeInTheDocument();
-    expect(screen.getByText("Módulo")).toBeInTheDocument();
+    expect(screen.getByText("Unidade")).toBeInTheDocument();
     expect(screen.getByText("Título da Aula")).toBeInTheDocument();
     expect(screen.getByText("Descrição")).toBeInTheDocument();
     expect(screen.getByText("Número da Aula")).toBeInTheDocument();

@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { ModuleCard } from "./module-card";
+import { ModuleCard } from "./unit-card";
 
 describe("ModuleCard", () => {
   it("should render the module card", () => {

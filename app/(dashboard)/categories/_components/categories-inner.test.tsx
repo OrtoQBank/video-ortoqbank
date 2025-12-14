@@ -65,7 +65,8 @@ describe("CategoriesInner", () => {
     render(
       <CategoriesInner
         preloadedCategories={mockPreloadedCategories}
-        initialProgress={34}
+        preloadedContentStats={null}
+        preloadedCompletedCount={null}
       />
     );
 
@@ -80,7 +81,8 @@ describe("CategoriesInner", () => {
     render(
       <CategoriesInner
         preloadedCategories={mockPreloadedCategories}
-        initialProgress={34}
+        preloadedContentStats={null}
+        preloadedCompletedCount={null}
       />
     );
 
@@ -93,7 +95,8 @@ describe("CategoriesInner", () => {
     render(
       <CategoriesInner
         preloadedCategories={mockPreloadedCategories}
-        initialProgress={34}
+        preloadedContentStats={null}
+        preloadedCompletedCount={null}
       />
     );
 
@@ -106,7 +109,8 @@ describe("CategoriesInner", () => {
     render(
       <CategoriesInner
         preloadedCategories={mockPreloadedCategories}
-        initialProgress={34}
+        preloadedContentStats={null}
+        preloadedCompletedCount={null}
       />
     );
 
@@ -126,7 +130,8 @@ describe("CategoriesInner", () => {
     render(
       <CategoriesInner
         preloadedCategories={mockPreloadedCategories}
-        initialProgress={34}
+        preloadedContentStats={null}
+        preloadedCompletedCount={null}
       />
     );
 
@@ -141,19 +146,20 @@ describe("CategoriesInner", () => {
     });
   });
 
-  it("should navigate to module page when category is clicked", async () => {
+  it("should navigate to unit page when category is clicked", async () => {
     const user = userEvent.setup();
     render(
       <CategoriesInner
         preloadedCategories={mockPreloadedCategories}
-        initialProgress={34}
+        preloadedContentStats={null}
+        preloadedCompletedCount={null}
       />
     );
 
     const categoryCard = screen.getByText("Category 1").closest("div[data-slot='card']");
     if (categoryCard) {
       await user.click(categoryCard);
-      expect(mockPush).toHaveBeenCalledWith("/modules/cat-1");
+      expect(mockPush).toHaveBeenCalledWith("/units/cat-1");
     }
   });
 
@@ -162,12 +168,13 @@ describe("CategoriesInner", () => {
     render(
       <CategoriesInner
         preloadedCategories={mockPreloadedCategories}
-        initialProgress={34}
+        preloadedContentStats={null}
+        preloadedCompletedCount={null}
       />
     );
 
     const searchInput = screen.getByPlaceholderText("Pesquise por temas, subtemas e grupos...") as HTMLInputElement;
-    
+
     // Search for something
     await user.type(searchInput, "Category 1");
     await user.keyboard("{Enter}");
@@ -192,7 +199,8 @@ describe("CategoriesInner", () => {
     render(
       <CategoriesInner
         preloadedCategories={mockPreloadedCategories}
-        initialProgress={34}
+        preloadedContentStats={null}
+        preloadedCompletedCount={null}
       />
     );
 
@@ -209,7 +217,8 @@ describe("CategoriesInner", () => {
     render(
       <CategoriesInner
         preloadedCategories={mockPreloadedCategories}
-        initialProgress={34}
+        preloadedContentStats={null}
+        preloadedCompletedCount={null}
       />
     );
 

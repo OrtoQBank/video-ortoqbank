@@ -17,7 +17,7 @@ interface RecentViewsProps {
 
 export default function RecentViews({ preloadedRecentViews }: RecentViewsProps) {
   const router = useRouter();
-  
+
   // Use preloaded query (carregada no servidor)
   const recentViews = preloadedRecentViews
     ? usePreloadedQuery(preloadedRecentViews)
@@ -27,8 +27,8 @@ export default function RecentViews({ preloadedRecentViews }: RecentViewsProps) 
   if (preloadedRecentViews === null) {
     return null;
   }
-    return (
-        <>
+  return (
+    <>
       {recentViews.length > 0 && (
         <Card>
           <CardHeader>
@@ -41,11 +41,11 @@ export default function RecentViews({ preloadedRecentViews }: RecentViewsProps) 
                 const isCompleted = view.isCompleted;
                 const textColor = isCompleted ? "text-green-600" : "text-blue-600";
                 const iconColor = isCompleted ? "text-green-500" : "text-blue-500";
-                
+
                 return (
                   <div
                     key={view._id}
-                    onClick={() => router.push(`/modules/${view.category._id}`)}
+                    onClick={() => router.push(`/units/${view.category._id}`)}
                     className="flex items-center gap-4 p-3 rounded-lg border hover:bg-accent transition-colors cursor-pointer"
                   >
                     {view.lesson.thumbnailUrl ? (
@@ -94,7 +94,7 @@ export default function RecentViews({ preloadedRecentViews }: RecentViewsProps) 
           </CardContent>
         </Card>
       )}
-      
+
       {recentViews.length === 0 && (
         <Card>
           <CardHeader>

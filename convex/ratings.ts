@@ -9,7 +9,7 @@ export const submitRating = mutation({
   args: {
     userId: v.string(), // clerkUserId
     lessonId: v.id("lessons"),
-    moduleId: v.id("modules"),
+    unitId: v.id("units"),
     rating: v.number(), // 1-5
   },
   returns: v.id("lessonRatings"),
@@ -38,7 +38,7 @@ export const submitRating = mutation({
       const ratingId = await ctx.db.insert("lessonRatings", {
         userId: args.userId,
         lessonId: args.lessonId,
-        moduleId: args.moduleId,
+        unitId: args.unitId,
         rating: args.rating,
         createdAt: Date.now(),
       });
@@ -61,7 +61,7 @@ export const getUserRating = query({
       _creationTime: v.number(),
       userId: v.string(),
       lessonId: v.id("lessons"),
-      moduleId: v.id("modules"),
+      unitId: v.id("units"),
       rating: v.number(),
       createdAt: v.number(),
     }),

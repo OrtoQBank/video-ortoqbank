@@ -9,7 +9,7 @@ export const addView = mutation({
   args: {
     userId: v.string(), // clerkUserId
     lessonId: v.id("lessons"),
-    moduleId: v.id("modules"),
+    unitId: v.id("units"),
     action: v.union(v.literal("started"), v.literal("resumed"), v.literal("completed")),
   },
   returns: v.id("recentViews"),
@@ -20,10 +20,10 @@ export const addView = mutation({
       throw new Error("Aula não encontrada");
     }
 
-    // Check if module exists
-    const module = await ctx.db.get(args.moduleId);
-    if (!module) {
-      throw new Error("Módulo não encontrado");
+    // Check if unit exists
+    const unit = await ctx.db.get(args.unitId);
+    if (!unit) {
+      throw new Error("Unidade não encontrada");
     }
 
     const now = Date.now();
@@ -32,7 +32,7 @@ export const addView = mutation({
     const viewId: Id<"recentViews"> = await ctx.db.insert("recentViews", {
       userId: args.userId,
       lessonId: args.lessonId,
-      moduleId: args.moduleId,
+      unitId: args.unitId,
       viewedAt: now,
       action: args.action,
     });
@@ -55,7 +55,7 @@ export const getRecentViews = query({
       _creationTime: v.number(),
       userId: v.string(),
       lessonId: v.id("lessons"),
-      moduleId: v.id("modules"),
+      unitId: v.id("units"),
       viewedAt: v.number(),
       action: v.union(v.literal("started"), v.literal("resumed"), v.literal("completed")),
     })
@@ -74,7 +74,7 @@ export const getRecentViews = query({
 });
 
 /**
- * Get recent views with full lesson and module details
+ * Get recent views with full lesson and unit details
  */
 export const getRecentViewsWithDetails = query({
   args: {
@@ -91,11 +91,10 @@ export const getRecentViewsWithDetails = query({
       lesson: v.object({
         _id: v.id("lessons"),
         _creationTime: v.number(),
-        moduleId: v.id("modules"),
+        unitId: v.id("units"),
         title: v.string(),
         slug: v.string(),
         description: v.string(),
-        bunnyStoragePath: v.optional(v.string()),
         publicUrl: v.optional(v.string()),
         thumbnailUrl: v.optional(v.string()),
         durationSeconds: v.number(),
@@ -105,8 +104,8 @@ export const getRecentViewsWithDetails = query({
         tags: v.optional(v.array(v.string())),
         videoId: v.optional(v.string()),
       }),
-      module: v.object({
-        _id: v.id("modules"),
+      unit: v.object({
+        _id: v.id("units"),
         _creationTime: v.number(),
         categoryId: v.id("categories"),
         title: v.string(),
@@ -160,12 +159,12 @@ export const getRecentViewsWithDetails = query({
           return null;
         }
 
-        const module = await ctx.db.get(view.moduleId);
-        if (!module) {
+        const unit = await ctx.db.get(view.unitId);
+        if (!unit) {
           return null;
         }
 
-        const category = await ctx.db.get(module.categoryId);
+        const category = await ctx.db.get(unit.categoryId);
         if (!category) {
           return null;
         }
@@ -187,13 +186,13 @@ export const getRecentViewsWithDetails = query({
           action: view.action,
           isCompleted,
           lesson,
-          module,
+          unit,
           category,
         };
       })
     );
 
-    // Filter out null values (deleted lessons/modules/categories)
+    // Filter out null values (deleted lessons/units/categories)
     return viewsWithDetails.filter((v) => v !== null) as Array<{
       _id: Id<"recentViews">;
       _creationTime: number;
@@ -203,11 +202,10 @@ export const getRecentViewsWithDetails = query({
       lesson: {
         _id: Id<"lessons">;
         _creationTime: number;
-        moduleId: Id<"modules">;
+        unitId: Id<"units">;
         title: string;
         slug: string;
         description: string;
-        bunnyStoragePath?: string;
         publicUrl?: string;
         thumbnailUrl?: string;
         durationSeconds: number;
@@ -217,8 +215,8 @@ export const getRecentViewsWithDetails = query({
         tags?: string[];
         videoId?: string;
       };
-      module: {
-        _id: Id<"modules">;
+      unit: {
+        _id: Id<"units">;
         _creationTime: number;
         categoryId: Id<"categories">;
         title: string;
@@ -284,7 +282,7 @@ export const getLastViewForLesson = query({
       _creationTime: v.number(),
       userId: v.string(),
       lessonId: v.id("lessons"),
-      moduleId: v.id("modules"),
+      unitId: v.id("units"),
       viewedAt: v.number(),
       action: v.union(v.literal("started"), v.literal("resumed"), v.literal("completed")),
     }),

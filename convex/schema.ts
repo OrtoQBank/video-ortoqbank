@@ -44,8 +44,8 @@ export default defineSchema({
     .index("by_position", ["position"])
     .index("by_isPublished", ["isPublished"]),
 
-  // Modules table (formerly courses)
-  modules: defineTable({
+  // Units table (formerly courses)
+  units: defineTable({
     categoryId: v.id("categories"),
     title: v.string(),
     slug: v.string(),
@@ -63,11 +63,11 @@ export default defineSchema({
 
   // Lessons table (video lessons)
   lessons: defineTable({
-    moduleId: v.id("modules"),
+    unitId: v.id("units"),
+    categoryId: v.id("categories"), // Direct reference to category for efficient queries
     title: v.string(),
     slug: v.string(),
     description: v.string(),
-    bunnyStoragePath: v.optional(v.string()),
     publicUrl: v.optional(v.string()),
     thumbnailUrl: v.optional(v.string()),
     durationSeconds: v.number(),
@@ -77,12 +77,14 @@ export default defineSchema({
     tags: v.optional(v.array(v.string())),
     videoId: v.optional(v.string()), // Bunny video ID
   })
-    .index("by_moduleId", ["moduleId"])
+    .index("by_unitId", ["unitId"])
     .index("by_slug", ["slug"])
-    .index("by_moduleId_and_order", ["moduleId", "order_index"])
+    .index("by_unitId_and_order", ["unitId", "order_index"])
     .index("by_isPublished", ["isPublished"])
     .index("by_videoId", ["videoId"])
-    .index("by_moduleId_isPublished_order", ["moduleId", "isPublished", "order_index"]),
+    .index("by_unitId_isPublished_order", ["unitId", "isPublished", "order_index"])
+    .index("by_categoryId", ["categoryId"])
+    .index("by_categoryId_and_order", ["categoryId", "order_index"]),
 
   // Videos table (Bunny Stream videos)
   videos: defineTable({
@@ -101,7 +103,13 @@ export default defineSchema({
     ),
     createdBy: v.string(), // userId do Clerk
     isPrivate: v.boolean(),
-    metadata: v.optional(v.any()),
+    metadata: v.optional(v.object({
+      duration: v.optional(v.number()),
+      width: v.optional(v.number()),
+      height: v.optional(v.number()),
+      framerate: v.optional(v.number()),
+      bitrate: v.optional(v.number()),
+    })),
   })
     .index("by_videoId", ["videoId"])
     .index("by_createdBy", ["createdBy"])
@@ -111,7 +119,7 @@ export default defineSchema({
   userProgress: defineTable({
     userId: v.string(), // clerkUserId
     lessonId: v.id("lessons"),
-    moduleId: v.id("modules"),
+    unitId: v.id("units"),
     completed: v.boolean(),
     completedAt: v.optional(v.number()), // timestamp when completed
     currentTimeSec: v.optional(v.number()), // current playback position in seconds
@@ -120,22 +128,22 @@ export default defineSchema({
   })
     .index("by_userId", ["userId"])
     .index("by_userId_and_lessonId", ["userId", "lessonId"])
-    .index("by_userId_and_moduleId", ["userId", "moduleId"])
+    .index("by_userId_and_unitId", ["userId", "unitId"])
     .index("by_lessonId", ["lessonId"])
     .index("by_userId_and_completed", ["userId", "completed"]),
 
-  // Aggregated progress per module (for quick module progress queries)
-  moduleProgress: defineTable({
+  // Aggregated progress per unit (for quick unit progress queries)
+  unitProgress: defineTable({
     userId: v.string(), // clerkUserId
-    moduleId: v.id("modules"),
+    unitId: v.id("units"),
     completedLessonsCount: v.number(),
-    totalLessonVideos: v.number(), // cached from module
+    totalLessonVideos: v.number(), // cached from unit
     progressPercent: v.number(), // 0-100
     updatedAt: v.number(), // timestamp of last update
   })
     .index("by_userId", ["userId"])
-    .index("by_userId_and_moduleId", ["userId", "moduleId"])
-    .index("by_moduleId", ["moduleId"])
+    .index("by_userId_and_unitId", ["userId", "unitId"])
+    .index("by_unitId", ["unitId"])
     .index("by_userId_and_progressPercent", ["userId", "progressPercent"]),
 
   // Global user progress (for dashboard/home quick view)
@@ -161,7 +169,7 @@ export default defineSchema({
   recentViews: defineTable({
     userId: v.string(), // clerkUserId
     lessonId: v.id("lessons"),
-    moduleId: v.id("modules"),
+    unitId: v.id("units"),
     viewedAt: v.number(), // timestamp
     action: v.union(v.literal("started"), v.literal("resumed"), v.literal("completed")),
   })
@@ -173,7 +181,7 @@ export default defineSchema({
   // Content statistics (global system stats)
   contentStats: defineTable({
     totalLessons: v.number(), // total published lessons
-    totalModules: v.number(), // total modules
+    totalUnits: v.number(), // total units
     totalCategories: v.number(), // total categories
     updatedAt: v.number(), // timestamp of last update
   }),
@@ -189,7 +197,7 @@ export default defineSchema({
   lessonFeedback: defineTable({
     userId: v.string(), // clerkUserId
     lessonId: v.id("lessons"),
-    moduleId: v.id("modules"),
+    unitId: v.id("units"),
     feedback: v.string(), // user's feedback or question
     createdAt: v.number(), // timestamp
   })
@@ -201,7 +209,7 @@ export default defineSchema({
   lessonRatings: defineTable({
     userId: v.string(), // clerkUserId
     lessonId: v.id("lessons"),
-    moduleId: v.id("modules"),
+    unitId: v.id("units"),
     rating: v.number(), // 1-5 stars
     createdAt: v.number(), // timestamp
   })

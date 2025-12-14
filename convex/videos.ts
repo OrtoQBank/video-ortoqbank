@@ -31,7 +31,13 @@ export const getByVideoId = query({
       ),
       createdBy: v.string(),
       isPrivate: v.boolean(),
-      metadata: v.optional(v.any()),
+      metadata: v.optional(v.object({
+        duration: v.optional(v.number()),
+        width: v.optional(v.number()),
+        height: v.optional(v.number()),
+        framerate: v.optional(v.number()),
+        bitrate: v.optional(v.number()),
+      })),
     }),
     v.null()
   ),
@@ -69,7 +75,13 @@ export const getById = query({
       ),
       createdBy: v.string(),
       isPrivate: v.boolean(),
-      metadata: v.optional(v.any()),
+      metadata: v.optional(v.object({
+        duration: v.optional(v.number()),
+        width: v.optional(v.number()),
+        height: v.optional(v.number()),
+        framerate: v.optional(v.number()),
+        bitrate: v.optional(v.number()),
+      })),
     }),
     v.null()
   ),
@@ -102,7 +114,13 @@ export const listByUser = query({
       ),
       createdBy: v.string(),
       isPrivate: v.boolean(),
-      metadata: v.optional(v.any()),
+      metadata: v.optional(v.object({
+        duration: v.optional(v.number()),
+        width: v.optional(v.number()),
+        height: v.optional(v.number()),
+        framerate: v.optional(v.number()),
+        bitrate: v.optional(v.number()),
+      })),
     })
   ),
   handler: async (ctx, args) => {
@@ -141,7 +159,13 @@ export const create = mutation({
     thumbnailUrl: v.optional(v.string()),
     hlsUrl: v.optional(v.string()),
     mp4Urls: v.optional(v.array(v.object({ quality: v.string(), url: v.string() }))),
-    metadata: v.optional(v.any()),
+    metadata: v.optional(v.object({
+      duration: v.optional(v.number()),
+      width: v.optional(v.number()),
+      height: v.optional(v.number()),
+      framerate: v.optional(v.number()),
+      bitrate: v.optional(v.number()),
+    })),
   },
   returns: v.id("videos"),
   handler: async (ctx, args) => {
@@ -192,7 +216,13 @@ export const update = mutation({
         v.literal("failed")
       )
     ),
-    metadata: v.optional(v.any()),
+    metadata: v.optional(v.object({
+      duration: v.optional(v.number()),
+      width: v.optional(v.number()),
+      height: v.optional(v.number()),
+      framerate: v.optional(v.number()),
+      bitrate: v.optional(v.number()),
+    })),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -205,6 +235,14 @@ export const update = mutation({
       throw new Error("Vídeo não encontrado");
     }
 
+    type VideoMetadata = {
+      duration?: number;
+      width?: number;
+      height?: number;
+      framerate?: number;
+      bitrate?: number;
+    };
+
     const updates: Partial<{
       title: string;
       description: string;
@@ -212,7 +250,7 @@ export const update = mutation({
       hlsUrl: string;
       mp4Urls: Array<{ quality: string; url: string }>;
       status: "uploading" | "processing" | "ready" | "failed";
-      metadata: any;
+      metadata: VideoMetadata;
     }> = {};
 
     if (args.title !== undefined) updates.title = args.title;
@@ -305,7 +343,13 @@ export const listAll = query({
       ),
       createdBy: v.string(),
       isPrivate: v.boolean(),
-      metadata: v.optional(v.any()),
+      metadata: v.optional(v.object({
+        duration: v.optional(v.number()),
+        width: v.optional(v.number()),
+        height: v.optional(v.number()),
+        framerate: v.optional(v.number()),
+        bitrate: v.optional(v.number()),
+      })),
     })
   ),
   handler: async (ctx) => {
@@ -337,7 +381,13 @@ export const updateFromWebhook = internalMutation({
         v.literal("failed")
       )
     ),
-    metadata: v.optional(v.any()),
+    metadata: v.optional(v.object({
+      duration: v.optional(v.number()),
+      width: v.optional(v.number()),
+      height: v.optional(v.number()),
+      framerate: v.optional(v.number()),
+      bitrate: v.optional(v.number()),
+    })),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -351,6 +401,14 @@ export const updateFromWebhook = internalMutation({
       return null;
     }
 
+    type VideoMetadata = {
+      duration?: number;
+      width?: number;
+      height?: number;
+      framerate?: number;
+      bitrate?: number;
+    };
+
     const updates: Partial<{
       title: string;
       description: string;
@@ -358,7 +416,7 @@ export const updateFromWebhook = internalMutation({
       hlsUrl: string;
       mp4Urls: Array<{ quality: string; url: string }>;
       status: "uploading" | "processing" | "ready" | "failed";
-      metadata: any;
+      metadata: VideoMetadata;
     }> = {};
 
     if (args.title !== undefined) updates.title = args.title;

@@ -297,30 +297,30 @@ export const update = mutation({
 export const getCascadeDeleteInfo = query({
   args: { id: v.id("categories") },
   returns: v.object({
-    modulesCount: v.number(),
+    unitsCount: v.number(),
     lessonsCount: v.number(),
   }),
   handler: async (ctx, args) => {
-    // Get all modules in this category
-    const modules = await ctx.db
-      .query("modules")
+    // Get all units in this category
+    const units = await ctx.db  
+      .query("units")
       .withIndex("by_categoryId", (q) => q.eq("categoryId", args.id))
       .collect();
 
-    const modulesCount = modules.length;
+    const unitsCount = units.length;
     let lessonsCount = 0;
 
-    // Count lessons in all modules
-    for (const module of modules) {
+    // Count lessons in all units
+    for (const unit of units) {
       const lessons = await ctx.db
         .query("lessons")
-        .withIndex("by_moduleId", (q) => q.eq("moduleId", module._id))
+        .withIndex("by_unitId", (q) => q.eq("unitId", unit._id))
         .collect();
       lessonsCount += lessons.length;
     }
 
     return {
-      modulesCount,
+      unitsCount,
       lessonsCount,
     };
   },
@@ -333,19 +333,19 @@ export const remove = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    // Get all modules in this category
-    const modules = await ctx.db
-      .query("modules")
+    // Get all units in this category
+    const units = await ctx.db
+      .query("units") 
       .withIndex("by_categoryId", (q) => q.eq("categoryId", args.id))
       .collect();
 
     let totalPublishedLessons = 0;
 
-    // Delete all lessons in all modules
-    for (const module of modules) {
+    // Delete all lessons in all units
+    for (const unit of units) {
       const lessons = await ctx.db
         .query("lessons")
-        .withIndex("by_moduleId", (q) => q.eq("moduleId", module._id))
+        .withIndex("by_unitId", (q) => q.eq("unitId", unit._id))
         .collect();
 
       for (const lesson of lessons) {
@@ -355,8 +355,8 @@ export const remove = mutation({
         await ctx.db.delete(lesson._id);
       }
 
-      // Delete the module
-      await ctx.db.delete(module._id);
+      // Delete the unit
+      await ctx.db.delete(unit._id);
     }
 
     // Delete the category
@@ -364,8 +364,8 @@ export const remove = mutation({
 
     // Update contentStats
     await ctx.scheduler.runAfter(0, internal.contentStats.decrementCategories, { amount: 1 });
-    if (modules.length > 0) {
-      await ctx.scheduler.runAfter(0, internal.contentStats.decrementModules, { amount: modules.length });
+    if (units.length > 0) {
+      await ctx.scheduler.runAfter(0, internal.contentStats.decrementUnits, { amount: units.length });
     }
     if (totalPublishedLessons > 0) {
       await ctx.scheduler.runAfter(0, internal.contentStats.decrementLessons, { amount: totalPublishedLessons });
@@ -418,25 +418,26 @@ export const togglePublish = mutation({
       isPublished: newPublishStatus,
     });
 
-    // Get all modules in this category
-    const modules = await ctx.db
-      .query("modules")
+    // Get all units in this category
+      
+    const units = await ctx.db
+      .query("units")
       .withIndex("by_categoryId", (q) => q.eq("categoryId", args.id))
       .collect();
 
     let publishedLessonsChange = 0;
 
-    // Update all modules and their lessons
-    for (const module of modules) {
-      // Update module
-      await ctx.db.patch(module._id, {
+    // Update all units and their lessons
+    for (const unit of units) {
+      // Update unit
+      await ctx.db.patch(unit._id, {
         isPublished: newPublishStatus,
       });
 
-      // Get and update all lessons in this module
+      // Get and update all lessons in this unit
       const lessons = await ctx.db
         .query("lessons")
-        .withIndex("by_moduleId", (q) => q.eq("moduleId", module._id))
+        .withIndex("by_unitId", (q) => q.eq("unitId", unit._id))
         .collect();
 
       for (const lesson of lessons) {

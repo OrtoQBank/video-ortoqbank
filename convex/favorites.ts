@@ -165,11 +165,10 @@ export const getUserFavoriteLessons = query({
       lesson: v.object({
         _id: v.id("lessons"),
         _creationTime: v.number(),
-        moduleId: v.id("modules"),
+        unitId: v.id("units"),
         title: v.string(),
         slug: v.string(),
         description: v.string(),
-        bunnyStoragePath: v.optional(v.string()),
         publicUrl: v.optional(v.string()),
         thumbnailUrl: v.optional(v.string()),
         durationSeconds: v.number(),
@@ -179,8 +178,8 @@ export const getUserFavoriteLessons = query({
         tags: v.optional(v.array(v.string())),
         videoId: v.optional(v.string()),
       }),
-      module: v.object({
-        _id: v.id("modules"),
+      unit: v.object({
+        _id: v.id("units"),
         _creationTime: v.number(),
         categoryId: v.id("categories"),
         title: v.string(),
@@ -216,12 +215,12 @@ export const getUserFavoriteLessons = query({
           return null;
         }
 
-        const module = await ctx.db.get(lesson.moduleId);
-        if (!module) {
+        const unit = await ctx.db.get(lesson.unitId);
+        if (!unit) {
           return null;
         }
 
-        const category = await ctx.db.get(module.categoryId);
+        const category = await ctx.db.get(unit.categoryId);
         if (!category) {
           return null;
         }
@@ -230,7 +229,7 @@ export const getUserFavoriteLessons = query({
           _id: favorite._id,
           _creationTime: favorite._creationTime,
           lesson,
-          module,
+          unit,
           category,
         };
       })
@@ -243,11 +242,10 @@ export const getUserFavoriteLessons = query({
       lesson: {
         _id: Id<"lessons">;
         _creationTime: number;
-        moduleId: Id<"modules">;
+        unitId: Id<"units">;
         title: string;
         slug: string;
         description: string;
-        bunnyStoragePath?: string;
         publicUrl?: string;
         thumbnailUrl?: string;
         durationSeconds: number;
@@ -257,8 +255,8 @@ export const getUserFavoriteLessons = query({
         tags?: string[];
         videoId?: string;
       };
-      module: {
-        _id: Id<"modules">;
+      unit: {
+        _id: Id<"units">;
         _creationTime: number;
         categoryId: Id<"categories">;
         title: string;

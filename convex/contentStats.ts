@@ -8,10 +8,8 @@ import { mutation, query, internalMutation } from "./_generated/server";
 export const get = query({
   args: {},
   returns: v.object({
-    _id: v.id("contentStats"),
-    _creationTime: v.number(),
     totalLessons: v.number(),
-    totalModules: v.number(),
+    totalUnits: v.number(),
     totalCategories: v.number(),
     updatedAt: v.number(),
   }),
@@ -22,18 +20,13 @@ export const get = query({
       .withIndex("by_isPublished", (q) => q.eq("isPublished", true))
       .collect();
     
-    const modules = await ctx.db.query("modules").collect();
+    const units = await ctx.db.query("units").collect();
     const categories = await ctx.db.query("categories").collect();
-    
-    // Get cached stats for ID and creation time
-    const cachedStats = await ctx.db.query("contentStats").first();
     
     // Return calculated stats
     return {
-      _id: cachedStats?._id || ("placeholder" as any),
-      _creationTime: cachedStats?._creationTime || Date.now(),
       totalLessons: allLessons.length,
-      totalModules: modules.length,
+      totalUnits: units.length,
       totalCategories: categories.length,
       updatedAt: Date.now(),
     };
@@ -56,12 +49,12 @@ export const initialize = mutation({
     // Count current content
     const lessons = await ctx.db.query("lessons").collect();
     const publishedLessons = lessons.filter((l) => l.isPublished);
-    const modules = await ctx.db.query("modules").collect();
+    const units = await ctx.db.query("units").collect();
     const categories = await ctx.db.query("categories").collect();
 
     const statsId = await ctx.db.insert("contentStats", {
       totalLessons: publishedLessons.length,
-      totalModules: modules.length,
+      totalUnits: units.length,
       totalCategories: categories.length,
       updatedAt: Date.now(),
     });
@@ -82,14 +75,14 @@ export const recalculate = mutation({
     // Count current content
     const lessons = await ctx.db.query("lessons").collect();
     const publishedLessons = lessons.filter((l) => l.isPublished);
-    const modules = await ctx.db.query("modules").collect();
+    const units = await ctx.db.query("units").collect();
     const categories = await ctx.db.query("categories").collect();
 
     if (stats) {
       // Update existing
       await ctx.db.patch(stats._id, {
         totalLessons: publishedLessons.length,
-        totalModules: modules.length,
+        totalUnits: units.length,
         totalCategories: categories.length,
         updatedAt: Date.now(),
       });
@@ -97,7 +90,7 @@ export const recalculate = mutation({
       // Create new
       await ctx.db.insert("contentStats", {
         totalLessons: publishedLessons.length,
-        totalModules: modules.length,
+        totalUnits: units.length,
         totalCategories: categories.length,
         updatedAt: Date.now(),
       });
@@ -125,7 +118,7 @@ export const incrementLessons = internalMutation({
       // Initialize if doesn't exist
       await ctx.db.insert("contentStats", {
         totalLessons: args.amount,
-        totalModules: 0,
+        totalUnits: 0,
         totalCategories: 0,
         updatedAt: Date.now(),
       });
@@ -156,9 +149,9 @@ export const decrementLessons = internalMutation({
 });
 
 /**
- * Internal mutation to increment module count
+ * Internal mutation to increment unit count
  */
-export const incrementModules = internalMutation({
+export const incrementUnits = internalMutation({
   args: { amount: v.number() },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -166,14 +159,14 @@ export const incrementModules = internalMutation({
 
     if (stats) {
       await ctx.db.patch(stats._id, {
-        totalModules: stats.totalModules + args.amount,
+        totalUnits: stats.totalUnits + args.amount,
         updatedAt: Date.now(),
       });
     } else {
       // Initialize if doesn't exist
       await ctx.db.insert("contentStats", {
         totalLessons: 0,
-        totalModules: args.amount,
+        totalUnits: args.amount,
         totalCategories: 0,
         updatedAt: Date.now(),
       });
@@ -184,9 +177,9 @@ export const incrementModules = internalMutation({
 });
 
 /**
- * Internal mutation to decrement module count
+ * Internal mutation to decrement unit count
  */
-export const decrementModules = internalMutation({
+export const decrementUnits = internalMutation({
   args: { amount: v.number() },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -194,7 +187,7 @@ export const decrementModules = internalMutation({
 
     if (stats) {
       await ctx.db.patch(stats._id, {
-        totalModules: Math.max(0, stats.totalModules - args.amount),
+        totalUnits: Math.max(0, stats.totalUnits - args.amount),
         updatedAt: Date.now(),
       });
     }
@@ -221,7 +214,7 @@ export const incrementCategories = internalMutation({
       // Initialize if doesn't exist
       await ctx.db.insert("contentStats", {
         totalLessons: 0,
-        totalModules: 0,
+        totalUnits: 0,
         totalCategories: args.amount,
         updatedAt: Date.now(),
       });

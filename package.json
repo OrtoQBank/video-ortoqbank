@@ -9,7 +9,7 @@
     "predev": "convex dev --until-success && convex dashboard",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint . --ignore-pattern \"convex/_generated/**\"",
     "test": "vitest"
   },
   "dependencies": {
@@ -45,8 +45,7 @@
     "zod": "^4.1.13"
   },
   "devDependencies": {
-    "@convex-dev/eslint-plugin": "^1.0.0",
-    "@eslint/eslintrc": "^3.3.1",
+    "@convex-dev/eslint-plugin": "^1.1.1",
     "@tailwindcss/postcss": "^4.1.17",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",

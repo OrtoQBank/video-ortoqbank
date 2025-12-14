@@ -14,7 +14,7 @@ vi.mock("convex/react", () => ({
 describe("Feedback", () => {
   const mockUserId = "user-123";
   const mockLessonId = "lesson-123" as Id<"lessons">;
-  const mockModuleId = "module-123" as Id<"modules">;
+  const mockUnitId = "unit-123" as Id<"units">;
   const mockOnFeedbackSubmitted = vi.fn();
 
   beforeEach(() => {
@@ -27,7 +27,7 @@ describe("Feedback", () => {
       <Feedback
         userId={mockUserId}
         lessonId={mockLessonId}
-        moduleId={mockModuleId}
+        unitId={mockUnitId}
       />
     );
 
@@ -46,7 +46,7 @@ describe("Feedback", () => {
       <Feedback
         userId={mockUserId}
         lessonId={mockLessonId}
-        moduleId={mockModuleId}
+        unitId={mockUnitId}
       />
     );
 
@@ -60,7 +60,7 @@ describe("Feedback", () => {
       <Feedback
         userId={mockUserId}
         lessonId={mockLessonId}
-        moduleId={mockModuleId}
+        unitId={mockUnitId}
       />
     );
 
@@ -77,7 +77,7 @@ describe("Feedback", () => {
       <Feedback
         userId={mockUserId}
         lessonId={mockLessonId}
-        moduleId={mockModuleId}
+        unitId={mockUnitId}
       />
     );
 
@@ -91,7 +91,7 @@ describe("Feedback", () => {
       expect(mockSubmitFeedback).toHaveBeenCalledWith({
         userId: mockUserId,
         lessonId: mockLessonId,
-        moduleId: mockModuleId,
+        unitId: mockUnitId,
         feedback: "This is my feedback",
       });
     });
@@ -103,7 +103,7 @@ describe("Feedback", () => {
       <Feedback
         userId={mockUserId}
         lessonId={mockLessonId}
-        moduleId={mockModuleId}
+        unitId={mockUnitId}
       />
     );
 
@@ -124,7 +124,7 @@ describe("Feedback", () => {
       <Feedback
         userId={mockUserId}
         lessonId={mockLessonId}
-        moduleId={mockModuleId}
+        unitId={mockUnitId}
         onFeedbackSubmitted={mockOnFeedbackSubmitted}
       />
     );
@@ -146,7 +146,7 @@ describe("Feedback", () => {
       <Feedback
         userId={mockUserId}
         lessonId={mockLessonId}
-        moduleId={mockModuleId}
+        unitId={mockUnitId}
       />
     );
 

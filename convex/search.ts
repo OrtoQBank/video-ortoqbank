@@ -2,13 +2,13 @@ import { v } from "convex/values";
 import { query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 
-// Query para buscar sugestões de módulos e lessons enquanto digita
+// Query para buscar sugestões de unidades e lessons enquanto digita
 export const getSuggestions = query({
   args: { query: v.string() },
   returns: v.object({
-    modules: v.array(
+    units: v.array(
       v.object({
-        _id: v.id("modules"),
+        _id: v.id("units"),
         title: v.string(),
         description: v.string(),
         categoryId: v.id("categories"),
@@ -20,8 +20,8 @@ export const getSuggestions = query({
         _id: v.id("lessons"),
         title: v.string(),
         description: v.string(),
-        moduleId: v.id("modules"),
-        moduleTitle: v.string(),
+        unitId: v.id("units"),
+        unitTitle: v.string(),
         categoryId: v.id("categories"),
         categoryTitle: v.string(),
       })
@@ -31,12 +31,12 @@ export const getSuggestions = query({
     const searchQuery = args.query.toLowerCase().trim();
     
     if (!searchQuery || searchQuery.length < 2) {
-      return { modules: [], lessons: [] };
+      return { units: [], lessons: [] };
     }
 
-    // Buscar módulos publicados
-    const allModules = await ctx.db
-      .query("modules")
+    // Buscar unidades publicadas
+    const allUnits = await ctx.db
+      .query("units")
       .withIndex("by_isPublished", (q) => q.eq("isPublished", true))
       .collect();
 
@@ -46,27 +46,27 @@ export const getSuggestions = query({
       .withIndex("by_isPublished", (q) => q.eq("isPublished", true))
       .collect();
 
-    // Filtrar módulos que contenham a query no título ou descrição
-    const matchedModules: Array<{
-      _id: Id<"modules">;
+    // Filtrar unidades que contenham a query no título ou descrição
+    const matchedUnits: Array<{
+      _id: Id<"units">;
       title: string;
       description: string;
       categoryId: Id<"categories">;
       categoryTitle: string;
     }> = [];
-    for (const module of allModules) {
-      const titleMatch = module.title.toLowerCase().includes(searchQuery);
-      const descMatch = module.description.toLowerCase().includes(searchQuery);
+    for (const unit of allUnits) {
+      const titleMatch = unit.title.toLowerCase().includes(searchQuery);
+      const descMatch = unit.description.toLowerCase().includes(searchQuery);
       
       if (titleMatch || descMatch) {
-        // Buscar categoria do módulo
-        const category = await ctx.db.get(module.categoryId);
+        // Buscar categoria da unidade
+        const category = await ctx.db.get(unit.categoryId);
         if (category && category.isPublished) {
-          matchedModules.push({
-            _id: module._id,
-            title: module.title,
-            description: module.description,
-            categoryId: module.categoryId,
+          matchedUnits.push({
+            _id: unit._id,
+            title: unit.title,
+            description: unit.description,
+            categoryId: unit.categoryId,
             categoryTitle: category.title,
           });
         }
@@ -78,8 +78,8 @@ export const getSuggestions = query({
       _id: Id<"lessons">;
       title: string;
       description: string;
-      moduleId: Id<"modules">;
-      moduleTitle: string;
+      unitId: Id<"units">;
+      unitTitle: string;
       categoryId: Id<"categories">;
       categoryTitle: string;
     }> = [];
@@ -88,18 +88,18 @@ export const getSuggestions = query({
       const descMatch = lesson.description.toLowerCase().includes(searchQuery);
       
       if (titleMatch || descMatch) {
-        // Buscar módulo e categoria da lesson
-        const module = await ctx.db.get(lesson.moduleId);
-        if (module && module.isPublished) {
-          const category = await ctx.db.get(module.categoryId);
+        // Buscar unidade e categoria da lesson
+        const unit = await ctx.db.get(lesson.unitId);
+        if (unit && unit.isPublished) {
+          const category = await ctx.db.get(unit.categoryId);
           if (category && category.isPublished) {
             matchedLessons.push({
               _id: lesson._id,
               title: lesson.title,
               description: lesson.description,
-              moduleId: lesson.moduleId,
-              moduleTitle: module.title,
-              categoryId: module.categoryId,
+              unitId: lesson.unitId,
+              unitTitle: unit.title,
+              categoryId: unit.categoryId,
               categoryTitle: category.title,
             });
           }
@@ -109,7 +109,7 @@ export const getSuggestions = query({
 
     // Limitar resultados (max 5 de cada tipo)
     return {
-      modules: matchedModules.slice(0, 5),
+      units: matchedUnits.slice(0, 5),
       lessons: matchedLessons.slice(0, 5),
     };
   },
@@ -147,9 +147,9 @@ export const searchCategories = query({
       .withIndex("by_isPublished", (q) => q.eq("isPublished", true))
       .collect();
 
-    // Buscar todos os módulos e lessons publicados
-    const allModules = await ctx.db
-      .query("modules")
+    // Buscar todas as unidades e lessons publicados
+    const allUnits = await ctx.db
+      .query("units")
       .withIndex("by_isPublished", (q) => q.eq("isPublished", true))
       .collect();
 
@@ -171,13 +171,13 @@ export const searchCategories = query({
       }
     }
 
-    // 2. Buscar módulos cujo título ou descrição contenham a query
-    for (const module of allModules) {
-      const titleMatch = module.title.toLowerCase().includes(searchQuery);
-      const descMatch = module.description.toLowerCase().includes(searchQuery);
+    // 2. Buscar unidades cujo título ou descrição contenham a query
+    for (const unit of allUnits) {
+      const titleMatch = unit.title.toLowerCase().includes(searchQuery);
+      const descMatch = unit.description.toLowerCase().includes(searchQuery);
       
       if (titleMatch || descMatch) {
-        matchedCategoryIds.add(module.categoryId);
+        matchedCategoryIds.add(unit.categoryId);
       }
     }
 
@@ -187,10 +187,10 @@ export const searchCategories = query({
       const descMatch = lesson.description.toLowerCase().includes(searchQuery);
       
       if (titleMatch || descMatch) {
-        // Buscar o módulo desta lesson para obter o categoryId
-        const module = await ctx.db.get(lesson.moduleId);
-        if (module) {
-          matchedCategoryIds.add(module.categoryId);
+        // Buscar a unidade desta lesson para obter o categoryId
+        const unit = await ctx.db.get(lesson.unitId);
+        if (unit) {
+          matchedCategoryIds.add(unit.categoryId);
         }
       }
     }

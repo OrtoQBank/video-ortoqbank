@@ -11,7 +11,7 @@ export const seedVideos = mutation({
   returns: v.null(),
   handler: async (ctx) => {
     console.log("⚠️  Esta função está depreciada. Use seedLessons() ou seedAll() em vez disso.");
-    console.log("A estrutura agora é: Categories -> Modules -> Lessons");
+    console.log("A estrutura agora é: Categories -> Units -> Lessons");
     return null;
   },
 });
@@ -38,7 +38,7 @@ export const clearVideos = mutation({
   returns: v.null(),
   handler: async (ctx) => {
     console.log("⚠️  Esta função está depreciada. Use clearLessons() ou clearAll() em vez disso.");
-    console.log("A estrutura agora é: Categories -> Modules -> Lessons");
+    console.log("A estrutura agora é: Categories -> Units -> Lessons");
     return null;
   },
 });
@@ -148,15 +148,15 @@ export const clearCategories = internalMutation({
 });
 
 /**
- * Seed the database with sample modules
+ * Seed the database with sample units
  */
-export const seedModules = internalMutation({
+export const seedUnits = internalMutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
-    // Check if modules already exist
-    const existingModules = await ctx.db.query("modules").first();
-    if (existingModules) {
+    // Check if units already exist
+    const existingUnits = await ctx.db.query("units").first();
+    if (existingUnits) {
       return null;
     }
 
@@ -167,12 +167,12 @@ export const seedModules = internalMutation({
       throw new Error("Você precisa criar categorias primeiro. Execute seedCategories()");
     }
 
-    // Create 2-3 modules for each category
-    const modulesData = [
+    // Create 2-3 units for each category
+    const unitsData = [
       // Ciências Básicas
       {
         categorySlug: "ciencias-basicas-em-ortopedia",
-        modules: [
+        units: [
           {
             title: "Anatomia do Sistema Musculoesquelético",
             slug: "anatomia-do-sistema-musculoesqueletico",
@@ -190,7 +190,7 @@ export const seedModules = internalMutation({
       // Trauma
       {
         categorySlug: "trauma-ortopedico",
-        modules: [
+        units: [
           {
             title: "Fraturas de Membros Superiores",
             slug: "fraturas-de-membros-superiores",
@@ -208,7 +208,7 @@ export const seedModules = internalMutation({
       // Cirurgia de Mão
       {
         categorySlug: "cirurgia-de-mao",
-        modules: [
+        units: [
           {
             title: "Anatomia da Mão e Punho",
             slug: "anatomia-da-mao-e-punho",
@@ -225,17 +225,17 @@ export const seedModules = internalMutation({
       },
     ];
 
-    for (const categoryData of modulesData) {
+    for (const categoryData of unitsData) {
       const category = categories.find(c => c.slug === categoryData.categorySlug);
       
       if (category) {
-        for (const moduleData of categoryData.modules) {
-          await ctx.db.insert("modules", {
+        for (const unitData of categoryData.units) {
+          await ctx.db.insert("units", {
             categoryId: category._id,
-            title: moduleData.title,
-            slug: moduleData.slug,
-            description: moduleData.description,
-            order_index: moduleData.order_index,
+            title: unitData.title,
+            slug: unitData.slug,
+            description: unitData.description,
+            order_index: unitData.order_index,
             totalLessonVideos: 0,
             isPublished: true,
             lessonCounter: 0,
@@ -249,15 +249,15 @@ export const seedModules = internalMutation({
 });
 
 /**
- * Clear all modules (for testing)
+ * Clear all units (for testing)
  */
-export const clearModules = internalMutation({
+export const clearUnits = internalMutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
-    const modules = await ctx.db.query("modules").collect();
-    for (const module of modules) {
-      await ctx.db.delete(module._id);
+    const units = await ctx.db.query("units").collect();
+    for (const unit of units) {
+      await ctx.db.delete(unit._id);
     }
 
     return null;
@@ -277,26 +277,27 @@ export const seedLessons = internalMutation({
       return null;
     }
 
-    // Get modules first
-    const modules = await ctx.db.query("modules").collect();
+    // Get units first
+    const units = await ctx.db.query("units").collect();
     
-    if (modules.length === 0) {
-      throw new Error("Você precisa criar módulos primeiro. Execute seedModules()");
+    if (units.length === 0) {
+      throw new Error("Você precisa criar unidades primeiro. Execute seedUnits()");
     }
 
-    // Create 3-5 lessons for each module
+    // Create 3-5 lessons for each unit
     let lessonCount = 0;
 
-    for (const module of modules) {
-      const numLessons = 4; // 4 aulas por módulo
+    for (const unit of units) {
+      const numLessons = 4; // 4 aulas por unidade
       
       for (let i = 1; i <= numLessons; i++) {
         lessonCount++;
         await ctx.db.insert("lessons", {
-          moduleId: module._id,
-          title: `${module.title} - Aula ${i}`,
-          slug: `${module.slug}-aula-${i}`,
-          description: `Nesta aula você vai aprender conceitos importantes sobre ${module.title.toLowerCase()}. Vamos explorar os fundamentos e aplicações práticas.`,
+          unitId: unit._id,
+          categoryId: unit.categoryId,
+          title: `${unit.title} - Aula ${i}`,
+          slug: `${unit.slug}-aula-${i}`,
+          description: `Nesta aula você vai aprender conceitos importantes sobre ${unit.title.toLowerCase()}. Vamos explorar os fundamentos e aplicações práticas.`,
           durationSeconds: 600 + (i * 120), // 10 min + 2 min por aula
           order_index: i,
           lessonNumber: i,
@@ -305,8 +306,8 @@ export const seedLessons = internalMutation({
         });
       }
 
-      // Atualizar o total de lessons no módulo
-      await ctx.db.patch(module._id, {
+      // Atualizar o total de lessons no unidade
+      await ctx.db.patch(unit._id, {
         totalLessonVideos: numLessons,
       });
     }
@@ -327,10 +328,10 @@ export const clearLessons = internalMutation({
       await ctx.db.delete(lesson._id);
     }
 
-    // Reset totalLessonVideos in all modules
-    const modules = await ctx.db.query("modules").collect();
-    for (const module of modules) {
-      await ctx.db.patch(module._id, {
+    // Reset totalLessonVideos in all units
+    const units = await ctx.db.query("units").collect();
+    for (const unit of units) {
+      await ctx.db.patch(unit._id, {
         totalLessonVideos: 0,
       });
     }
@@ -340,14 +341,14 @@ export const clearLessons = internalMutation({
 });
 
 /**
- * Seed everything at once (categories -> modules -> lessons)
+ * Seed everything at once (categories -> units -> lessons)
  */
 export const seedAll = internalMutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
     await ctx.runMutation(internal.seed.seedCategories, {});
-    await ctx.runMutation(internal.seed.seedModules, {});
+    await ctx.runMutation(internal.seed.seedUnits, {});
     await ctx.runMutation(internal.seed.seedLessons, {});
     await ctx.runMutation(api.seed.initializeContentStats, {});
     return null;
@@ -375,7 +376,7 @@ export const clearAll = internalMutation({
   returns: v.null(),
   handler: async (ctx) => {
     await ctx.runMutation(internal.seed.clearLessons, {});
-    await ctx.runMutation(internal.seed.clearModules, {});
+    await ctx.runMutation(internal.seed.clearUnits, {});
     await ctx.runMutation(internal.seed.clearCategories, {});
     return null;
   },
@@ -417,18 +418,18 @@ export const migrateCategories = internalMutation({
 });
 
 /**
- * Adiciona o campo isPublished a todos os módulos existentes
+ * Adiciona o campo isPublished a todos os unidades existentes
  */
-export const migrateModules = internalMutation({
+export const migrateUnits = internalMutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
-    const modules = await ctx.db.query("modules").collect();
+    const units = await ctx.db.query("units").collect();
     
     let updated = 0;
-    for (const module of modules) {
-      if (module.isPublished === undefined) {
-        await ctx.db.patch(module._id, {
+    for (const unit of units) {
+      if (unit.isPublished === undefined) {
+        await ctx.db.patch(unit._id, {
           isPublished: true,
         });
         updated++;
@@ -440,7 +441,7 @@ export const migrateModules = internalMutation({
 });
 
 /**
- * Deleta TODAS as aulas órfãs (sem módulo pai)
+ * Deleta TODAS as aulas órfãs (sem unidade pai)
  */
 export const cleanOrphanLessons = internalMutation({
   args: {},
@@ -450,9 +451,9 @@ export const cleanOrphanLessons = internalMutation({
     
     let deleted = 0;
     for (const lesson of lessons) {
-      // Verificar se o módulo pai existe
-      const module = await ctx.db.get(lesson.moduleId);
-      if (!module) {
+      // Verificar se o unidade pai existe
+      const unit = await ctx.db.get(lesson.unitId);
+      if (!unit) {
         await ctx.db.delete(lesson._id);
         deleted++;
       }
@@ -486,23 +487,23 @@ export const debugDatabase = internalQuery({
   args: {},
   returns: v.object({
     categories: v.number(),
-    modules: v.number(),
+    units: v.number(),
     lessons: v.number(),
     orphanedLessons: v.number(),
   }),
   handler: async (ctx) => {
     const categories = await ctx.db.query("categories").collect();
-    const modules = await ctx.db.query("modules").collect();
+    const units = await ctx.db.query("units").collect();
     const lessons = await ctx.db.query("lessons").collect();
 
     const orphanedLessons = lessons.filter(l => {
-      const module = modules.find(m => m._id === l.moduleId);
-      return !module;
+      const unit = units.find(m => m._id === l.unitId);
+      return !unit;
     });
     
     return {
       categories: categories.length,
-      modules: modules.length,
+      units: units.length,
       lessons: lessons.length,
       orphanedLessons: orphanedLessons.length,
     };
@@ -510,23 +511,23 @@ export const debugDatabase = internalQuery({
 });
 
 /**
- * Recria apenas os módulos (se você já tem categorias)
+ * Recria apenas os unidades (se você já tem categorias)
  */
-export const recreateModules = internalMutation({
+export const recreateUnits = internalMutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
-    const modules = await ctx.db.query("modules").collect();
-    for (const module of modules) {
-      await ctx.db.delete(module._id);
+    const units = await ctx.db.query("units").collect();
+    for (const unit of units) {
+      await ctx.db.delete(unit._id);
     }
-    await ctx.runMutation(internal.seed.seedModules, {});
+    await ctx.runMutation(internal.seed.seedUnits, {});
     return null;
   },
 });
 
 /**
- * Limpa TUDO: categorias, módulos e aulas
+ * Limpa TUDO: categorias, unidades e aulas
  */
 export const clearEverything = internalMutation({
   args: {},
@@ -537,9 +538,9 @@ export const clearEverything = internalMutation({
       await ctx.db.delete(lesson._id);
     }
 
-    const modules = await ctx.db.query("modules").collect();
-    for (const module of modules) {
-      await ctx.db.delete(module._id);
+    const units = await ctx.db.query("units").collect();
+    for (const unit of units) {
+      await ctx.db.delete(unit._id);
     }
 
     const categories = await ctx.db.query("categories").collect();

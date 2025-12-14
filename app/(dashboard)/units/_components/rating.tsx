@@ -11,10 +11,10 @@ import { api } from "@/convex/_generated/api";
 interface RatingProps {
   userId: string;
   lessonId: Id<"lessons">;
-  moduleId: Id<"modules">;
+  unitId: Id<"units">;
 }
 
-export function Rating({ userId, lessonId, moduleId }: RatingProps) {
+export function Rating({ userId, lessonId, unitId }: RatingProps) {
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
   const [showRatingConfirm, setShowRatingConfirm] = useState(false);
 
@@ -47,12 +47,12 @@ export function Rating({ userId, lessonId, moduleId }: RatingProps) {
   };
 
   const handleConfirmRating = async () => {
-    if (!userId || !lessonId || !moduleId || !selectedRating) return;
+    if (!userId || !lessonId || !unitId || !selectedRating) return;
     try {
       await submitRating({
         userId,
         lessonId,
-        moduleId,
+        unitId,
         rating: selectedRating,
       });
       setShowRatingConfirm(false);

@@ -3,19 +3,19 @@
 import { PlayCircleIcon } from "lucide-react";
 import { Card, CardTitle, CardDescription } from "@/components/ui/card";
 
-interface ModuleCardProps {
+interface UnitCardProps {
   title: string;
   description: string;
   totalLessons: number;
   onClick?: () => void;
 }
 
-export function ModuleCard({
+export function UnitCard({
   title = "",
   description = "",
   totalLessons = 0,
-  onClick = () => {},
-}: ModuleCardProps) {
+  onClick = () => { },
+}: UnitCardProps) {
   return (
     <Card
       onClick={onClick}

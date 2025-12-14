@@ -10,11 +10,10 @@ export const list = query({
     v.object({
       _id: v.id("lessons"),
       _creationTime: v.number(),
-      moduleId: v.id("modules"),
+      unitId: v.id("units"),
       title: v.string(),
       slug: v.string(),
       description: v.string(),
-      bunnyStoragePath: v.optional(v.string()),
       publicUrl: v.optional(v.string()),
       thumbnailUrl: v.optional(v.string()),
       durationSeconds: v.number(),
@@ -38,11 +37,10 @@ export const listPublished = query({
     v.object({
       _id: v.id("lessons"),
       _creationTime: v.number(),
-      moduleId: v.id("modules"),
+      unitId: v.id("units"),
       title: v.string(),
       slug: v.string(),
       description: v.string(),
-      bunnyStoragePath: v.optional(v.string()),
       publicUrl: v.optional(v.string()),
       thumbnailUrl: v.optional(v.string()),
       durationSeconds: v.number(),
@@ -63,17 +61,16 @@ export const listPublished = query({
 });
 
 // Query para listar lessons de um módulo específico
-export const listByModule = query({
-  args: { moduleId: v.id("modules") },
+export const listByUnit = query({
+  args: { unitId: v.id("units") },
   returns: v.array(
     v.object({
       _id: v.id("lessons"),
       _creationTime: v.number(),
-      moduleId: v.id("modules"),
+      unitId: v.id("units"),
       title: v.string(),
       slug: v.string(),
       description: v.string(),
-      bunnyStoragePath: v.optional(v.string()),
       publicUrl: v.optional(v.string()),
       thumbnailUrl: v.optional(v.string()),
       durationSeconds: v.number(),
@@ -87,8 +84,8 @@ export const listByModule = query({
   handler: async (ctx, args) => {
     const lessons = await ctx.db
       .query("lessons")
-      .withIndex("by_moduleId_and_order", (q) =>
-        q.eq("moduleId", args.moduleId),
+      .withIndex("by_unitId_and_order", (q) =>
+        q.eq("unitId", args.unitId),
       )
       .collect();
 
@@ -96,18 +93,18 @@ export const listByModule = query({
   },
 });
 
-// Query para listar apenas lessons PUBLICADAS de um módulo PUBLICADO (USER)
-export const listPublishedByModule = query({
-  args: { moduleId: v.id("modules") },
+// Query para listar todas as lessons de uma categoria (ADMIN - mostra todas)
+export const listByCategory = query({
+  args: { categoryId: v.id("categories") },
   returns: v.array(
     v.object({
       _id: v.id("lessons"),
       _creationTime: v.number(),
-      moduleId: v.id("modules"),
+      unitId: v.id("units"),
+      categoryId: v.id("categories"),
       title: v.string(),
       slug: v.string(),
       description: v.string(),
-      bunnyStoragePath: v.optional(v.string()),
       publicUrl: v.optional(v.string()),
       thumbnailUrl: v.optional(v.string()),
       durationSeconds: v.number(),
@@ -119,22 +116,54 @@ export const listPublishedByModule = query({
     }),
   ),
   handler: async (ctx, args) => {
-    // Check if module is published
-    const module = await ctx.db.get(args.moduleId);
-    if (!module || !module.isPublished) {
+    // Direct query using the categoryId index - much more efficient!
+    const lessons = await ctx.db
+      .query("lessons")
+      .withIndex("by_categoryId", (q) => q.eq("categoryId", args.categoryId))
+      .collect();
+    
+    return lessons;
+  },
+});
+
+// Query para listar apenas lessons PUBLICADAS de um módulo PUBLICADO (USER)
+export const listPublishedByUnit = query({
+  args: { unitId: v.id("units") },
+  returns: v.array(
+    v.object({
+      _id: v.id("lessons"),
+      _creationTime: v.number(),
+      unitId: v.id("units"),
+      title: v.string(),
+      slug: v.string(),
+      description: v.string(),
+      publicUrl: v.optional(v.string()),
+      thumbnailUrl: v.optional(v.string()),
+      durationSeconds: v.number(),
+      order_index: v.number(),
+      lessonNumber: v.number(),
+      isPublished: v.boolean(),
+      tags: v.optional(v.array(v.string())),
+      videoId: v.optional(v.string()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    // Check if unit is published
+    const unit = await ctx.db.get(args.unitId);
+    if (!unit || !unit.isPublished) {
       return [];
     }
 
     // Check if category is published
-    const category = await ctx.db.get(module.categoryId);
+    const category = await ctx.db.get(unit.categoryId);
     if (!category || !category.isPublished) {
       return [];
     }
 
     const lessons = await ctx.db
       .query("lessons")
-      .withIndex("by_moduleId_isPublished_order", (q) =>
-        q.eq("moduleId", args.moduleId).eq("isPublished", true),
+      .withIndex("by_unitId_isPublished_order", (q) =>
+        q.eq("unitId", args.unitId).eq("isPublished", true),
       )
       .collect();
 
@@ -149,11 +178,10 @@ export const getById = query({
     v.object({
       _id: v.id("lessons"),
       _creationTime: v.number(),
-      moduleId: v.id("modules"),
+      unitId: v.id("units"),
       title: v.string(),
       slug: v.string(),
       description: v.string(),
-      bunnyStoragePath: v.optional(v.string()),
       publicUrl: v.optional(v.string()),
       thumbnailUrl: v.optional(v.string()),
       durationSeconds: v.number(),
@@ -178,11 +206,10 @@ export const getBySlug = query({
     v.object({
       _id: v.id("lessons"),
       _creationTime: v.number(),
-      moduleId: v.id("modules"),
+      unitId: v.id("units"),
       title: v.string(),
       slug: v.string(),
       description: v.string(),
-      bunnyStoragePath: v.optional(v.string()),
       publicUrl: v.optional(v.string()),
       thumbnailUrl: v.optional(v.string()),
       durationSeconds: v.number(),
@@ -217,10 +244,9 @@ function generateSlug(title: string): string {
 // Mutation para criar uma nova lesson
 export const create = mutation({
   args: {
-    moduleId: v.id("modules"),
+    unitId: v.id("units"),
     title: v.string(),
     description: v.string(),
-    bunnyStoragePath: v.optional(v.string()),
     publicUrl: v.optional(v.string()),
     thumbnailUrl: v.optional(v.string()),
     durationSeconds: v.optional(v.number()),
@@ -244,29 +270,29 @@ export const create = mutation({
       throw new Error("Já existe uma aula com este slug");
     }
 
-    // Atomically increment the lesson counter on the module document
+    // Atomically increment the lesson counter on the unit document
     // to get a unique order_index (prevents race conditions on concurrent creates)
-    const module = await ctx.db.get(args.moduleId);
-    if (!module) {
-      throw new Error("Módulo não encontrado");
+    const unit = await ctx.db.get(args.unitId);
+    if (!unit) {
+      throw new Error("Unidade não encontrada");
     }
     
     // Initialize lessonCounter if it doesn't exist (for backward compatibility)
-    const currentCounter = module.lessonCounter ?? 0;
+    const currentCounter = unit.lessonCounter ?? 0;
     const nextOrderIndex = currentCounter;
     
     // Atomically increment both the counter and totalLessonVideos
-    await ctx.db.patch(args.moduleId, {
+    await ctx.db.patch(args.unitId, {
       lessonCounter: currentCounter + 1,
-      totalLessonVideos: module.totalLessonVideos + 1,
+      totalLessonVideos: unit.totalLessonVideos + 1,
     });
 
     const lessonId: Id<"lessons"> = await ctx.db.insert("lessons", {
-      moduleId: args.moduleId,
+      unitId: args.unitId,
+      categoryId: unit.categoryId, // Store categoryId for efficient queries
       title: args.title,
       slug: slug,
       description: args.description,
-      bunnyStoragePath: args.bunnyStoragePath,
       publicUrl: args.publicUrl,
       thumbnailUrl: args.thumbnailUrl,
       durationSeconds: args.durationSeconds || 0,
@@ -292,10 +318,9 @@ export const create = mutation({
 export const update = mutation({
   args: {
     id: v.id("lessons"),
-    moduleId: v.id("modules"),
+    unitId: v.id("units"),
     title: v.string(),
     description: v.string(),
-    bunnyStoragePath: v.optional(v.string()),
     publicUrl: v.optional(v.string()),
     thumbnailUrl: v.optional(v.string()),
     durationSeconds: v.optional(v.number()),
@@ -325,12 +350,18 @@ export const update = mutation({
     const wasPublished = currentLesson?.isPublished || false;
     const willBePublished = args.isPublished;
 
+    // Get unit to update categoryId if unit changed
+    const unit = await ctx.db.get(args.unitId);
+    if (!unit) {
+      throw new Error("Unidade não encontrada");
+    }
+
     await ctx.db.patch(args.id, {
-      moduleId: args.moduleId,
+      unitId: args.unitId,
+      categoryId: unit.categoryId, // Update categoryId in case unit changed
       title: args.title,
       slug: slug,
       description: args.description,
-      bunnyStoragePath: args.bunnyStoragePath,
       publicUrl: args.publicUrl,
       thumbnailUrl: args.thumbnailUrl,
       durationSeconds: args.durationSeconds || 0,
@@ -376,10 +407,10 @@ export const remove = mutation({
     await ctx.db.delete(args.id);
 
     // Atualizar o total de lessons no módulo
-    const module = await ctx.db.get(lesson.moduleId);
-    if (module && module.totalLessonVideos > 0) {
-      await ctx.db.patch(lesson.moduleId, {
-        totalLessonVideos: module.totalLessonVideos - 1,
+    const unit = await ctx.db.get(lesson.unitId);
+    if (unit && unit.totalLessonVideos > 0) {
+      await ctx.db.patch(lesson.unitId, {
+        totalLessonVideos: unit.totalLessonVideos - 1,
       });
     }
 

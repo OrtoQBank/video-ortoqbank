@@ -11,14 +11,14 @@ import { api } from "@/convex/_generated/api";
 interface FeedbackProps {
   userId: string;
   lessonId: Id<"lessons">;
-  moduleId: Id<"modules">;
+  unitId: Id<"units">;
   onFeedbackSubmitted?: () => void;
 }
 
 export function Feedback({
   userId,
   lessonId,
-  moduleId,
+  unitId,
   onFeedbackSubmitted,
 }: FeedbackProps) {
   const [feedbackText, setFeedbackText] = useState("");
@@ -31,12 +31,12 @@ export function Feedback({
   }, [lessonId]);
 
   const handleSubmitFeedback = async () => {
-    if (!userId || !lessonId || !moduleId || !feedbackText.trim()) return;
+    if (!userId || !lessonId || !unitId || !feedbackText.trim()) return;
     try {
       await submitFeedback({
         userId,
         lessonId,
-        moduleId,
+        unitId,
         feedback: feedbackText,
       });
       setFeedbackText("");

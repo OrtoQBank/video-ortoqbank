@@ -42,16 +42,16 @@ export function FavoritesInner({ initialFavorites, watchAlsoVideos }: { initialF
   const displayFavorites = initialFavorites.slice(startIndex, endIndex);
 
   const handleVideoClick = (video: Video) => {
-    // Navigate to the modules page for this category
+    // Navigate to the units page for this category
     if (video.categoryId) {
-      router.push(`/modules/${video.categoryId}`);
+      router.push(`/units/${video.categoryId}`);
     }
   };
 
   const handleRemoveFavorite = async (e: React.MouseEvent, lessonId: string) => {
     e.stopPropagation();
     if (!user?.id) return;
-    
+
     try {
       await removeFavorite({
         userId: user.id,
@@ -65,7 +65,7 @@ export function FavoritesInner({ initialFavorites, watchAlsoVideos }: { initialF
   const handleAddFavorite = async (e: React.MouseEvent, lessonId: string) => {
     e.stopPropagation();
     if (!user?.id) return;
-    
+
     try {
       await addFavorite({
         userId: user.id,
@@ -92,7 +92,7 @@ export function FavoritesInner({ initialFavorites, watchAlsoVideos }: { initialF
     <div className="min-h-screen bg-white relative">
       {/* Sidebar trigger - follows sidebar position */}
       <SidebarTrigger className={`hidden md:inline-flex fixed top-2 h-6 w-6 text-blue-brand hover:text-blue-brand-dark hover:bg-blue-brand-light transition-[left] duration-200 ease-linear z-10 ${state === 'collapsed' ? 'left-[calc(var(--sidebar-width-icon)+0.25rem)]' : 'left-[calc(var(--sidebar-width)+0.25rem)]'}`} />
-      
+
       {/* Header */}
       <div className="border-b">
         <div className="p-6 flex items-center gap-4">
@@ -216,8 +216,8 @@ export function FavoritesInner({ initialFavorites, watchAlsoVideos }: { initialF
             </div>
           )}
         </section>
-<WatchAlsoVideos watchAlsoVideos={watchAlsoVideos} />
-        
+        <WatchAlsoVideos watchAlsoVideos={watchAlsoVideos} />
+
       </div>
     </div>
   );

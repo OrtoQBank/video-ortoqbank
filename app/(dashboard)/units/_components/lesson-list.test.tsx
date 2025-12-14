@@ -18,7 +18,7 @@ vi.mock("convex/react", () => ({
 }));
 
 describe("LessonList", () => {
-  const mockModuleId = "module-123" as Id<"modules">;
+  const mockUnitId = "module-123" as Id<"units">;
   const mockLessonId1 = "lesson-1" as Id<"lessons">;
   const mockLessonId2 = "lesson-2" as Id<"lessons">;
   const mockOnToggle = vi.fn();
@@ -28,7 +28,7 @@ describe("LessonList", () => {
     {
       _id: mockLessonId1,
       _creationTime: Date.now(),
-      moduleId: mockModuleId,
+      unitId: mockUnitId,
       title: "Lesson 1",
       slug: "lesson-1",
       description: "Description 1",
@@ -40,7 +40,7 @@ describe("LessonList", () => {
     {
       _id: mockLessonId2,
       _creationTime: Date.now(),
-      moduleId: mockModuleId,
+      unitId: mockUnitId,
       title: "Lesson 2",
       slug: "lesson-2",
       description: "Description 2",
@@ -59,7 +59,7 @@ describe("LessonList", () => {
   it("should render lesson list with module header", () => {
     render(
       <LessonList
-        moduleId={mockModuleId}
+        unitId={mockUnitId}
         moduleTitle="Test Module"
         totalLessons={10}
         isExpanded={false}
@@ -80,7 +80,7 @@ describe("LessonList", () => {
   it("should show chevron right icon when collapsed", () => {
     render(
       <LessonList
-        moduleId={mockModuleId}
+        unitId={mockUnitId}
         moduleTitle="Test Module"
         totalLessons={10}
         isExpanded={false}
@@ -100,7 +100,7 @@ describe("LessonList", () => {
     const user = userEvent.setup();
     render(
       <LessonList
-        moduleId={mockModuleId}
+        unitId={mockUnitId}
         moduleTitle="Test Module"
         totalLessons={10}
         isExpanded={false}
@@ -120,7 +120,7 @@ describe("LessonList", () => {
   it("should not load lessons when collapsed", () => {
     render(
       <LessonList
-        moduleId={mockModuleId}
+        unitId={mockUnitId}
         moduleTitle="Test Module"
         totalLessons={10}
         isExpanded={false}
@@ -140,7 +140,7 @@ describe("LessonList", () => {
   it("should load lessons when expanded", () => {
     render(
       <LessonList
-        moduleId={mockModuleId}
+        unitId={mockUnitId}
         moduleTitle="Test Module"
         totalLessons={10}
         isExpanded={true}
@@ -153,14 +153,14 @@ describe("LessonList", () => {
 
     expect(mockUseQuery).toHaveBeenCalledWith(
       expect.anything(),
-      { moduleId: mockModuleId }
+      { unitId: mockUnitId }
     );
   });
 
   it("should display lessons when expanded", () => {
     render(
       <LessonList
-        moduleId={mockModuleId}
+        unitId={mockUnitId}
         moduleTitle="Test Module"
         totalLessons={10}
         isExpanded={true}
@@ -181,7 +181,7 @@ describe("LessonList", () => {
   it("should format duration correctly", () => {
     render(
       <LessonList
-        moduleId={mockModuleId}
+        unitId={mockUnitId}
         moduleTitle="Test Module"
         totalLessons={10}
         isExpanded={true}
@@ -203,7 +203,7 @@ describe("LessonList", () => {
     const user = userEvent.setup();
     render(
       <LessonList
-        moduleId={mockModuleId}
+        unitId={mockUnitId}
         moduleTitle="Test Module"
         totalLessons={10}
         isExpanded={true}
@@ -228,7 +228,7 @@ describe("LessonList", () => {
 
     render(
       <LessonList
-        moduleId={mockModuleId}
+        unitId={mockUnitId}
         moduleTitle="Test Module"
         totalLessons={10}
         isExpanded={true}
@@ -251,7 +251,7 @@ describe("LessonList", () => {
 
     render(
       <LessonList
-        moduleId={mockModuleId}
+        unitId={mockUnitId}
         moduleTitle="Test Module"
         totalLessons={10}
         isExpanded={true}
@@ -271,7 +271,7 @@ describe("LessonList", () => {
   it("should highlight active lesson", () => {
     render(
       <LessonList
-        moduleId={mockModuleId}
+        unitId={mockUnitId}
         moduleTitle="Test Module"
         totalLessons={10}
         isExpanded={true}
@@ -293,7 +293,7 @@ describe("LessonList", () => {
 
     render(
       <LessonList
-        moduleId={mockModuleId}
+        unitId={mockUnitId}
         moduleTitle="Test Module"
         totalLessons={0}
         isExpanded={true}
@@ -313,7 +313,7 @@ describe("LessonList", () => {
 
     render(
       <LessonList
-        moduleId={mockModuleId}
+        unitId={mockUnitId}
         moduleTitle="Test Module"
         totalLessons={10}
         isExpanded={true}
@@ -337,7 +337,7 @@ describe("LessonList", () => {
 
     render(
       <LessonList
-        moduleId={mockModuleId}
+        unitId={mockUnitId}
         moduleTitle="Test Module"
         totalLessons={10}
         isExpanded={true}
@@ -364,7 +364,7 @@ describe("LessonList", () => {
 
     render(
       <LessonList
-        moduleId={mockModuleId}
+        unitId={mockUnitId}
         moduleTitle="Test Module"
         totalLessons={10}
         isExpanded={true}

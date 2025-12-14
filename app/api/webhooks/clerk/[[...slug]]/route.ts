@@ -27,7 +27,7 @@ if (!CONVEX_DEPLOY_KEY) {
 const CONVEX_REQUEST_TIMEOUT = 10000; // 10 seconds
 
 // Helper function to call Convex internal mutations
-async function callConvexMutation(functionName: string, args: any) {
+async function callConvexMutation(functionName: string, args: Record<string, unknown>) {
   if (!CONVEX_URL || !CONVEX_DEPLOY_KEY) {
     throw new Error('Missing Convex configuration');
   }

@@ -11,7 +11,15 @@ import { getCurrentUser, requireAdmin } from "./users";
  */
 export const upsertFromClerk = mutation({
   args: {
-    data: v.any(),
+    data: v.object({
+      id: v.string(),
+      email_addresses: v.optional(v.array(v.object({
+        email_address: v.string(),
+      }))),
+      first_name: v.optional(v.string()),
+      last_name: v.optional(v.string()),
+      image_url: v.optional(v.string()),
+    }),
   },
   returns: v.null(),
   handler: async (ctx, args) => {

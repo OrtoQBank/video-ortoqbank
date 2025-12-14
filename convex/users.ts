@@ -90,7 +90,32 @@ export const ensureCurrentUser = mutation({
  */
 export const getUserByClerkId = internalQuery({
   args: { clerkUserId: v.string() },
-  returns: v.union(v.any(), v.null()),
+  returns: v.union(
+    v.object({
+      _id: v.id("users"),
+      _creationTime: v.number(),
+      firstName: v.string(),
+      lastName: v.string(),
+      email: v.string(),
+      imageUrl: v.optional(v.string()),
+      clerkUserId: v.string(),
+      onboardingCompleted: v.boolean(),
+      role: v.union(v.literal("user"), v.literal("admin")),
+      status: v.union(v.literal("active"), v.literal("inactive"), v.literal("suspended")),
+      hasActiveYearAccess: v.boolean(),
+      paid: v.boolean(),
+      paymentDate: v.optional(v.number()),
+      paymentId: v.optional(v.string()),
+      paymentStatus: v.union(
+        v.literal("pending"),
+        v.literal("completed"),
+        v.literal("failed"),
+        v.literal("refunded")
+      ),
+      testeId: v.optional(v.string()),
+    }),
+    v.null()
+  ),
   handler: async (ctx, args) => {
     return await userByClerkUserId(ctx, args.clerkUserId);
   },
@@ -106,8 +131,23 @@ export const getUserByClerkId = internalQuery({
  */
 export const upsertFromClerk = internalMutation({
   args: {
-    data: v.any(),
-  }, // no runtime validation, trust Clerk
+    data: v.object({
+      id: v.string(),
+      first_name: v.optional(v.string()),
+      last_name: v.optional(v.string()),
+      email_addresses: v.optional(v.array(v.object({
+        email_address: v.string(),
+      }))),
+      image_url: v.optional(v.string()),
+      public_metadata: v.optional(v.object({
+        paid: v.optional(v.boolean()),
+        paymentId: v.optional(v.union(v.string(), v.number())),
+        paymentDate: v.optional(v.number()),
+        paymentStatus: v.optional(v.string()),
+        hasActiveYearAccess: v.optional(v.boolean()),
+      })),
+    }),
+  },
   returns: v.union(v.id("users"), v.null()),
   async handler(context, { data }) {
     // Extract any payment data from Clerk's public metadata
@@ -134,7 +174,7 @@ export const upsertFromClerk = internalMutation({
             paid: true,
             paymentId: publicMetadata.paymentId?.toString(),
             paymentDate: publicMetadata.paymentDate,
-            paymentStatus: publicMetadata.paymentStatus || "completed",
+            paymentStatus: (publicMetadata.paymentStatus as "pending" | "completed" | "failed" | "refunded") || "completed",
             hasActiveYearAccess: publicMetadata.hasActiveYearAccess === true,
           }
         : {
@@ -155,21 +195,29 @@ export const upsertFromClerk = internalMutation({
     // Create new user with payment data if it exists in Clerk
     if (isPaidFromClerk) {
       return await context.db.insert("users", {
-        ...userData,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        email: userData.email || "",
+        clerkUserId: userData.clerkUserId,
+        imageUrl: userData.imageUrl,
         onboardingCompleted: false,
         role: "user",
         status: "active",
         paid: true,
         paymentId: publicMetadata.paymentId?.toString(),
         paymentDate: publicMetadata.paymentDate,
-        paymentStatus: publicMetadata.paymentStatus || "completed",
+        paymentStatus: (publicMetadata.paymentStatus as "pending" | "completed" | "failed" | "refunded") || "completed",
         hasActiveYearAccess: publicMetadata.hasActiveYearAccess === true,
       });
     }
 
     // Create new user without payment data
     return await context.db.insert("users", {
-      ...userData,
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      email: userData.email || "",
+      clerkUserId: userData.clerkUserId,
+      imageUrl: userData.imageUrl,
       onboardingCompleted: false,
       role: "user",
       status: "active",

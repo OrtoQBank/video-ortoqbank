@@ -3,12 +3,12 @@ import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 
-// Query para listar todos os módulos (ADMIN - mostra todos)
+// Query para listar todas as unidades (ADMIN - mostra todas)
 export const list = query({
   args: {},
   returns: v.array(
     v.object({
-      _id: v.id("modules"),
+      _id: v.id("units"),
       _creationTime: v.number(),
       categoryId: v.id("categories"),
       title: v.string(),
@@ -21,17 +21,17 @@ export const list = query({
     })
   ),
   handler: async (ctx) => {
-    const modules = await ctx.db.query("modules").collect();
-    return modules;
+    const units = await ctx.db.query("units").collect();
+    return units;
   },
 });
 
-// Query para listar apenas módulos PUBLICADOS (USER)
+// Query para listar apenas unidades PUBLICADAS (USER)
 export const listPublished = query({
   args: {},
   returns: v.array(
     v.object({
-      _id: v.id("modules"),
+      _id: v.id("units"),
       _creationTime: v.number(),
       categoryId: v.id("categories"),
       title: v.string(),
@@ -44,20 +44,20 @@ export const listPublished = query({
     })
   ),
   handler: async (ctx) => {
-    const modules = await ctx.db
-      .query("modules")
+    const units = await ctx.db
+      .query("units")
       .withIndex("by_isPublished", (q) => q.eq("isPublished", true))
       .collect();
-    return modules;
+    return units;
   },
 });
 
-// Query para listar módulos de uma categoria específica (ADMIN - mostra todos)
+// Query para listar unidades de uma categoria específica (ADMIN - mostra todas)
 export const listByCategory = query({
   args: { categoryId: v.id("categories") },
   returns: v.array(
     v.object({
-      _id: v.id("modules"),
+      _id: v.id("units"),
       _creationTime: v.number(),
       categoryId: v.id("categories"),
       title: v.string(),
@@ -70,23 +70,23 @@ export const listByCategory = query({
     })
   ),
   handler: async (ctx, args) => {
-    const modules = await ctx.db
-      .query("modules")
+    const units = await ctx.db
+      .query("units")
       .withIndex("by_categoryId_and_order", (q) => 
         q.eq("categoryId", args.categoryId)
       )
       .collect();
 
-    return modules;
+    return units;
   },
 });
 
-// Query para listar apenas módulos PUBLICADOS de uma categoria PUBLICADA (USER)
+// Query para listar apenas unidades PUBLICADAS de uma categoria PUBLICADA (USER)
 export const listPublishedByCategory = query({
   args: { categoryId: v.id("categories") },
   returns: v.array(
     v.object({
-      _id: v.id("modules"),
+      _id: v.id("units"),
       _creationTime: v.number(),
       categoryId: v.id("categories"),
       title: v.string(),
@@ -105,23 +105,23 @@ export const listPublishedByCategory = query({
       return [];
     }
 
-    const modules = await ctx.db
-      .query("modules")
+    const units = await ctx.db
+      .query("units")
       .withIndex("by_categoryId_and_isPublished", (q) => 
         q.eq("categoryId", args.categoryId).eq("isPublished", true)
       )
       .collect();
 
-    return modules;
+    return units;
   },
 });
 
-// Query para buscar um módulo por ID
+// Query para buscar uma unidade por ID
 export const getById = query({
-  args: { id: v.id("modules") },
+  args: { id: v.id("units") },
   returns: v.union(
     v.object({
-      _id: v.id("modules"),
+      _id: v.id("units"),
       _creationTime: v.number(),
       categoryId: v.id("categories"),
       title: v.string(),
@@ -135,17 +135,17 @@ export const getById = query({
     v.null()
   ),
   handler: async (ctx, args) => {
-    const module = await ctx.db.get(args.id);
-    return module;
+    const unit = await ctx.db.get(args.id);
+    return unit;
   },
 });
 
-// Query para buscar um módulo por slug
+// Query para buscar uma unidade por slug
 export const getBySlug = query({
   args: { slug: v.string() },
   returns: v.union(
     v.object({
-      _id: v.id("modules"),
+      _id: v.id("units"),
       _creationTime: v.number(),
       categoryId: v.id("categories"),
       title: v.string(),
@@ -159,12 +159,12 @@ export const getBySlug = query({
     v.null()
   ),
   handler: async (ctx, args) => {
-    const module = await ctx.db
-      .query("modules")
+    const unit = await ctx.db
+      .query("units")
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .unique();
 
-    return module;
+    return unit;
   },
 });
 
@@ -178,38 +178,38 @@ function generateSlug(title: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-// Mutation para criar um novo módulo
+// Mutation para criar uma nova unidade
 export const create = mutation({
   args: {
     categoryId: v.id("categories"),
     title: v.string(),
     description: v.string(),
   },
-  returns: v.id("modules"),
+  returns: v.id("units"),
   handler: async (ctx, args) => {
     // Auto-generate slug from title
     const slug = generateSlug(args.title);
 
-    // Verificar se já existe um módulo com o mesmo slug
+    // Verificar se já existe uma unidade com o mesmo slug
     const existing = await ctx.db
-      .query("modules")
+      .query("units")
       .withIndex("by_slug", (q) => q.eq("slug", slug))
       .first();
 
     if (existing) {
-      throw new Error("Já existe um módulo com este slug");
+      throw new Error("Já existe uma unidade com este slug");
     }
 
     // Auto-calculate next order_index for this category
-    const modulesInCategory = await ctx.db
-      .query("modules")
+    const unitsInCategory = await ctx.db
+      .query("units")
       .withIndex("by_categoryId_and_order", (q) => 
         q.eq("categoryId", args.categoryId)
       )
       .collect();
     
-    const maxOrderIndex = modulesInCategory.reduce(
-      (max, module) => Math.max(max, module.order_index),
+    const maxOrderIndex = unitsInCategory.reduce(
+      (max, unit) => Math.max(max, unit.order_index),
       -1
     );
     const nextOrderIndex = maxOrderIndex + 1;
@@ -220,7 +220,7 @@ export const create = mutation({
       throw new Error("Categoria não encontrada");
     }
 
-    const moduleId: Id<"modules"> = await ctx.db.insert("modules", {
+    const unitId: Id<"units"> = await ctx.db.insert("units", {
       categoryId: args.categoryId,
       title: args.title,
       slug: slug,
@@ -232,16 +232,16 @@ export const create = mutation({
     });
 
     // Update contentStats
-    await ctx.scheduler.runAfter(0, internal.contentStats.incrementModules, { amount: 1 });
+    await ctx.scheduler.runAfter(0, internal.contentStats.incrementUnits, { amount: 1 });
 
-    return moduleId;
+    return unitId;
   },
 });
 
-// Mutation para atualizar um módulo
+// Mutation para atualizar uma unidade
 export const update = mutation({
   args: {
-    id: v.id("modules"),
+    id: v.id("units"),
     categoryId: v.id("categories"),
     title: v.string(),
     description: v.string(),
@@ -252,14 +252,14 @@ export const update = mutation({
     // Auto-generate slug from title
     const slug = generateSlug(args.title);
 
-    // Verificar se já existe outro módulo com o mesmo slug
+    // Verificar se já existe outra unidade com o mesmo slug
     const existing = await ctx.db
-      .query("modules")
+      .query("units")
       .withIndex("by_slug", (q) => q.eq("slug", slug))
       .first();
 
     if (existing && existing._id !== args.id) {
-      throw new Error("Já existe um módulo com este slug");
+      throw new Error("Já existe uma unidade com este slug");
     }
 
     await ctx.db.patch(args.id, {
@@ -276,15 +276,15 @@ export const update = mutation({
 
 // Query para obter informações sobre exclusão em cascata
 export const getCascadeDeleteInfo = query({
-  args: { id: v.id("modules") },
+  args: { id: v.id("units") },
   returns: v.object({
     lessonsCount: v.number(),
   }),
   handler: async (ctx, args) => {
-    // Count lessons in this module
+    // Count lessons in this unit
     const lessons = await ctx.db
       .query("lessons")
-      .withIndex("by_moduleId", (q) => q.eq("moduleId", args.id))
+      .withIndex("by_unitId", (q) => q.eq("unitId", args.id))
       .collect();
 
     return {
@@ -293,17 +293,17 @@ export const getCascadeDeleteInfo = query({
   },
 });
 
-// Mutation para deletar um módulo (cascade delete)
+// Mutation para deletar uma unidade (cascade delete)
 export const remove = mutation({
   args: {
-    id: v.id("modules"),
+    id: v.id("units"),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    // Get all lessons in this module
+    // Get all lessons in this unit
     const lessons = await ctx.db
       .query("lessons")
-      .withIndex("by_moduleId", (q) => q.eq("moduleId", args.id))
+      .withIndex("by_unitId", (q) => q.eq("unitId", args.id))
       .collect();
 
     let publishedLessonsCount = 0;
@@ -316,11 +316,11 @@ export const remove = mutation({
       await ctx.db.delete(lesson._id);
     }
 
-    // Delete the module
+    // Delete the unit
     await ctx.db.delete(args.id);
 
     // Update contentStats
-    await ctx.scheduler.runAfter(0, internal.contentStats.decrementModules, { amount: 1 });
+    await ctx.scheduler.runAfter(0, internal.contentStats.decrementUnits, { amount: 1 });
     if (publishedLessonsCount > 0) {
       await ctx.scheduler.runAfter(0, internal.contentStats.decrementLessons, { amount: publishedLessonsCount });
     }
@@ -329,19 +329,19 @@ export const remove = mutation({
   },
 });
 
-// Mutation para reordenar módulos
+// Mutation para reordenar unidades
 export const reorder = mutation({
   args: {
     updates: v.array(
       v.object({
-        id: v.id("modules"),
+        id: v.id("units"),
         order_index: v.number(),
       })
     ),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    // Update all module order_index
+    // Update all unit order_index
     for (const update of args.updates) {
       await ctx.db.patch(update.id, {
         order_index: update.order_index,
@@ -352,30 +352,30 @@ export const reorder = mutation({
   },
 });
 
-// Mutation para alternar publicação de módulo (cascade)
+// Mutation para alternar publicação de unidade (cascade)
 export const togglePublish = mutation({
   args: {
-    id: v.id("modules"),
+    id: v.id("units"),
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
-    const module = await ctx.db.get(args.id);
+    const unit = await ctx.db.get(args.id);
 
-    if (!module) {
-      throw new Error("Módulo não encontrado");
+    if (!unit) {
+      throw new Error("Unidade não encontrada");
     }
 
-    const newPublishStatus = !module.isPublished;
+    const newPublishStatus = !unit.isPublished;
 
-    // Update module
+    // Update unit
     await ctx.db.patch(args.id, {
       isPublished: newPublishStatus,
     });
 
-    // Get and update all lessons in this module
+    // Get and update all lessons in this unit
     const lessons = await ctx.db
       .query("lessons")
-      .withIndex("by_moduleId", (q) => q.eq("moduleId", args.id))
+      .withIndex("by_unitId", (q) => q.eq("unitId", args.id))
       .collect();
 
     let publishedLessonsChange = 0;

@@ -1,5 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import UserInfos from "./user-infos";
+import type { Preloaded } from "convex/react";
+import type { api } from "@/convex/_generated/api";
 
 const mockPreloadedQuery = {
     _value: {
@@ -10,7 +12,7 @@ const mockPreloadedQuery = {
         role: 'user',
         status: 'active',
     },
-};
+} as Preloaded<typeof api.users.current>;
 
 vi.mock('convex/react', () => ({
     usePreloadedQuery: vi.fn(() => mockPreloadedQuery._value),
@@ -18,6 +20,6 @@ vi.mock('convex/react', () => ({
 
 describe('UserInfos', () => {
     it('should render the user infos', () => {
-        render(<UserInfos preloadedUserData={mockPreloadedQuery as any} />);
+        render(<UserInfos preloadedUserData={mockPreloadedQuery} />);
     });
 });

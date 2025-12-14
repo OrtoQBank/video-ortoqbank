@@ -6,9 +6,9 @@ import { Id } from "@/convex/_generated/dataModel";
 import { ChevronDownIcon, ChevronRightIcon, CheckCircleIcon, CircleIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-  interface LessonListProps {
-  moduleId: Id<"modules">;
-  moduleTitle: string;
+interface LessonListProps {
+  unitId: Id<"units">;
+  unitTitle: string;
   totalLessons: number;
   isExpanded: boolean;
   currentLessonId: Id<"lessons"> | null;
@@ -21,8 +21,8 @@ import { cn } from "@/lib/utils";
 }
 
 export function LessonList({
-  moduleId,
-  moduleTitle,
+  unitId,
+  unitTitle,
   totalLessons,
   isExpanded,
   currentLessonId,
@@ -30,10 +30,10 @@ export function LessonList({
   onToggle,
   onLessonClick,
 }: LessonListProps) {
-  // Load lessons for this module (only published)
+  // Load lessons for this unit (only published)
   const lessons = useQuery(
-    api.lessons.listPublishedByModule,
-    isExpanded ? { moduleId } : "skip"
+    api.lessons.listPublishedByUnit,
+    isExpanded ? { unitId } : "skip"
   );
 
   const completedCount = lessons?.filter((lesson) =>
@@ -48,7 +48,7 @@ export function LessonList({
 
   return (
     <div className="bg-white rounded-lg border">
-      {/* Module Header */}
+      {/* Unit Header */}
       <button
         onClick={onToggle}
         className="w-full p-3 flex items-start gap-2 hover:bg-gray-50 transition-colors"
@@ -59,7 +59,7 @@ export function LessonList({
           <ChevronRightIcon size={20} className="mt-0.5 shrink-0" />
         )}
         <div className="flex-1 text-left">
-          <h3 className="font-semibold text-sm">{moduleTitle}</h3>
+          <h3 className="font-semibold text-sm">{unitTitle}</h3>
           <p className="text-xs text-muted-foreground mt-1">
             {totalLessons} aulas • {completedCount} concluídas
           </p>

@@ -7,7 +7,7 @@ import { useUser } from "@clerk/nextjs";
 
 export default function FavoritesPage() {
   const { user } = useUser();
-  
+
   // Get user's favorites with full lesson details
   const favoritesData = useQuery(
     api.favorites.getUserFavoriteLessons,
@@ -37,7 +37,7 @@ export default function FavoritesPage() {
     duration: formatDuration(fav.lesson.durationSeconds),
     level: "Básico" as const, // Could be added to lesson schema later
     categoryName: fav.category.title,
-    subthemeName: fav.module.title,
+    subthemeName: fav.unit.title,
     thumbnailUrl: fav.lesson.thumbnailUrl,
     categoryId: fav.category._id,
   }));

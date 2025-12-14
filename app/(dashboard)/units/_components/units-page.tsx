@@ -25,30 +25,30 @@ import { LessonInfoSection } from "./lesson-info-section";
 import { Feedback } from "./feedback";
 
 
-interface ModulesInnerProps {
-  preloadedModules: Preloaded<typeof api.modules.listPublishedByCategory>;
+interface UnitsInnerProps {
+  preloadedUnits: Preloaded<typeof api.units.listPublishedByCategory>;
   categoryTitle: string;
 }
 
-export function ModulesInner({
-  preloadedModules,
+export function UnitsInner({
+  preloadedUnits,
   categoryTitle,
-}: ModulesInnerProps) {
-  const modules = usePreloadedQuery(preloadedModules);
+}: UnitsInnerProps) {
+  const units = usePreloadedQuery(preloadedUnits);
   const router = useRouter();
   const { user } = useUser();
   const { state } = useSidebar();
 
-  const [expandedModules, setExpandedModules] = useState<Set<string>>(
+  const [expandedUnits, setExpandedUnits] = useState<Set<string>>(
     new Set(),
   );
   const [currentLessonId, setCurrentLessonId] = useState<Id<"lessons"> | null>(
     null,
   );
-  const [currentModuleId, setCurrentModuleId] = useState<Id<"modules"> | null>(
+  const [currentUnitId, setCurrentUnitId] = useState<Id<"units"> | null>(
     null,
   );
-  const [nextModuleId, setNextModuleId] = useState<Id<"modules"> | null>(null);
+  const [nextUnitId, setNextUnitId] = useState<Id<"units"> | null>(null);
 
   // Mutations
   const markCompleted = useMutation(api.progress.markLessonCompleted);
@@ -56,22 +56,22 @@ export function ModulesInner({
   const toggleFavorite = useMutation(api.favorites.toggleFavorite);
   const addRecentView = useMutation(api.recentViews.addView);
 
-  // Load lessons for first module to get the first lesson (only published)
-  const firstModuleLessons = useQuery(
-    api.lessons.listPublishedByModule,
-    modules[0] ? { moduleId: modules[0]._id } : "skip",
+  // Load lessons for first unit to get the first lesson (only published)
+  const firstUnitLessons = useQuery(
+    api.lessons.listPublishedByUnit,
+    units[0] ? { unitId: units[0]._id } : "skip",
   );
 
-  // Load lessons for current module (only published)
-  const currentModuleLessons = useQuery(
-    api.lessons.listPublishedByModule,
-    currentModuleId ? { moduleId: currentModuleId } : "skip",
+  // Load lessons for current unit (only published)
+  const currentUnitLessons = useQuery(
+    api.lessons.listPublishedByUnit,
+    currentUnitId ? { unitId: currentUnitId } : "skip",
   );
 
-  // Load lessons for next module (for smooth transitions, only published)
-  const nextModuleLessons = useQuery(
-    api.lessons.listPublishedByModule,
-    nextModuleId ? { moduleId: nextModuleId } : "skip",
+  // Load lessons for next unit (for smooth transitions, only published)
+  const nextUnitLessons = useQuery(
+    api.lessons.listPublishedByUnit,
+    nextUnitId ? { unitId: nextUnitId } : "skip",
   );
 
   // Queries for current state
@@ -81,18 +81,18 @@ export function ModulesInner({
   );
 
   const allUserProgress = useQuery(
-    api.progress.getModuleLessonsProgress,
-    user?.id && currentModuleId
+    api.progress.getUnitLessonsProgress,
+    user?.id && currentUnitId
       ? {
-          userId: user.id,
-          moduleId: currentModuleId,
-        }
+        userId: user.id,
+        unitId: currentUnitId,
+      }
       : "skip",
   );
 
-  // Get progress for all modules to calculate category progress
-  const allModulesProgress = useQuery(
-    api.progress.getAllModuleProgress,
+  // Get progress for all units to calculate category progress
+  const allUnitsProgress = useQuery(
+    api.progress.getAllUnitProgress,
     user?.id ? { userId: user.id } : "skip",
   );
 
@@ -106,46 +106,46 @@ export function ModulesInner({
   // Set first lesson as current when data loads
   useEffect(() => {
     if (
-      firstModuleLessons &&
-      firstModuleLessons.length > 0 &&
+      firstUnitLessons &&
+      firstUnitLessons.length > 0 &&
       !currentLessonId
     ) {
-      setCurrentLessonId(firstModuleLessons[0]._id);
-      setCurrentModuleId(modules[0]._id);
-      setExpandedModules(new Set([modules[0]._id]));
+      setCurrentLessonId(firstUnitLessons[0]._id);
+      setCurrentUnitId(units[0]._id);
+      setExpandedUnits(new Set([units[0]._id]));
     }
-  }, [firstModuleLessons, currentLessonId, modules]);
+  }, [firstUnitLessons, currentLessonId, units]);
 
-  // Handle transition to first lesson of next module
+  // Handle transition to first lesson of next unit
   useEffect(() => {
-    const transitionToNextModule = async () => {
-      if (nextModuleId && nextModuleLessons && nextModuleLessons.length > 0) {
-        const firstLesson = nextModuleLessons[0];
-        
+    const transitionToNextUnit = async () => {
+      if (nextUnitId && nextUnitLessons && nextUnitLessons.length > 0) {
+        const firstLesson = nextUnitLessons[0];
+
         // Only transition if we haven't already switched to this lesson
         if (currentLessonId !== firstLesson._id) {
-          await handleLessonClick(firstLesson._id, nextModuleId);
+          await handleLessonClick(firstLesson._id, nextUnitId);
         }
-        
-        // Reset nextModuleId after handling
-        setNextModuleId(null);
+
+        // Reset nextUnitId after handling
+        setNextUnitId(null);
       }
     };
 
-    transitionToNextModule();
-  }, [nextModuleId, nextModuleLessons, currentLessonId, user?.id]);
+    transitionToNextUnit();
+  }, [nextUnitId, nextUnitLessons, currentLessonId, user?.id]);
 
   const handleBackClick = () => {
     router.push("/categories");
   };
 
-  const toggleModule = (moduleId: string) => {
-    setExpandedModules((prev) => {
+  const toggleUnit = (unitId: string) => {
+    setExpandedUnits((prev) => {
       const newSet = new Set(prev);
-      if (newSet.has(moduleId)) {
-        newSet.delete(moduleId);
+      if (newSet.has(unitId)) {
+        newSet.delete(unitId);
       } else {
-        newSet.add(moduleId);
+        newSet.add(unitId);
       }
       return newSet;
     });
@@ -153,10 +153,10 @@ export function ModulesInner({
 
   const handleLessonClick = async (
     lessonId: Id<"lessons">,
-    moduleId: Id<"modules">,
+    unitId: Id<"units">,
   ) => {
     setCurrentLessonId(lessonId);
-    setCurrentModuleId(moduleId);
+    setCurrentUnitId(unitId);
 
     // Register the view
     if (user?.id) {
@@ -164,7 +164,7 @@ export function ModulesInner({
         await addRecentView({
           userId: user.id,
           lessonId,
-          moduleId,
+          unitId,
           action: "started",
         });
       } catch (error) {
@@ -174,7 +174,7 @@ export function ModulesInner({
   };
 
   const handleMarkCompleted = async () => {
-    if (!user?.id || !currentLessonId || !currentModuleId) return;
+    if (!user?.id || !currentLessonId || !currentUnitId) return;
     try {
       // Toggle between completed and incomplete
       if (isLessonCompleted) {
@@ -188,7 +188,7 @@ export function ModulesInner({
         await addRecentView({
           userId: user.id,
           lessonId: currentLessonId,
-          moduleId: currentModuleId,
+          unitId: currentUnitId,
           action: "completed",
         });
       }
@@ -207,37 +207,37 @@ export function ModulesInner({
   };
 
   const handleNextLesson = async () => {
-    if (!currentLessonId || !currentModuleId || !currentModuleLessons) return;
+    if (!currentLessonId || !currentUnitId || !currentUnitLessons) return;
 
-    // Find current lesson index in current module
-    const currentLessonIndex = currentModuleLessons.findIndex(
+    // Find current lesson index in current unit
+    const currentLessonIndex = currentUnitLessons.findIndex(
       (lesson) => lesson._id === currentLessonId
     );
 
     if (currentLessonIndex === -1) return;
 
-    // Check if there's a next lesson in current module
-    if (currentLessonIndex < currentModuleLessons.length - 1) {
-      // Go to next lesson in same module
-      const nextLesson = currentModuleLessons[currentLessonIndex + 1];
-      await handleLessonClick(nextLesson._id, currentModuleId);
+    // Check if there's a next lesson in current unit
+    if (currentLessonIndex < currentUnitLessons.length - 1) {
+      // Go to next lesson in same unit
+      const nextLesson = currentUnitLessons[currentLessonIndex + 1];
+      await handleLessonClick(nextLesson._id, currentUnitId);
     } else {
-      // Current lesson is the last in module, try to go to first lesson of next module
-      const currentModuleIndex = modules.findIndex(
-        (m) => m._id === currentModuleId
+      // Current lesson is the last in unit, try to go to first lesson of next unit
+      const currentUnitIndex = units.findIndex(
+        (u) => u._id === currentUnitId
       );
-      
-      if (currentModuleIndex === -1 || currentModuleIndex >= modules.length - 1) {
-        // This is the last module, no next lesson
+
+      if (currentUnitIndex === -1 || currentUnitIndex >= units.length - 1) {
+        // This is the last unit, no next lesson
         return;
       }
 
-      // Get next module
-      const nextModule = modules[currentModuleIndex + 1];
-      
-      // Expand the next module and trigger loading of its lessons
-      setExpandedModules((prev) => new Set(prev).add(nextModule._id));
-      setNextModuleId(nextModule._id);
+      // Get next unit
+      const nextUnit = units[currentUnitIndex + 1];
+
+      // Expand the next unit and trigger loading of its lessons
+      setExpandedUnits((prev) => new Set(prev).add(nextUnit._id));
+      setNextUnitId(nextUnit._id);
     }
   };
 
@@ -251,25 +251,25 @@ export function ModulesInner({
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // Calculate category progress - only for modules in this category
-  const totalCompletedLessons = modules.reduce((acc, module) => {
-    const moduleProgress = allModulesProgress?.find(
-      (p) => p.moduleId === module._id
+  // Calculate category progress - only for units in this category
+  const totalCompletedLessons = units.reduce((acc, unit) => {
+    const unitProgress = allUnitsProgress?.find(
+      (p) => p.unitId === unit._id
     );
-    return acc + (moduleProgress?.completedLessonsCount || 0);
+    return acc + (unitProgress?.completedLessonsCount || 0);
   }, 0);
-  
-  const totalLessonsCount = modules.reduce(
+
+  const totalLessonsCount = units.reduce(
     (acc, m) => acc + m.totalLessonVideos,
     0,
   );
-  
+
   const globalProgressPercent =
     totalLessonsCount > 0
       ? Math.min(100, Math.round((totalCompletedLessons / totalLessonsCount) * 100))
       : 0;
 
-  if (modules.length === 0) {
+  if (units.length === 0) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <p className="text-muted-foreground">
@@ -283,7 +283,7 @@ export function ModulesInner({
     <div className="min-h-screen bg-white relative">
       {/* Sidebar trigger - follows sidebar position */}
       <SidebarTrigger className={`hidden md:inline-flex fixed top-2 h-6 w-6 text-blue-brand hover:text-blue-brand-dark hover:bg-blue-brand-light transition-[left] duration-200 ease-linear z-10 ${state === 'collapsed' ? 'left-[calc(var(--sidebar-width-icon)+0.25rem)]' : 'left-[calc(var(--sidebar-width)+0.25rem)]'}`} />
-      
+
       {/* Header */}
       <div className="py-4 px-6 flex items-center gap-4 border-b">
         <Button
@@ -306,7 +306,7 @@ export function ModulesInner({
 
       {/* Main Content */}
       <div className="flex h-[calc(100vh-80px)]">
-        {/* Left Sidebar - Modules and Lessons (Desktop Only) */}
+        {/* Left Sidebar - Units and Lessons (Desktop Only) */}
         <div className="hidden md:block md:w-[400px] border-r overflow-y-auto bg-gray-50">
           {/* Progress Bar */}
           <div className="p-4 bg-white border-b">
@@ -319,20 +319,20 @@ export function ModulesInner({
             <Progress value={globalProgressPercent} className="h-2" />
           </div>
 
-          {/* Modules List */}
+          {/* Units List */}
           <div className="p-4 space-y-2">
-            {modules.map((module) => (
+            {units.map((unit) => (
               <LessonList
-                key={module._id}
-                moduleId={module._id}
-                moduleTitle={module.title}
-                totalLessons={module.totalLessonVideos}
-                isExpanded={expandedModules.has(module._id)}
+                key={unit._id}
+                unitId={unit._id}
+                unitTitle={unit.title}
+                totalLessons={unit.totalLessonVideos}
+                isExpanded={expandedUnits.has(unit._id)}
                 currentLessonId={currentLessonId}
                 userProgress={allUserProgress}
-                onToggle={() => toggleModule(module._id)}
+                onToggle={() => toggleUnit(unit._id)}
                 onLessonClick={(lessonId: Id<"lessons">) =>
-                  handleLessonClick(lessonId, module._id)
+                  handleLessonClick(lessonId, unit._id)
                 }
               />
             ))}
@@ -382,12 +382,12 @@ export function ModulesInner({
                 )}
               </div>
 
-              {/* Mobile: Tabs with lesson info and modules */}
+              {/* Mobile: Tabs with lesson info and units */}
               <div className="md:hidden px-6 pb-8">
                 <Tabs defaultValue="info" className="w-full">
                   <TabsList className="w-full grid grid-cols-2">
                     <TabsTrigger value="info">Informações</TabsTrigger>
-                    <TabsTrigger value="modules">Módulos</TabsTrigger>
+                    <TabsTrigger value="units">Unidades</TabsTrigger>
                   </TabsList>
 
                   {/* Tab 1: Informações */}
@@ -403,30 +403,30 @@ export function ModulesInner({
                       variant="mobile"
                     />
 
-                    {user?.id && currentLessonId && currentModuleId && (
+                    {user?.id && currentLessonId && currentUnitId && (
                       <Feedback
                         userId={user.id}
                         lessonId={currentLessonId}
-                        moduleId={currentModuleId}
+                        unitId={currentUnitId}
                       />
                     )}
                   </TabsContent>
 
                   {/* Tab 2: Módulos */}
-                  <TabsContent value="modules" className="mt-4 pb-8">
+                  <TabsContent value="units" className="mt-4 pb-8">
                     <div className="space-y-2">
-                      {modules.map((module) => (
+                      {units.map((unit) => (
                         <LessonList
-                          key={module._id}
-                          moduleId={module._id}
-                          moduleTitle={module.title}
-                          totalLessons={module.totalLessonVideos}
-                          isExpanded={expandedModules.has(module._id)}
+                          key={unit._id}
+                          unitId={unit._id}
+                          unitTitle={unit.title}
+                          totalLessons={unit.totalLessonVideos}
+                          isExpanded={expandedUnits.has(unit._id)}
                           currentLessonId={currentLessonId}
                           userProgress={allUserProgress}
-                          onToggle={() => toggleModule(module._id)}
+                          onToggle={() => toggleUnit(unit._id)}
                           onLessonClick={(lessonId: Id<"lessons">) =>
-                            handleLessonClick(lessonId, module._id)
+                            handleLessonClick(lessonId, unit._id)
                           }
                         />
                       ))}
@@ -448,18 +448,18 @@ export function ModulesInner({
                   variant="desktop"
                 />
 
-                {user?.id && currentLessonId && currentModuleId && (
+                {user?.id && currentLessonId && currentUnitId && (
                   <Feedback
                     userId={user.id}
                     lessonId={currentLessonId}
-                    moduleId={currentModuleId}
+                    unitId={currentUnitId}
                   />
                 )}
               </div>
             </>
           ) : (
             <>
-              {/* Mobile: Show modules list when no lesson selected */}
+              {/* Mobile: Show units list when no lesson selected */}
               <div className="md:hidden">
                 {/* Progress Bar */}
                 <div className="px-6 pt-4 pb-2 bg-white border-b">
@@ -472,20 +472,20 @@ export function ModulesInner({
                   <Progress value={globalProgressPercent} className="h-1.5" />
                 </div>
 
-                {/* Modules List */}
+                {/* Units List */}
                 <div className="px-6 py-6 pb-8 space-y-2">
-                  {modules.map((module) => (
+                  {units.map((unit) => (
                     <LessonList
-                      key={module._id}
-                      moduleId={module._id}
-                      moduleTitle={module.title}
-                      totalLessons={module.totalLessonVideos}
-                      isExpanded={expandedModules.has(module._id)}
+                      key={unit._id}
+                      unitId={unit._id}
+                      unitTitle={unit.title}
+                      totalLessons={unit.totalLessonVideos}
+                      isExpanded={expandedUnits.has(unit._id)}
                       currentLessonId={currentLessonId}
                       userProgress={allUserProgress}
-                      onToggle={() => toggleModule(module._id)}
+                      onToggle={() => toggleUnit(unit._id)}
                       onLessonClick={(lessonId: Id<"lessons">) =>
-                        handleLessonClick(lessonId, module._id)
+                        handleLessonClick(lessonId, unit._id)
                       }
                     />
                   ))}

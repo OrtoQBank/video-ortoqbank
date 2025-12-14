@@ -19,7 +19,7 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/c
 import { Id, Doc } from "@/convex/_generated/dataModel";
 
 const formSchema = z.object({
-  moduleId: z.string().min(1, "Selecione um módulo"),
+  unitId: z.string().min(1, "Selecione uma unidade"),
   title: z.string().min(3, "Título deve ter pelo menos 3 caracteres"),
   description: z
     .string()
@@ -30,10 +30,10 @@ const formSchema = z.object({
 });
 
 interface LessonFormProps {
-  modules: Doc<"modules">[];
+  units: Doc<"units">[];
 }
 
-export function LessonForm({ modules }: LessonFormProps) {
+export function LessonForm({ units }: LessonFormProps) {
   const createLesson = useMutation(api.lessons.create);
   const { toast } = useToast();
   const { error, showError, hideError } = useErrorModal();
@@ -45,7 +45,7 @@ export function LessonForm({ modules }: LessonFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      moduleId: "",
+      unitId: "",
       title: "",
       description: "",
       lessonNumber: 1,
@@ -59,13 +59,13 @@ export function LessonForm({ modules }: LessonFormProps) {
     try {
       const tagsArray = data.tags
         ? data.tags
-            .split(",")
-            .map((tag) => tag.trim())
-            .filter(Boolean)
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter(Boolean)
         : [];
 
       const lessonId = await createLesson({
-        moduleId: data.moduleId as Id<"modules">,
+        unitId: data.unitId as Id<"units">,
         title: data.title,
         description: data.description,
         lessonNumber: data.lessonNumber,
@@ -107,21 +107,21 @@ export function LessonForm({ modules }: LessonFormProps) {
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <FieldGroup>
-            {/* Module Selection */}
+            {/* Unit Selection */}
             <Controller
-              name="moduleId"
+              name="unitId"
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Módulo</FieldLabel>
+                  <FieldLabel>Unidade</FieldLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione um módulo" />
+                      <SelectValue placeholder="Selecione uma unidade" />
                     </SelectTrigger>
                     <SelectContent>
-                      {modules.map((module) => (
-                        <SelectItem key={module._id} value={module._id}>
-                          {module.title}
+                      {units.map((unit) => (
+                        <SelectItem key={unit._id} value={unit._id}>
+                          {unit.title}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -145,7 +145,7 @@ export function LessonForm({ modules }: LessonFormProps) {
                     placeholder="Ex: Introdução à Anatomia do Joelho"
                     autoComplete="off"
                   />
-                 
+
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
                   )}

@@ -34,14 +34,14 @@ export function WatchAlsoVideos({ watchAlsoVideos }: WatchAlsoVideosProps) {
 
   const handleVideoClick = (video: Video) => {
     if (video.categoryId) {
-      router.push(`/modules/${video.categoryId}`);
+      router.push(`/units/${video.categoryId}`);
     }
   };
 
   const handleAddFavorite = async (e: React.MouseEvent, lessonId: string) => {
     e.stopPropagation();
     if (!user?.id) return;
-    
+
     try {
       await addFavorite({
         userId: user.id,

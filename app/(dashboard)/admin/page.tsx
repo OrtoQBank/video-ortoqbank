@@ -1,18 +1,9 @@
-import { AdminInner } from "./_components/admin-inner";
-import { api } from "@/convex/_generated/api";
+import { Admin } from "./_components/admin-page";
 import { preloadQuery } from "convex/nextjs";
+import { api } from "@/convex/_generated/api";
 
 export default async function AdminPage() {
-  // Preload das queries necessárias no servidor
   const preloadedCategories = await preloadQuery(api.categories.list);
-  const preloadedModules = await preloadQuery(api.modules.list);
-  const preloadedLessons = await preloadQuery(api.lessons.list);
 
-  return (
-    <AdminInner
-      preloadedCategories={preloadedCategories}
-      preloadedModules={preloadedModules}
-      preloadedLessons={preloadedLessons}
-    />
-  );
+  return <Admin preloadedCategories={preloadedCategories} />;
 }

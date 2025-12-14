@@ -1,10 +1,10 @@
 import { render, screen } from "@testing-library/react";
-import { ModuleForm } from "./module-form";
+import { UnitForm } from "./unit-form";
 
-describe("ModuleForm", () => {
+describe("UnitForm", () => {
   it("should render", () => {
-    render(<ModuleForm categories={[]} />);
-    expect(screen.getByText("Módulo")).toBeInTheDocument();
+    render(<UnitForm categories={[]} />);
+    expect(screen.getByText("Unidade")).toBeInTheDocument();
     expect(screen.getByText("Categoria")).toBeInTheDocument();
     expect(screen.getByText("Título")).toBeInTheDocument();
     expect(screen.getByText("Descrição")).toBeInTheDocument();

@@ -2,147 +2,47 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useMutation } from "convex/react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
 import { useConfirmModal } from "@/hooks/use-confirm-modal";
 import { ErrorModal } from "@/components/ui/error-modal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
-import { EditIcon, Trash2Icon, GripVerticalIcon, CheckIcon, XIcon, EyeIcon, EyeOffIcon } from "lucide-react";
+import { EditIcon, CheckIcon, XIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Id, Doc } from "@/convex/_generated/dataModel";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { cn } from "@/lib/utils";
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { UnitListItem } from "./unit-list-item";
 
-interface ModuleListProps {
-  modules: Doc<"modules">[];
+interface UnitListProps {
   categories: Doc<"categories">[];
 }
 
-interface SortableModuleItemProps {
-  module: Doc<"modules">;
-  isEditOrderMode: boolean;
-  onEdit: (module: Doc<"modules">) => void;
-  onDelete: (id: Id<"modules">, title: string) => void;
-  onTogglePublish: (id: Id<"modules">, title: string, currentStatus: boolean) => void;
-  getCategoryName: (categoryId: Id<"categories">) => string;
-}
-
-function SortableModuleItem({ 
-  module, 
-  isEditOrderMode, 
-  onEdit, 
-  onDelete,
-  onTogglePublish,
-  getCategoryName 
-}: SortableModuleItemProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: module._id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...(isEditOrderMode ? { ...attributes, ...listeners } : {})}
-      className={cn(
-        "flex items-center gap-2 p-2 border rounded-md transition-colors",
-        isEditOrderMode && "cursor-grab active:cursor-grabbing hover:bg-accent/50",
-        !isEditOrderMode && "hover:bg-accent/50",
-        isDragging && "opacity-50 ring-2 ring-primary"
-      )}
-    >
-      {isEditOrderMode && (
-        <div className="p-0.5">
-          <GripVerticalIcon className="h-4 w-4 text-muted-foreground" />
-        </div>
-      )}
-      <div className="flex-1 min-w-0">
-        <h3 className="text-sm font-semibold truncate">{module.title}</h3>
-        <p className="text-xs text-muted-foreground line-clamp-1">
-          {module.description}
-        </p>
-        <div className="flex gap-2 mt-0.5 flex-wrap">
-          <span className="text-xs text-muted-foreground">
-            Categoria: {getCategoryName(module.categoryId)}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            {module.totalLessonVideos} {module.totalLessonVideos === 1 ? "aula" : "aulas"}
-          </span>
-        </div>
-      </div>
-      {!isEditOrderMode && (
-        <div className="flex gap-1.5 shrink-0">
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-7 w-7"
-            onClick={() => onTogglePublish(module._id, module.title, module.isPublished)}
-            title={module.isPublished ? "Despublicar módulo" : "Publicar módulo"}
-          >
-            {module.isPublished ? (
-              <EyeIcon className="h-3 w-3 text-green-600" />
-            ) : (
-              <EyeOffIcon className="h-3 w-3 text-gray-400" />
-            )}
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-7 w-7"
-            onClick={() => onEdit(module)}
-          >
-            <EditIcon className="h-3 w-3" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-7 w-7"
-            onClick={() => onDelete(module._id, module.title)}
-          >
-            <Trash2Icon className="h-3 w-3 text-destructive" />
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-export function ModuleList({ modules, categories }: ModuleListProps) {
-  const updateModule = useMutation(api.modules.update);
-  const deleteModule = useMutation(api.modules.remove);
-  const reorderModules = useMutation(api.modules.reorder);
-  const togglePublishModule = useMutation(api.modules.togglePublish);
+export function UnitList({ categories }: UnitListProps) {
+  const units = useQuery(api.units.list);
+  const updateUnit = useMutation(api.units.update);
+  const deleteUnit = useMutation(api.units.remove);
+  const reorderUnits = useMutation(api.units.reorder);
+  const togglePublishUnit = useMutation(api.units.togglePublish);
   const { toast } = useToast();
   const { error, showError, hideError } = useErrorModal();
   const { confirm, showConfirm, hideConfirm } = useConfirmModal();
 
-  const [editingModule, setEditingModule] = useState<Id<"modules"> | null>(null);
+  const [editingUnit, setEditingUnit] = useState<Id<"units"> | null>(null);
   const [editCategoryId, setEditCategoryId] = useState("");
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editOrderIndex, setEditOrderIndex] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Edit order mode state
   const [isEditOrderMode, setIsEditOrderMode] = useState(false);
-   const [orderedModulesByCategory, setOrderedModulesByCategory] = useState<Record<string, Doc<"modules">[]>>({});
+  const [orderedUnitsByCategory, setOrderedUnitsByCategory] = useState<Record<string, Doc<"units">[]>>({});
   const [isSavingOrder, setIsSavingOrder] = useState(false);
 
   // DND sensors
@@ -153,35 +53,35 @@ export function ModuleList({ modules, categories }: ModuleListProps) {
     })
   );
 
-  // Group modules by category and update when modules or categories change
+  // Group units by category and update when units or categories change
   useEffect(() => {
-    const grouped: Record<string, Doc<"modules">[]> = {};
-    
+    const grouped: Record<string, Doc<"units">[]> = {};
+
     // Sort categories by position
     const sortedCategories = [...categories].sort((a, b) => a.position - b.position);
-    
+
     // Initialize with empty arrays for all categories
     sortedCategories.forEach(cat => {
       grouped[cat._id] = [];
     });
-    
-    // Group modules by category and sort by order_index
-    modules.forEach(module => {
-      if (grouped[module.categoryId]) {
-        grouped[module.categoryId].push(module);
+
+    // Group units by category and sort by order_index
+    units?.forEach(unit => {
+      if (grouped[unit.categoryId]) {
+        grouped[unit.categoryId].push(unit);
       }
     });
-    
-    // Sort modules within each category by order_index
+
+    // Sort units within each category by order_index
     Object.keys(grouped).forEach(categoryId => {
       grouped[categoryId].sort((a, b) => a.order_index - b.order_index);
     });
-    
-    setOrderedModulesByCategory(grouped);
-  }, [modules, categories]);
 
-  const handleEdit = (module: {
-    _id: Id<"modules">;
+    setOrderedUnitsByCategory(grouped);
+  }, [units, categories]);
+
+  const handleEdit = (unit: {
+    _id: Id<"units">;
     categoryId: Id<"categories">;
     title: string;
     slug: string;
@@ -189,17 +89,17 @@ export function ModuleList({ modules, categories }: ModuleListProps) {
     order_index: number;
     totalLessonVideos: number;
   }) => {
-    setEditingModule(module._id);
-    setEditCategoryId(module.categoryId);
-    setEditTitle(module.title);
-    setEditDescription(module.description);
-    setEditOrderIndex(module.order_index);
+    setEditingUnit(unit._id);
+    setEditCategoryId(unit.categoryId);
+    setEditTitle(unit.title);
+    setEditDescription(unit.description);
+    setEditOrderIndex(unit.order_index);
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!editingModule || !editCategoryId || !editTitle || !editDescription) {
+    if (!editingUnit || !editCategoryId || !editTitle || !editDescription) {
       showError("Preencha todos os campos obrigatórios", "Campos obrigatórios");
       return;
     }
@@ -207,9 +107,9 @@ export function ModuleList({ modules, categories }: ModuleListProps) {
     setIsSubmitting(true);
 
     try {
-      await updateModule({
-        id: editingModule,
-        categoryId: editCategoryId as any,
+      await updateUnit({
+        id: editingUnit,
+        categoryId: editCategoryId as Id<"categories">,
         title: editTitle,
         description: editDescription,
         order_index: editOrderIndex,
@@ -217,24 +117,24 @@ export function ModuleList({ modules, categories }: ModuleListProps) {
 
       toast({
         title: "Sucesso",
-        description: "Módulo atualizado com sucesso!",
+        description: "Unidade atualizada com sucesso!",
       });
 
-      setEditingModule(null);
+      setEditingUnit(null);
     } catch (error) {
       showError(
-        error instanceof Error ? error.message : "Erro ao atualizar módulo",
-        "Erro ao atualizar módulo"
+        error instanceof Error ? error.message : "Erro ao atualizar unidade",
+        "Erro ao atualizar unidade"
       );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDelete = async (id: Id<"modules">, title: string) => {
+  const handleDelete = async (id: Id<"units">, title: string) => {
     const message = `ATENÇÃO: Esta ação irá deletar permanentemente:\n\n` +
-      `• O módulo "${title}"\n` +
-      `• TODAS as aulas deste módulo\n\n` +
+      `• A unidade "${title}"\n` +
+      `• TODAS as aulas desta unidade\n\n` +
       `Esta ação não pode ser desfeita!\n\n` +
       `Tem certeza que deseja continuar?`;
 
@@ -242,51 +142,51 @@ export function ModuleList({ modules, categories }: ModuleListProps) {
       message,
       async () => {
         try {
-          await deleteModule({ id });
+          await deleteUnit({ id });
           toast({
             title: "Sucesso",
-            description: "Módulo e suas aulas foram deletados!",
+            description: "Unidade e suas aulas foram deletadas!",
           });
         } catch (error) {
           showError(
-            error instanceof Error ? error.message : "Erro ao deletar módulo",
-            "Erro ao deletar módulo"
+            error instanceof Error ? error.message : "Erro ao deletar unidade",
+            "Erro ao deletar unidade"
           );
         }
       },
-      "DELETAR MÓDULO E SUAS AULAS"
+      "DELETAR UNIDADE E SUAS AULAS"
     );
   };
 
-  const handleTogglePublish = async (id: Id<"modules">, title: string, currentStatus: boolean) => {
+  const handleTogglePublish = async (id: Id<"units">, title: string, currentStatus: boolean) => {
     const action = currentStatus ? "despublicar" : "publicar";
     const message = currentStatus
-      ? `Despublicar o módulo "${title}" irá:\n\n` +
-        `• Despublicar TODAS as aulas deste módulo\n` +
-        `Os alunos não terão mais acesso a este conteúdo.\n\n` +
-        `Deseja continuar?`
-      : `Publicar o módulo "${title}" irá:\n\n` +
-        `• Publicar TODAS as aulas deste módulo\n` +
-        `Os alunos terão acesso a todo este conteúdo.\n\n` +
-        `Deseja continuar?`;
+      ? `Despublicar a unidade "${title}" irá:\n\n` +
+      `• Despublicar TODAS as aulas desta unidade\n` +
+      `Os alunos não terão mais acesso a este conteúdo.\n\n` +
+      `Deseja continuar?`
+      : `Publicar a unidade "${title}" irá:\n\n` +
+      `• Publicar TODAS as aulas desta unidade\n` +
+      `Os alunos terão acesso a todo este conteúdo.\n\n` +
+      `Deseja continuar?`;
 
     showConfirm(
       message,
       async () => {
         try {
-          const newStatus = await togglePublishModule({ id });
+          const newStatus = await togglePublishUnit({ id });
           toast({
             title: "Sucesso",
-            description: `Módulo "${title}" ${newStatus ? "publicado" : "despublicado"} com sucesso!`,
+            description: `Unidade "${title}" ${newStatus ? "publicada" : "despublicada"} com sucesso!`,
           });
         } catch (error) {
           showError(
-            error instanceof Error ? error.message : `Erro ao ${action} módulo`,
-            `Erro ao ${action} módulo`
+            error instanceof Error ? error.message : `Erro ao ${action} unidade`,
+            `Erro ao ${action} unidade`
           );
         }
       },
-      `${action === "publicar" ? "📢" : "🔒"} ${action.toUpperCase()} MÓDULO`
+      `${action === "publicar" ? "📢" : "🔒"} ${action.toUpperCase()} UNIDADE`
     );
   };
 
@@ -294,14 +194,14 @@ export function ModuleList({ modules, categories }: ModuleListProps) {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      setOrderedModulesByCategory((prev) => {
-        const categoryModules = prev[categoryId] || [];
-        const oldIndex = categoryModules.findIndex((item) => item._id === active.id);
-        const newIndex = categoryModules.findIndex((item) => item._id === over.id);
+      setOrderedUnitsByCategory((prev) => {
+        const categoryUnits = prev[categoryId] || [];
+        const oldIndex = categoryUnits.findIndex((item) => item._id === active.id);
+        const newIndex = categoryUnits.findIndex((item) => item._id === over.id);
 
         return {
           ...prev,
-          [categoryId]: arrayMove(categoryModules, oldIndex, newIndex),
+          [categoryId]: arrayMove(categoryUnits, oldIndex, newIndex),
         };
       });
     }
@@ -310,23 +210,23 @@ export function ModuleList({ modules, categories }: ModuleListProps) {
   const handleSaveOrder = async () => {
     setIsSavingOrder(true);
     try {
-      // Create updates array with new order_index for all modules
-      const updates: { id: Id<"modules">; order_index: number }[] = [];
-      
-      Object.entries(orderedModulesByCategory).forEach(([categoryId, categoryModules]) => {
-        categoryModules.forEach((mod, index) => {
+      // Create updates array with new order_index for all units
+      const updates: { id: Id<"units">; order_index: number }[] = [];
+
+      Object.entries(orderedUnitsByCategory).forEach(([categoryId, categoryUnits]) => {
+        categoryUnits.forEach((unit, index) => {
           updates.push({
-            id: mod._id,
+            id: unit._id,
             order_index: index,
           });
         });
       });
 
-      await reorderModules({ updates });
+      await reorderUnits({ updates });
 
       toast({
         title: "Sucesso",
-        description: "Ordem dos módulos atualizada!",
+        description: "Ordem das unidades atualizada!",
       });
 
       setIsEditOrderMode(false);
@@ -341,25 +241,25 @@ export function ModuleList({ modules, categories }: ModuleListProps) {
   };
 
   const handleCancelOrder = () => {
-    // Rebuild the grouped structure from original modules
-    const grouped: Record<string, Doc<"modules">[]> = {};
+    // Rebuild the grouped structure from original units
+    const grouped: Record<string, Doc<"units">[]> = {};
     const sortedCategories = [...categories].sort((a, b) => a.position - b.position);
-    
+
     sortedCategories.forEach(cat => {
       grouped[cat._id] = [];
     });
-    
-    modules.forEach(module => {
-      if (grouped[module.categoryId]) {
-        grouped[module.categoryId].push(module);
+
+    units?.forEach(unit => {
+      if (grouped[unit.categoryId]) {
+        grouped[unit.categoryId].push(unit);
       }
     });
-    
+
     Object.keys(grouped).forEach(categoryId => {
       grouped[categoryId].sort((a, b) => a.order_index - b.order_index);
     });
-    
-    setOrderedModulesByCategory(grouped);
+
+    setOrderedUnitsByCategory(grouped);
     setIsEditOrderMode(false);
   };
 
@@ -374,15 +274,15 @@ export function ModuleList({ modules, categories }: ModuleListProps) {
         <CardHeader className="pb-0">
           <div className="flex items-center justify-between">
             <div>
-          <CardTitle>Módulos Cadastrados</CardTitle>
-             
+              <CardTitle>Módulos Cadastrados</CardTitle>
+
             </div>
             <div className="flex gap-2">
               {!isEditOrderMode ? (
                 <Button
                   variant="outline"
                   onClick={() => setIsEditOrderMode(true)}
-                  disabled={modules.length === 0}
+                  disabled={units?.length === 0}
                 >
                   <EditIcon className="h-4 w-4 mr-2" />
                   Editar Ordem
@@ -411,14 +311,14 @@ export function ModuleList({ modules, categories }: ModuleListProps) {
         </CardHeader>
         <CardContent className="pt-0">
           <div className="space-y-4 max-h-[330px] overflow-auto pr-2">
-            {modules.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhum módulo cadastrado ainda.</p>
+            {units?.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhuma unidade cadastrada ainda.</p>
             ) : (
               categories
                 .sort((a, b) => a.position - b.position)
                 .map((category) => {
-                  const categoryModules = orderedModulesByCategory[category._id] || [];
-                  
+                  const categoryUnits = orderedUnitsByCategory[category._id] || [];
+
                   return (
                     <div key={category._id} className="space-y-1.5">
                       {/* Category Header */}
@@ -428,11 +328,11 @@ export function ModuleList({ modules, categories }: ModuleListProps) {
                         </h3>
                         <div className="flex-1 h-px bg-border" />
                       </div>
-                      
-                      {/* Modules for this category */}
-                      {categoryModules.length === 0 ? (
+
+                      {/* Units for this category */}
+                      {categoryUnits.length === 0 ? (
                         <p className="text-xs text-muted-foreground ml-3 italic">
-                          Nenhum módulo nesta categoria
+                          Nenhuma unidade nesta categoria
                         </p>
                       ) : isEditOrderMode ? (
                         <DndContext
@@ -441,14 +341,14 @@ export function ModuleList({ modules, categories }: ModuleListProps) {
                           onDragEnd={handleDragEnd(category._id)}
                         >
                           <SortableContext
-                            items={categoryModules.map(mod => mod._id)}
+                            items={categoryUnits.map(unit => unit._id)}
                             strategy={verticalListSortingStrategy}
                           >
                             <div className="space-y-1.5">
-                              {categoryModules.map((module) => (
-                                <SortableModuleItem
-                                  key={module._id}
-                                  module={module}
+                              {categoryUnits.map((unit) => (
+                                <UnitListItem
+                                  key={unit._id}
+                                  unit={unit}
                                   isEditOrderMode={isEditOrderMode}
                                   onEdit={handleEdit}
                                   onDelete={handleDelete}
@@ -461,10 +361,10 @@ export function ModuleList({ modules, categories }: ModuleListProps) {
                         </DndContext>
                       ) : (
                         <div className="space-y-1.5">
-                          {categoryModules.map((module) => (
-                            <SortableModuleItem
-                  key={module._id}
-                              module={module}
+                          {categoryUnits.map((unit) => (
+                            <UnitListItem
+                              key={unit._id}
+                              unit={unit}
                               isEditOrderMode={isEditOrderMode}
                               onEdit={handleEdit}
                               onDelete={handleDelete}
@@ -483,12 +383,12 @@ export function ModuleList({ modules, categories }: ModuleListProps) {
       </Card>
 
       {/* Dialog de edição */}
-      <Dialog open={editingModule !== null} onOpenChange={() => setEditingModule(null)}>
+      <Dialog open={editingUnit !== null} onOpenChange={() => setEditingUnit(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar Módulo</DialogTitle>
+            <DialogTitle>Editar Unidade</DialogTitle>
             <DialogDescription>
-              Atualize as informações do módulo
+              Atualize as informações da unidade
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleUpdate} className="space-y-4">
@@ -530,7 +430,7 @@ export function ModuleList({ modules, categories }: ModuleListProps) {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setEditingModule(null)}
+                onClick={() => setEditingUnit(null)}
                 disabled={isSubmitting}
                 className="flex-1"
               >

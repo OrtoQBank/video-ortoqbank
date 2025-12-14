@@ -9,7 +9,7 @@ export const submitFeedback = mutation({
   args: {
     userId: v.string(), // clerkUserId
     lessonId: v.id("lessons"),
-    moduleId: v.id("modules"),
+    unitId: v.id("units"),
     feedback: v.string(),
   },
   returns: v.id("lessonFeedback"),
@@ -21,7 +21,7 @@ export const submitFeedback = mutation({
     const feedbackId = await ctx.db.insert("lessonFeedback", {
       userId: args.userId,
       lessonId: args.lessonId,
-      moduleId: args.moduleId,
+      unitId: args.unitId,
       feedback: args.feedback.trim(),
       createdAt: Date.now(),
     });
@@ -43,7 +43,7 @@ export const getFeedbackByLesson = query({
       _creationTime: v.number(),
       userId: v.string(),
       lessonId: v.id("lessons"),
-      moduleId: v.id("modules"),
+      unitId: v.id("units"),
       feedback: v.string(),
       createdAt: v.number(),
     })
@@ -73,7 +73,7 @@ export const getUserFeedback = query({
       _creationTime: v.number(),
       userId: v.string(),
       lessonId: v.id("lessons"),
-      moduleId: v.id("modules"),
+      unitId: v.id("units"),
       feedback: v.string(),
       createdAt: v.number(),
     }),

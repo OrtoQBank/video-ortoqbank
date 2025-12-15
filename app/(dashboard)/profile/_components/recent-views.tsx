@@ -8,25 +8,63 @@ import { useRouter } from "next/navigation";
 import { formatDuration, formatTimeAgo } from "./profile-inner";
 import { Badge } from "@/components/ui/badge";
 import { Clock } from "lucide-react";
-import { Preloaded, usePreloadedQuery } from "convex/react";
+import { Preloaded, usePreloadedQuery, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import type { FunctionReturnType } from "convex/server";
+
+type RecentViewsData = FunctionReturnType<typeof api.recentViews.getRecentViewsWithDetails>;
 
 interface RecentViewsProps {
   preloadedRecentViews: Preloaded<typeof api.recentViews.getRecentViewsWithDetails> | null;
 }
 
-export default function RecentViews({ preloadedRecentViews }: RecentViewsProps) {
+// Component that uses preloaded data
+function RecentViewsWithPreload({
+  preloadedRecentViews,
+}: {
+  preloadedRecentViews: Preloaded<typeof api.recentViews.getRecentViewsWithDetails>;
+}) {
   const router = useRouter();
+  const recentViews = usePreloadedQuery(preloadedRecentViews);
 
-  // Use preloaded query (carregada no servidor)
-  const recentViews = preloadedRecentViews
-    ? usePreloadedQuery(preloadedRecentViews)
-    : [];
+  return <RecentViewsContent recentViews={recentViews} router={router} />;
+}
+
+// Component that fetches data at runtime
+function RecentViewsWithoutPreload() {
+  const router = useRouter();
+  const { user } = useCurrentUser();
+
+  const recentViews = useQuery(
+    api.recentViews.getRecentViewsWithDetails,
+    user ? { userId: user._id, limit: 5 } : "skip"
+  );
 
   // Handle loading state
-  if (preloadedRecentViews === null) {
+  if (!user) {
     return null;
   }
+
+  // Handle loading state while data is being fetched
+  if (recentViews === undefined) {
+    return null;
+  }
+
+  return <RecentViewsContent recentViews={recentViews ?? []} router={router} />;
+}
+
+// Parent component that conditionally renders based on preloaded data availability
+export default function RecentViews({ preloadedRecentViews }: RecentViewsProps) {
+  if (preloadedRecentViews) {
+    return <RecentViewsWithPreload preloadedRecentViews={preloadedRecentViews} />;
+  }
+
+  return <RecentViewsWithoutPreload />;
+}
+
+// Extracted content component to avoid duplicating the UI logic
+function RecentViewsContent({ recentViews, router }: { recentViews: RecentViewsData; router: ReturnType<typeof useRouter> }) {
   return (
     <>
       {recentViews.length > 0 && (

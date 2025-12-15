@@ -40,8 +40,8 @@ export function UnitsLessonsPage({
   );
 
   const lessons = useQuery(
-    api.lessons.listByUnit,
-    units && units.length > 0 ? { unitId: units[0]._id as Id<"units"> } : "skip"
+    api.lessons.listByCategory,
+    selectedCategoryId ? { categoryId: selectedCategoryId } : "skip"
   );
 
   // Auto-expand first unit when data loads

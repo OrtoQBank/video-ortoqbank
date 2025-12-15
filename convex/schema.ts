@@ -44,7 +44,7 @@ export default defineSchema({
     .index("by_position", ["position"])
     .index("by_isPublished", ["isPublished"]),
 
-  // Units table (formerly courses)
+  // Units table (formerly modules/courses)
   units: defineTable({
     categoryId: v.id("categories"),
     title: v.string(),
@@ -64,10 +64,11 @@ export default defineSchema({
   // Lessons table (video lessons)
   lessons: defineTable({
     unitId: v.id("units"),
-    categoryId: v.id("categories"), // Direct reference to category for efficient queries
+    categoryId: v.id("categories"), // Denormalized for efficient querying
     title: v.string(),
     slug: v.string(),
     description: v.string(),
+    bunnyStoragePath: v.optional(v.string()),
     publicUrl: v.optional(v.string()),
     thumbnailUrl: v.optional(v.string()),
     durationSeconds: v.number(),
@@ -78,13 +79,13 @@ export default defineSchema({
     videoId: v.optional(v.string()), // Bunny video ID
   })
     .index("by_unitId", ["unitId"])
+    .index("by_categoryId", ["categoryId"])
     .index("by_slug", ["slug"])
     .index("by_unitId_and_order", ["unitId", "order_index"])
+    .index("by_categoryId_and_order", ["categoryId", "order_index"])
     .index("by_isPublished", ["isPublished"])
     .index("by_videoId", ["videoId"])
-    .index("by_unitId_isPublished_order", ["unitId", "isPublished", "order_index"])
-    .index("by_categoryId", ["categoryId"])
-    .index("by_categoryId_and_order", ["categoryId", "order_index"]),
+    .index("by_unitId_isPublished_order", ["unitId", "isPublished", "order_index"]),
 
   // Videos table (Bunny Stream videos)
   videos: defineTable({
@@ -104,11 +105,12 @@ export default defineSchema({
     createdBy: v.string(), // userId do Clerk
     isPrivate: v.boolean(),
     metadata: v.optional(v.object({
-      duration: v.optional(v.number()),
-      width: v.optional(v.number()),
-      height: v.optional(v.number()),
-      framerate: v.optional(v.number()),
-      bitrate: v.optional(v.number()),
+      duration: v.optional(v.number()), // Video duration in seconds
+      width: v.optional(v.number()), // Video width in pixels
+      height: v.optional(v.number()), // Video height in pixels
+      framerate: v.optional(v.number()), // Video framerate (fps)
+      bitrate: v.optional(v.number()), // Video bitrate
+      extras: v.optional(v.record(v.string(), v.any())), // Additional dynamic fields
     })),
   })
     .index("by_videoId", ["videoId"])

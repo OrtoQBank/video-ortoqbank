@@ -32,7 +32,6 @@ export function FavoritesInner({ initialFavorites, watchAlsoVideos }: { initialF
   const [currentPage, setCurrentPage] = useState(0);
   const pageSize = 3;
   const removeFavorite = useMutation(api.favorites.removeFavorite);
-  const addFavorite = useMutation(api.favorites.addFavorite);
   const { state } = useSidebar();
 
   // Mock pagination
@@ -59,20 +58,6 @@ export function FavoritesInner({ initialFavorites, watchAlsoVideos }: { initialF
       });
     } catch (error) {
       console.error("Error removing favorite:", error);
-    }
-  };
-
-  const handleAddFavorite = async (e: React.MouseEvent, lessonId: string) => {
-    e.stopPropagation();
-    if (!user?.id) return;
-
-    try {
-      await addFavorite({
-        userId: user.id,
-        lessonId: lessonId as Id<"lessons">,
-      });
-    } catch (error) {
-      console.error("Error adding favorite:", error);
     }
   };
 

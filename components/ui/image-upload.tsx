@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useErrorModal } from "@/hooks/use-error-modal";
 import { ErrorModal } from "@/components/ui/error-modal";
 import { Upload, X, Image as ImageIcon } from "lucide-react";
+import Image from "next/image";
 
 interface ImageUploadProps {
   value?: string;
@@ -144,10 +145,11 @@ export function ImageUpload({
 
         {previewUrl ? (
           <div className="relative w-full h-28 border-2 border-dashed rounded-lg overflow-hidden bg-muted">
-            <img
+            <Image
               src={previewUrl}
               alt="Preview"
-              className="w-full h-full object-contain"
+              fill
+              className="object-contain"
             />
             {!disabled && (
               <Button

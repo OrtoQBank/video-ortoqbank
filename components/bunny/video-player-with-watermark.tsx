@@ -18,12 +18,12 @@ export function VideoPlayerWithWatermark({
   const [embedUrl, setEmbedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Generate random position (10% to 80% to avoid edges)
+  // Generate random position once (10% to 80% to avoid edges)
   const randomPosition = useMemo(() => {
     const top = Math.floor(Math.random() * 70) + 10; // 10-80%
     const left = Math.floor(Math.random() * 70) + 10; // 10-80%
     return { top: `${top}%`, left: `${left}%` };
-  }, [videoId]); // Regenerate when video changes
+  }, []); // Generate once per component mount
 
   useEffect(() => {
     async function fetchSignedUrl() {

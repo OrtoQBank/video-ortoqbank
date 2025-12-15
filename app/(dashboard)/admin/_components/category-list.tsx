@@ -11,10 +11,11 @@ import { useConfirmModal } from "@/hooks/use-confirm-modal";
 import { ErrorModal } from "@/components/ui/error-modal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { EditIcon, Trash2Icon, GripVerticalIcon, CheckIcon, XIcon, EyeIcon, EyeOffIcon } from "lucide-react";
-import { Dialog, DialogContent,DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Id, Doc } from "@/convex/_generated/dataModel";
 import { ImageUpload } from "@/components/ui/image-upload";
+import Image from "next/image";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -32,12 +33,12 @@ interface SortableCategoryItemProps {
   onTogglePublish: (id: Id<"categories">, title: string, currentStatus: boolean) => void;
 }
 
-function SortableCategoryItem({ 
-  category, 
-  isEditOrderMode, 
-  onEdit, 
+function SortableCategoryItem({
+  category,
+  isEditOrderMode,
+  onEdit,
   onDelete,
-  onTogglePublish 
+  onTogglePublish
 }: SortableCategoryItemProps) {
   const {
     attributes,
@@ -72,10 +73,12 @@ function SortableCategoryItem({
       )}
       <div className="flex-1 flex items-center gap-3">
         {category.iconUrl && (
-          <img 
-            src={category.iconUrl} 
+          <Image
+            src={category.iconUrl}
             alt={category.title}
-            className="w-10 h-10 object-contain rounded"
+            width={40}
+            height={40}
+            className="object-contain rounded"
           />
         )}
         <div className="flex-1">
@@ -134,7 +137,7 @@ export function CategoryList({ categories }: CategoryListProps) {
   const [editIconUrl, setEditIconUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isImageUploading, setIsImageUploading] = useState(false);
-  
+
   // Edit order mode state
   const [isEditOrderMode, setIsEditOrderMode] = useState(false);
   const [orderedCategories, setOrderedCategories] = useState<Doc<"categories">[]>(categories);
@@ -246,15 +249,15 @@ export function CategoryList({ categories }: CategoryListProps) {
     const action = currentStatus ? "despublicar" : "publicar";
     const message = currentStatus
       ? `Despublicar a categoria "${title}" irá:\n\n` +
-        `• Despublicar TODOS os módulos desta categoria\n` +
-        `• Despublicar TODAS as aulas destes módulos\n\n` +
-        `Os alunos não terão mais acesso a este conteúdo.\n\n` +
-        `Deseja continuar?`
+      `• Despublicar TODOS os módulos desta categoria\n` +
+      `• Despublicar TODAS as aulas destes módulos\n\n` +
+      `Os alunos não terão mais acesso a este conteúdo.\n\n` +
+      `Deseja continuar?`
       : `Publicar a categoria "${title}" irá:\n\n` +
-        `• Publicar TODOS os módulos desta categoria\n` +
-        `• Publicar TODAS as aulas destes módulos\n\n` +
-        `Os alunos terão acesso a todo este conteúdo.\n\n` +
-        `Deseja continuar?`;
+      `• Publicar TODOS os módulos desta categoria\n` +
+      `• Publicar TODAS as aulas destes módulos\n\n` +
+      `Os alunos terão acesso a todo este conteúdo.\n\n` +
+      `Deseja continuar?`;
 
     showConfirm(
       message,
@@ -327,7 +330,7 @@ export function CategoryList({ categories }: CategoryListProps) {
         <CardHeader className="pb-0">
           <div className="flex items-center justify-between">
             <div>
-          <CardTitle>Categorias Cadastradas</CardTitle>
+              <CardTitle>Categorias Cadastradas</CardTitle>
             </div>
             <div className="flex gap-2">
               {!isEditOrderMode ? (
@@ -460,9 +463,9 @@ export function CategoryList({ categories }: CategoryListProps) {
               >
                 Cancelar
               </Button>
-              <Button 
-                type="submit" 
-                disabled={isSubmitting || isImageUploading} 
+              <Button
+                type="submit"
+                disabled={isSubmitting || isImageUploading}
                 className="flex-1"
               >
                 {isImageUploading ? "Enviando imagem..." : isSubmitting ? "Salvando..." : "Salvar"}

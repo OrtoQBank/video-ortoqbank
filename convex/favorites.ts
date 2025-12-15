@@ -166,6 +166,7 @@ export const getUserFavoriteLessons = query({
         _id: v.id("lessons"),
         _creationTime: v.number(),
         unitId: v.id("units"),
+        categoryId: v.id("categories"),
         title: v.string(),
         slug: v.string(),
         description: v.string(),
@@ -243,6 +244,7 @@ export const getUserFavoriteLessons = query({
         _id: Id<"lessons">;
         _creationTime: number;
         unitId: Id<"units">;
+        categoryId: Id<"categories">;
         title: string;
         slug: string;
         description: string;

@@ -37,6 +37,7 @@ export const getByVideoId = query({
         height: v.optional(v.number()),
         framerate: v.optional(v.number()),
         bitrate: v.optional(v.number()),
+        extras: v.optional(v.record(v.string(), v.any())),
       })),
     }),
     v.null()
@@ -81,6 +82,7 @@ export const getById = query({
         height: v.optional(v.number()),
         framerate: v.optional(v.number()),
         bitrate: v.optional(v.number()),
+        extras: v.optional(v.record(v.string(), v.any())),
       })),
     }),
     v.null()
@@ -120,6 +122,7 @@ export const listByUser = query({
         height: v.optional(v.number()),
         framerate: v.optional(v.number()),
         bitrate: v.optional(v.number()),
+        extras: v.optional(v.record(v.string(), v.any())),
       })),
     })
   ),
@@ -241,6 +244,7 @@ export const update = mutation({
       height?: number;
       framerate?: number;
       bitrate?: number;
+      extras?: Record<string, unknown>;
     };
 
     const updates: Partial<{
@@ -349,6 +353,7 @@ export const listAll = query({
         height: v.optional(v.number()),
         framerate: v.optional(v.number()),
         bitrate: v.optional(v.number()),
+        extras: v.optional(v.record(v.string(), v.any())),
       })),
     })
   ),
@@ -407,6 +412,7 @@ export const updateFromWebhook = internalMutation({
       height?: number;
       framerate?: number;
       bitrate?: number;
+      extras?: Record<string, unknown>;
     };
 
     const updates: Partial<{

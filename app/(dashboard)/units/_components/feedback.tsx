@@ -21,14 +21,20 @@ export function Feedback({
   unitId,
   onFeedbackSubmitted,
 }: FeedbackProps) {
+  // Use lessonId as key dependency to derive initial state
   const [feedbackText, setFeedbackText] = useState("");
+  const [lastLessonId, setLastLessonId] = useState(lessonId);
+
+  // Detect lesson change and reset text
+  useEffect(() => {
+    if (lessonId !== lastLessonId) {
+      setLastLessonId(lessonId);
+      setFeedbackText("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lessonId]);
 
   const submitFeedback = useMutation(api.feedback.submitFeedback);
-
-  // Reset feedback when lesson changes
-  useEffect(() => {
-    setFeedbackText("");
-  }, [lessonId]);
 
   const handleSubmitFeedback = async () => {
     if (!userId || !lessonId || !unitId || !feedbackText.trim()) return;

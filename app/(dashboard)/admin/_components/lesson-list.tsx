@@ -15,7 +15,7 @@ import { useErrorModal } from "@/hooks/use-error-modal";
 import { useConfirmModal } from "@/hooks/use-confirm-modal";
 import { ErrorModal } from "@/components/ui/error-modal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
-import { EditIcon, Trash2Icon, EyeIcon, EyeOffIcon, CheckCircleIcon, LoaderIcon, XCircleIcon, ClockIcon, RefreshCwIcon, UploadIcon, GripVerticalIcon, XIcon, CheckIcon } from "lucide-react";
+import { EditIcon, Trash2Icon, EyeIcon, EyeOffIcon, CheckCircleIcon, LoaderIcon, XCircleIcon, ClockIcon, UploadIcon, GripVerticalIcon, XIcon, CheckIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Doc, Id } from "@/convex/_generated/dataModel";
 import AdminVideoUploader from "@/components/bunny/admin-video-uploader";
@@ -492,8 +492,6 @@ function SortableLessonItem({
   onEditLesson,
   onDelete,
   onTogglePublish,
-  onMarkVideoAsReady,
-  onCheckVideoStatus,
   onUploadVideo,
 }: {
   lesson: Doc<"lessons">;
@@ -501,9 +499,7 @@ function SortableLessonItem({
   isEditOrderMode: boolean;
   onEditLesson?: (lesson: Doc<"lessons">) => void;
   onDelete: (id: Id<"lessons">, title: string) => void;
-  onTogglePublish: (id: Id<"lessons">, title: string, currentStatus: boolean) => void;
-  onMarkVideoAsReady: (videoId: string, lessonTitle: string) => void;
-  onCheckVideoStatus: (videoId: string, lessonTitle: string) => Promise<void>;
+  onTogglePublish: (id: Id<"lessons">, title: string) => void;
   onUploadVideo: (lesson: Doc<"lessons">) => void;
 }) {
   const {
@@ -537,8 +533,6 @@ function SortableLessonItem({
         onEditLesson={onEditLesson}
         onDelete={onDelete}
         onTogglePublish={onTogglePublish}
-        onMarkVideoAsReady={onMarkVideoAsReady}
-        onCheckVideoStatus={onCheckVideoStatus}
         onUploadVideo={onUploadVideo}
       />
     </div>
@@ -552,8 +546,6 @@ function LessonItem({
   onEditLesson,
   onDelete,
   onTogglePublish,
-  onMarkVideoAsReady,
-  onCheckVideoStatus,
   onUploadVideo,
 }: {
   lesson: Doc<"lessons">;
@@ -561,9 +553,7 @@ function LessonItem({
   isEditOrderMode?: boolean;
   onEditLesson?: (lesson: Doc<"lessons">) => void;
   onDelete: (id: Id<"lessons">, title: string) => void;
-  onTogglePublish: (id: Id<"lessons">, title: string, currentStatus: boolean) => void;
-  onMarkVideoAsReady: (videoId: string, lessonTitle: string) => void;
-  onCheckVideoStatus: (videoId: string, lessonTitle: string) => Promise<void>;
+  onTogglePublish: (id: Id<"lessons">, title: string) => void;
   onUploadVideo: (lesson: Doc<"lessons">) => void;
 }) {
   const video = useQuery(
@@ -676,7 +666,7 @@ function LessonItem({
               size="icon"
               className="h-7 w-7"
               onClick={() =>
-                onTogglePublish(lesson._id, lesson.title, lesson.isPublished)
+                onTogglePublish(lesson._id, lesson.title)
               }
               title={lesson.isPublished ? "Despublicar (Rascunho)" : "Publicar"}
             >
@@ -707,7 +697,6 @@ export function LessonList({ lessons }: LessonListProps) {
   const categories = useQuery(api.categories.list);
   const deleteLesson = useMutation(api.lessons.remove);
   const togglePublish = useMutation(api.lessons.togglePublish);
-  const markVideoAsReady = useMutation(api.videos.markAsReady);
   const updateLesson = useMutation(api.lessons.update);
   const reorderLessons = useMutation(api.lessons.reorder);
   const { toast } = useToast();
@@ -780,7 +769,6 @@ export function LessonList({ lessons }: LessonListProps) {
   const handleTogglePublish = async (
     id: Id<"lessons">,
     title: string,
-    currentStatus: boolean,
   ) => {
     try {
       const newStatus = await togglePublish({ id });
@@ -792,53 +780,6 @@ export function LessonList({ lessons }: LessonListProps) {
       showError(
         error instanceof Error ? error.message : "Erro ao atualizar aula",
         "Erro ao atualizar aula"
-      );
-    }
-  };
-
-  const handleMarkVideoAsReady = async (
-    videoId: string,
-    lessonTitle: string,
-  ) => {
-    try {
-      await markVideoAsReady({ videoId });
-      toast({
-        title: "Sucesso",
-        description: `Vídeo da aula "${lessonTitle}" marcado como pronto!`,
-      });
-    } catch (error) {
-      showError(
-        error instanceof Error ? error.message : "Erro ao atualizar vídeo",
-        "Erro ao atualizar vídeo"
-      );
-    }
-  };
-
-  const handleCheckVideoStatus = async (
-    videoId: string,
-    lessonTitle: string,
-  ) => {
-    try {
-      const response = await fetch("/api/bunny/check-video-status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ videoId }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Erro ao verificar status");
-      }
-
-      toast({
-        title: "Status Verificado",
-        description: `Status do vídeo "${lessonTitle}" atualizado para: ${data.status}`,
-      });
-    } catch (error) {
-      showError(
-        error instanceof Error ? error.message : "Erro ao verificar status do vídeo",
-        "Erro ao verificar status"
       );
     }
   };
@@ -908,7 +849,7 @@ export function LessonList({ lessons }: LessonListProps) {
       // Create updates array with new order_index for all lessons
       const updates: { id: Id<"lessons">; order_index: number }[] = [];
 
-      Object.entries(orderedLessonsByUnit).forEach(([unitId, unitLessons]) => {
+      Object.entries(orderedLessonsByUnit).forEach(([, unitLessons]) => {
         unitLessons.forEach((lesson, index) => {
           updates.push({
             id: lesson._id,
@@ -979,11 +920,6 @@ export function LessonList({ lessons }: LessonListProps) {
       orderedLessonsByUnit[unit._id]?.length > 0
     )
     .sort((a, b) => a.order_index - b.order_index);
-
-  const getUnitName = (unitId: string) => {
-    const unit = units?.find(u => u._id === unitId);
-    return unit?.title || "Unidade desconhecida";
-  };
 
   return (
     <>
@@ -1078,8 +1014,6 @@ export function LessonList({ lessons }: LessonListProps) {
                                       onEditLesson={handleEditLesson}
                                       onDelete={handleDelete}
                                       onTogglePublish={handleTogglePublish}
-                                      onMarkVideoAsReady={handleMarkVideoAsReady}
-                                      onCheckVideoStatus={handleCheckVideoStatus}
                                       onUploadVideo={handleUploadVideo}
                                     />
                                   ))}
@@ -1097,8 +1031,6 @@ export function LessonList({ lessons }: LessonListProps) {
                                   onEditLesson={handleEditLesson}
                                   onDelete={handleDelete}
                                   onTogglePublish={handleTogglePublish}
-                                  onMarkVideoAsReady={handleMarkVideoAsReady}
-                                  onCheckVideoStatus={handleCheckVideoStatus}
                                   onUploadVideo={handleUploadVideo}
                                 />
                               ))}
@@ -1156,8 +1088,6 @@ export function LessonList({ lessons }: LessonListProps) {
                                       onEditLesson={handleEditLesson}
                                       onDelete={handleDelete}
                                       onTogglePublish={handleTogglePublish}
-                                      onMarkVideoAsReady={handleMarkVideoAsReady}
-                                      onCheckVideoStatus={handleCheckVideoStatus}
                                       onUploadVideo={handleUploadVideo}
                                     />
                                   ))}
@@ -1175,8 +1105,6 @@ export function LessonList({ lessons }: LessonListProps) {
                                   onEditLesson={handleEditLesson}
                                   onDelete={handleDelete}
                                   onTogglePublish={handleTogglePublish}
-                                  onMarkVideoAsReady={handleMarkVideoAsReady}
-                                  onCheckVideoStatus={handleCheckVideoStatus}
                                   onUploadVideo={handleUploadVideo}
                                 />
                               ))}

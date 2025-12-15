@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { useRouter } from "next/navigation";
 import {
@@ -25,30 +25,19 @@ import { LessonInfoSection } from "./lesson-info-section";
 import { Feedback } from "./feedback";
 
 
-interface UnitsInnerProps {
+interface UnitsPageProps {
   preloadedUnits: Preloaded<typeof api.units.listPublishedByCategory>;
   categoryTitle: string;
 }
 
-export function UnitsInner({
+export function UnitsPage({
   preloadedUnits,
   categoryTitle,
-}: UnitsInnerProps) {
+}: UnitsPageProps) {
   const units = usePreloadedQuery(preloadedUnits);
   const router = useRouter();
   const { user } = useUser();
   const { state } = useSidebar();
-
-  const [expandedUnits, setExpandedUnits] = useState<Set<string>>(
-    new Set(),
-  );
-  const [currentLessonId, setCurrentLessonId] = useState<Id<"lessons"> | null>(
-    null,
-  );
-  const [currentUnitId, setCurrentUnitId] = useState<Id<"units"> | null>(
-    null,
-  );
-  const [nextUnitId, setNextUnitId] = useState<Id<"units"> | null>(null);
 
   // Mutations
   const markCompleted = useMutation(api.progress.markLessonCompleted);
@@ -61,6 +50,29 @@ export function UnitsInner({
     api.lessons.listPublishedByUnit,
     units[0] ? { unitId: units[0]._id } : "skip",
   );
+
+  // Compute initial values using useMemo
+  const initialValues = useMemo(() => {
+    if (firstUnitLessons && firstUnitLessons.length > 0 && units.length > 0) {
+      return {
+        lessonId: firstUnitLessons[0]._id,
+        unitId: units[0]._id,
+        expandedUnits: new Set([units[0]._id]),
+      };
+    }
+    return null;
+  }, [firstUnitLessons, units]);
+
+  const [expandedUnits, setExpandedUnits] = useState<Set<string>>(
+    new Set(),
+  );
+  const [currentLessonId, setCurrentLessonId] = useState<Id<"lessons"> | null>(
+    null,
+  );
+  const [currentUnitId, setCurrentUnitId] = useState<Id<"units"> | null>(
+    null,
+  );
+  const [nextUnitId, setNextUnitId] = useState<Id<"units"> | null>(null);
 
   // Load lessons for current unit (only published)
   const currentUnitLessons = useQuery(
@@ -103,37 +115,17 @@ export function UnitsInner({
       : "skip",
   );
 
-  // Set first lesson as current when data loads
+  // Initialize first lesson when data becomes available
+  // Using queueMicrotask to defer state updates and avoid cascading renders
   useEffect(() => {
-    if (
-      firstUnitLessons &&
-      firstUnitLessons.length > 0 &&
-      !currentLessonId
-    ) {
-      setCurrentLessonId(firstUnitLessons[0]._id);
-      setCurrentUnitId(units[0]._id);
-      setExpandedUnits(new Set([units[0]._id]));
+    if (initialValues && !currentLessonId) {
+      queueMicrotask(() => {
+        setCurrentLessonId(initialValues.lessonId);
+        setCurrentUnitId(initialValues.unitId);
+        setExpandedUnits(initialValues.expandedUnits);
+      });
     }
-  }, [firstUnitLessons, currentLessonId, units]);
-
-  // Handle transition to first lesson of next unit
-  useEffect(() => {
-    const transitionToNextUnit = async () => {
-      if (nextUnitId && nextUnitLessons && nextUnitLessons.length > 0) {
-        const firstLesson = nextUnitLessons[0];
-
-        // Only transition if we haven't already switched to this lesson
-        if (currentLessonId !== firstLesson._id) {
-          await handleLessonClick(firstLesson._id, nextUnitId);
-        }
-
-        // Reset nextUnitId after handling
-        setNextUnitId(null);
-      }
-    };
-
-    transitionToNextUnit();
-  }, [nextUnitId, nextUnitLessons, currentLessonId, user?.id]);
+  }, [initialValues, currentLessonId]);
 
   const handleBackClick = () => {
     router.push("/categories");
@@ -151,7 +143,8 @@ export function UnitsInner({
     });
   };
 
-  const handleLessonClick = async (
+  // Move handleLessonClick before the effect that uses it
+  const handleLessonClick = useCallback(async (
     lessonId: Id<"lessons">,
     unitId: Id<"units">,
   ) => {
@@ -171,7 +164,26 @@ export function UnitsInner({
         console.error("Error adding recent view:", error);
       }
     }
-  };
+  }, [user, addRecentView]);
+
+  // Handle transition to first lesson of next unit
+  useEffect(() => {
+    const transitionToNextUnit = async () => {
+      if (nextUnitId && nextUnitLessons && nextUnitLessons.length > 0) {
+        const firstLesson = nextUnitLessons[0];
+
+        // Only transition if we haven't already switched to this lesson
+        if (currentLessonId !== firstLesson._id) {
+          await handleLessonClick(firstLesson._id, nextUnitId);
+        }
+
+        // Reset nextUnitId after handling
+        setNextUnitId(null);
+      }
+    };
+
+    transitionToNextUnit();
+  }, [nextUnitId, nextUnitLessons, currentLessonId, handleLessonClick]);
 
   const handleMarkCompleted = async () => {
     if (!user?.id || !currentLessonId || !currentUnitId) return;
@@ -244,12 +256,6 @@ export function UnitsInner({
   const isLessonCompleted = allUserProgress?.some(
     (p) => p.lessonId === currentLessonId && p.completed,
   );
-
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
 
   // Calculate category progress - only for units in this category
   const totalCompletedLessons = units.reduce((acc, unit) => {

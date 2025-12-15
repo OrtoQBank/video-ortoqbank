@@ -11,17 +11,12 @@ import UserInfos from "./user-infos";
 import Dashboard from "./dashboard";
 
 interface ProfileInnerProps {
-  preloadedUserData: Preloaded<typeof api.users.current>;
-  preloadedContentStats: Preloaded<typeof api.contentStats.get>;
-  preloadedGlobalProgress: Preloaded<typeof api.progress.getGlobalProgress> | null;
-  preloadedCompletedCount: Preloaded<typeof api.progress.getCompletedPublishedLessonsCount> | null;
-  preloadedViewedCount: Preloaded<typeof api.recentViews.getUniqueViewedLessonsCount> | null;
   preloadedRecentViews: Preloaded<typeof api.recentViews.getRecentViewsWithDetails> | null;
 }
 
 export function formatTimeAgo(timestamp: number): string {
   const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  
+
   if (seconds < 60) return "agora mesmo";
   if (seconds < 3600) return `${Math.floor(seconds / 60)} min atrás`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)} horas atrás`;
@@ -35,11 +30,6 @@ export function formatDuration(seconds: number): string {
 }
 
 export default function ProfileInner({
-  preloadedUserData,
-  preloadedContentStats,
-  preloadedGlobalProgress,
-  preloadedCompletedCount,
-  preloadedViewedCount,
   preloadedRecentViews,
 }: ProfileInnerProps) {
   const router = useRouter();
@@ -49,7 +39,7 @@ export default function ProfileInner({
     <div className="min-h-screen bg-white relative">
       {/* Sidebar trigger - follows sidebar position */}
       <SidebarTrigger className={`hidden md:inline-flex fixed top-2 h-6 w-6 text-blue-brand hover:text-blue-brand-dark hover:bg-blue-brand-light transition-[left] duration-200 ease-linear z-10 ${state === 'collapsed' ? 'left-[calc(var(--sidebar-width-icon)+0.25rem)]' : 'left-[calc(var(--sidebar-width)+0.25rem)]'}`} />
-      
+
       {/* Header */}
       <div className="border-b">
         <div className="p-6 flex items-center gap-4">
@@ -70,15 +60,10 @@ export default function ProfileInner({
 
       <div className="max-w-7xl mx-auto p-8 pb-24 md:pb-8 space-y-6">
         {/* User Info Card */}
-        <UserInfos preloadedUserData={preloadedUserData} />
+        <UserInfos />
 
         {/* Stats Overview */}
-        <Dashboard
-          preloadedContentStats={preloadedContentStats}
-          preloadedGlobalProgress={preloadedGlobalProgress}
-          preloadedCompletedCount={preloadedCompletedCount}
-          preloadedViewedCount={preloadedViewedCount}
-        />
+        <Dashboard />
 
         {/* Recent Views */}
         <RecentViews preloadedRecentViews={preloadedRecentViews} />

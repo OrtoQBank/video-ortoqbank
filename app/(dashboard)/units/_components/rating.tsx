@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { StarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -26,15 +26,21 @@ export function Rating({ userId, lessonId, unitId }: RatingProps) {
       : "skip",
   );
 
-  // Set initial rating when user rating loads
-  useEffect(() => {
+  // Derive rating state from userRating during render
+  const [lastUserRating, setLastUserRating] = useState(userRating);
+  const [lastLessonId, setLastLessonId] = useState(lessonId);
+
+  // Detect changes and update state during render (not in effect)
+  if (userRating !== lastUserRating || lessonId !== lastLessonId) {
+    setLastUserRating(userRating);
+    setLastLessonId(lessonId);
     if (userRating) {
       setSelectedRating(userRating.rating);
       setShowRatingConfirm(false);
     } else {
       setSelectedRating(null);
     }
-  }, [userRating, lessonId]);
+  }
 
   const handleRatingClick = (rating: number) => {
     setSelectedRating(rating);

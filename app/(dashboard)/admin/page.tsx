@@ -1,9 +1,5 @@
-import { Admin } from "./_components/admin-page";
-import { preloadQuery } from "convex/nextjs";
-import { api } from "@/convex/_generated/api";
+import { AdminHub } from "./_components/admin-hub";
 
-export default async function AdminPage() {
-  const preloadedCategories = await preloadQuery(api.categories.list);
-
-  return <Admin preloadedCategories={preloadedCategories} />;
+export default function AdminPage() {
+  return <AdminHub />;
 }

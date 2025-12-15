@@ -213,7 +213,7 @@ export function UnitList({ categories }: UnitListProps) {
       // Create updates array with new order_index for all units
       const updates: { id: Id<"units">; order_index: number }[] = [];
 
-      Object.entries(orderedUnitsByCategory).forEach(([categoryId, categoryUnits]) => {
+      Object.entries(orderedUnitsByCategory).forEach(([, categoryUnits]) => {
         categoryUnits.forEach((unit, index) => {
           updates.push({
             id: unit._id,

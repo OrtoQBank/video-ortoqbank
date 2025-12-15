@@ -1,6 +1,5 @@
 import { v } from "convex/values";
 import { mutation, query, type MutationCtx } from "./_generated/server";
-import { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 
 // Query para listar todas as categorias ordenadas por position (ADMIN - mostra todas)
@@ -132,7 +131,7 @@ async function getNextPosition(ctx: MutationCtx): Promise<number> {
         counterId: COUNTER_ID,
         nextPosition: initialPosition,
       });
-    } catch (error) {
+    } catch {
       // Another request may have created it concurrently, re-query
       counter = await ctx.db
         .query("categoryPositionCounter")

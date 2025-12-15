@@ -1,4 +1,4 @@
-const crypto = require('crypto');
+import crypto from 'crypto';
 
 // Get from command line or use defaults
 const videoId = process.argv[2] || '4c275c9b-a3b6-438c-b342-fee511355628';

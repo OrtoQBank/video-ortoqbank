@@ -130,7 +130,7 @@ http.route({
   handler: httpAction(async (ctx, req) => {
     try {
       const body = await req.json();
-      const { title, description, isPrivate = true } = body;
+      const { title, description } = body;
 
       if (!title) {
         return new Response(JSON.stringify({ error: "Title is required" }), {

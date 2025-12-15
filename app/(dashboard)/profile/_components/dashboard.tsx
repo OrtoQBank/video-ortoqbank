@@ -11,7 +11,7 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 export default function Dashboard() {
   // Get current user
   const { user, isLoading: isUserLoading } = useCurrentUser();
-  const userId = user?._id;
+  const userId = user?.clerkUserId;
 
   // Use regular queries - all hooks called unconditionally
   const contentStats = useQuery(api.contentStats.get, {});

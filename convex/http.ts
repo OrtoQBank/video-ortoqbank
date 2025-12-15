@@ -122,7 +122,7 @@ http.route({
 /**
  * Create video in Bunny library
  * Usage: POST /bunny/create-video
- * Body: { title: string, description?: string, isPrivate?: boolean }
+ * Body: { title: string }
  */
 http.route({
   path: "/bunny/create-video",
@@ -130,7 +130,7 @@ http.route({
   handler: httpAction(async (ctx, req) => {
     try {
       const body = await req.json();
-      const { title, description } = body;
+      const { title } = body;
 
       if (!title) {
         return new Response(JSON.stringify({ error: "Title is required" }), {
@@ -192,7 +192,6 @@ http.route({
           videoId: videoData.guid,
           libraryId,
           title,
-          description,
         }),
         {
           status: 200,

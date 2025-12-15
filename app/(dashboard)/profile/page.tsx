@@ -6,7 +6,10 @@ import { auth } from "@clerk/nextjs/server";
 export default async function ProfilePage() {
   // Obter token de autenticação para Convex
   const { userId, getToken } = await auth();
-  const token = await getToken({ template: "convex" }).catch(() => null);
+  const token = await getToken({ template: "convex" }).catch((error) => {
+    console.error("Failed to fetch Convex auth token:", error);
+    return null;
+  });
 
   // Pré-carregar queries que precisam de userId (se autenticado)
   const preloadedRecentViews = userId
@@ -14,7 +17,10 @@ export default async function ProfilePage() {
       api.recentViews.getRecentViewsWithDetails,
       { userId, limit: 3 },
       token ? { token } : undefined
-    ).catch(() => null)
+    ).catch((error) => {
+      console.error("Failed to preload recent views:", error);
+      return null;
+    })
     : null;
 
   // Return JSX outside of try-catch to follow React rules

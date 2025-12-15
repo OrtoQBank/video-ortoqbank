@@ -27,7 +27,7 @@ export function Rating({ userId, lessonId, unitId }: RatingProps) {
   );
 
   // Derive rating state from userRating during render
-  const [lastUserRating, setLastUserRating] = useState(userRating);
+  const [lastUserRating, setLastUserRating] = useState<typeof userRating>(undefined);
   const [lastLessonId, setLastLessonId] = useState(lessonId);
 
   // Detect changes and update state during render (not in effect)

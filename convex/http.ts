@@ -1,5 +1,6 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
+import { api } from "./_generated/api";
 
 const http = httpRouter();
 
@@ -122,7 +123,7 @@ http.route({
 /**
  * Create video in Bunny library
  * Usage: POST /bunny/create-video
- * Body: { title: string }
+ * Body: { title: string, createdBy: string }
  */
 http.route({
   path: "/bunny/create-video",
@@ -130,16 +131,19 @@ http.route({
   handler: httpAction(async (ctx, req) => {
     try {
       const body = await req.json();
-      const { title } = body;
+      const { title, createdBy } = body;
 
-      if (!title) {
-        return new Response(JSON.stringify({ error: "Title is required" }), {
-          status: 400,
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
+      if (!title || !createdBy) {
+        return new Response(
+          JSON.stringify({ error: "Title and createdBy are required" }),
+          {
+            status: 400,
+            headers: {
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*",
+            },
           },
-        });
+        );
       }
 
       const apiKey = process.env.BUNNY_API_KEY;
@@ -186,10 +190,28 @@ http.route({
       }
 
       const videoData = await response.json();
+      const videoId = videoData.guid;
+
+      // Save video to Convex database
+      try {
+        await ctx.runMutation(api.videos.create, {
+          videoId: videoId,
+          libraryId: libraryId,
+          title: title,
+          description: "",
+          createdBy: createdBy,
+          isPrivate: true,
+          status: "uploading",
+        });
+      } catch (dbError) {
+        console.error("Failed to save video to database:", dbError);
+        // Video is created in Bunny but not saved in DB
+        // Return success anyway so upload can proceed
+      }
 
       return new Response(
         JSON.stringify({
-          videoId: videoData.guid,
+          videoId: videoId,
           libraryId,
           title,
         }),

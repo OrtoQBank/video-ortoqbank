@@ -2,8 +2,17 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
+import { paginationOptsValidator } from "convex/server";
 
-// Query para listar todas as lessons (ADMIN - mostra todas)
+// ADMIN: List all lessons with pagination
+export const listPaginated = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    return await ctx.db.query("lessons").paginate(args.paginationOpts);
+  },
+});
+
+// Query para listar todas as lessons (ADMIN - deprecated)
 export const list = query({
   args: {},
   returns: v.array(
@@ -27,7 +36,7 @@ export const list = query({
     }),
   ),
   handler: async (ctx) => {
-    const lessons = await ctx.db.query("lessons").collect();
+    const lessons = await ctx.db.query("lessons").take(100);
     return lessons;
   },
 });
@@ -64,7 +73,21 @@ export const listPublished = query({
   },
 });
 
-// Query para listar lessons de uma unidade específica
+// ADMIN: List lessons by unit with pagination
+export const listByUnitPaginated = query({
+  args: {
+    unitId: v.id("units"),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("lessons")
+      .withIndex("by_unitId_and_order", (q) => q.eq("unitId", args.unitId))
+      .paginate(args.paginationOpts);
+  },
+});
+
+// Query para listar lessons de uma unidade específica (deprecated)
 export const listByUnit = query({
   args: { unitId: v.id("units") },
   returns: v.array(
@@ -93,7 +116,7 @@ export const listByUnit = query({
       .withIndex("by_unitId_and_order", (q) =>
         q.eq("unitId", args.unitId),
       )
-      .collect();
+      .take(100);
 
     return lessons;
   },

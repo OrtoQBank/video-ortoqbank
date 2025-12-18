@@ -180,13 +180,8 @@ export default defineSchema({
     .index("by_lessonId", ["lessonId"])
     .index("by_userId_and_lessonId", ["userId", "lessonId"]),
 
-  // Content statistics (global system stats)
-  contentStats: defineTable({
-    totalLessons: v.number(), // total published lessons
-    totalUnits: v.number(), // total units
-    totalCategories: v.number(), // total categories
-    updatedAt: v.number(), // timestamp of last update
-  }),
+  // Content statistics moved to Aggregate component
+  // See convex/aggregate.ts for the new implementation using @convex-dev/aggregate
 
   // Category position counter (atomic counter for category positions)
   categoryPositionCounter: defineTable({

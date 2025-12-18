@@ -14,7 +14,7 @@ export default function Dashboard() {
   const userId = user?.clerkUserId;
 
   // Use regular queries - all hooks called unconditionally
-  const contentStats = useQuery(api.contentStats.get, {});
+  const contentStats = useQuery(api.aggregate.get, {});
   const completedCountResult = useQuery(
     api.progress.queries.getCompletedPublishedLessonsCount,
     userId ? { userId } : "skip"

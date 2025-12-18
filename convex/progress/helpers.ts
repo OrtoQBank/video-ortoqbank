@@ -1,5 +1,6 @@
 import { type MutationCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
+import { getTotalLessonsCount } from "../aggregate";
 
 /**
  * Helper function to update unit and global progress
@@ -65,9 +66,8 @@ export async function updateUnitAndGlobalProgress(
 
   const totalCompletedCount = allCompletedLessons.length;
 
-  // Get total lessons from contentStats
-  const contentStats = await ctx.db.query("contentStats").first();
-  const totalLessonsInSystem = contentStats?.totalLessons || 0;
+  // Get total lessons from aggregate
+  const totalLessonsInSystem = await getTotalLessonsCount(ctx);
   const globalProgressPercent =
     totalLessonsInSystem > 0
       ? Math.round((totalCompletedCount / totalLessonsInSystem) * 100)

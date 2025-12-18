@@ -322,7 +322,7 @@ export const create = mutation({
 
     // Atualizar contentStats se a lesson foi publicada
     if (args.isPublished) {
-      await ctx.scheduler.runAfter(0, internal.contentStats.incrementLessons, {
+      await ctx.scheduler.runAfter(0, internal.aggregate.incrementLessons, {
         amount: 1,
       });
     }
@@ -394,12 +394,12 @@ export const update = mutation({
     // Update contentStats if publish status changed
     if (!wasPublished && willBePublished) {
       // Was unpublished, now published
-      await ctx.scheduler.runAfter(0, internal.contentStats.incrementLessons, {
+      await ctx.scheduler.runAfter(0, internal.aggregate.incrementLessons, {
         amount: 1,
       });
     } else if (wasPublished && !willBePublished) {
       // Was published, now unpublished
-      await ctx.scheduler.runAfter(0, internal.contentStats.decrementLessons, {
+      await ctx.scheduler.runAfter(0, internal.aggregate.decrementLessons, {
         amount: 1,
       });
     }
@@ -435,7 +435,7 @@ export const remove = mutation({
 
     // Update contentStats if lesson was published
     if (wasPublished) {
-      await ctx.scheduler.runAfter(0, internal.contentStats.decrementLessons, {
+      await ctx.scheduler.runAfter(0, internal.aggregate.decrementLessons, {
         amount: 1,
       });
     }
@@ -466,12 +466,12 @@ export const togglePublish = mutation({
     // Update contentStats
     if (newPublishStatus) {
       // Now published
-      await ctx.scheduler.runAfter(0, internal.contentStats.incrementLessons, {
+      await ctx.scheduler.runAfter(0, internal.aggregate.incrementLessons, {
         amount: 1,
       });
     } else {
       // Now unpublished
-      await ctx.scheduler.runAfter(0, internal.contentStats.decrementLessons, {
+      await ctx.scheduler.runAfter(0, internal.aggregate.decrementLessons, {
         amount: 1,
       });
     }

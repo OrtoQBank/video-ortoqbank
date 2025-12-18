@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation } from "../_generated/server";
 import { updateUnitAndGlobalProgress } from "./helpers";
+import { getTotalLessonsCount } from "../aggregate";
 
 /**
  * Mark a lesson as completed for a user
@@ -104,9 +105,8 @@ export const markLessonCompleted = mutation({
 
     const totalCompletedCount = allCompletedLessons.length;
 
-    // Get total lessons from contentStats
-    const contentStats = await ctx.db.query("contentStats").first();
-    const totalLessonsInSystem = contentStats?.totalLessons || 0;
+    // Get total lessons from aggregate
+    const totalLessonsInSystem = await getTotalLessonsCount(ctx);
     const globalProgressPercent =
       totalLessonsInSystem > 0
         ? Math.round((totalCompletedCount / totalLessonsInSystem) * 100)
@@ -266,9 +266,8 @@ export const recalculateGlobalProgress = mutation({
 
     const totalCompletedCount = allCompletedLessons.length;
 
-    // Get total lessons from contentStats
-    const contentStats = await ctx.db.query("contentStats").first();
-    const totalLessonsInSystem = contentStats?.totalLessons || 0;
+    // Get total lessons from aggregate
+    const totalLessonsInSystem = await getTotalLessonsCount(ctx);
     const globalProgressPercent =
       totalLessonsInSystem > 0
         ? Math.round((totalCompletedCount / totalLessonsInSystem) * 100)

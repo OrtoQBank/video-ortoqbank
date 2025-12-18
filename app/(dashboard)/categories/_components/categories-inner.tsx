@@ -27,7 +27,7 @@ export function CategoriesInner({
   // Fetch progress data on client side - simpler than conditional preloading
   // These queries only run when user is authenticated
   const contentStats = useQuery(
-    api.contentStats.get,
+    api.aggregate.get,
     user ? {} : "skip"
   );
 

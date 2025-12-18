@@ -389,7 +389,7 @@ export const initializeContentStats = mutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
-    await ctx.runMutation(api.contentStats.recalculate, {});
+    await ctx.runMutation(internal.aggregate.recalculate, {});
     return null;
   },
 });

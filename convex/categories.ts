@@ -231,7 +231,7 @@ export const create = mutation({
     }
 
     // Update contentStats
-    await ctx.scheduler.runAfter(0, internal.contentStats.incrementCategories, { amount: 1 });
+    await ctx.scheduler.runAfter(0, internal.aggregate.incrementCategories, { amount: 1 });
 
     return categoryId;
   },
@@ -362,12 +362,12 @@ export const remove = mutation({
     await ctx.db.delete(args.id);
 
     // Update contentStats
-    await ctx.scheduler.runAfter(0, internal.contentStats.decrementCategories, { amount: 1 });
+    await ctx.scheduler.runAfter(0, internal.aggregate.decrementCategories, { amount: 1 });
     if (units.length > 0) {
-      await ctx.scheduler.runAfter(0, internal.contentStats.decrementUnits, { amount: units.length });
+      await ctx.scheduler.runAfter(0, internal.aggregate.decrementUnits, { amount: units.length });
     }
     if (totalPublishedLessons > 0) {
-      await ctx.scheduler.runAfter(0, internal.contentStats.decrementLessons, { amount: totalPublishedLessons });
+      await ctx.scheduler.runAfter(0, internal.aggregate.decrementLessons, { amount: totalPublishedLessons });
     }
 
     return null;
@@ -453,11 +453,11 @@ export const togglePublish = mutation({
     // Update contentStats if there were changes
     if (publishedLessonsChange !== 0) {
       if (publishedLessonsChange > 0) {
-        await ctx.scheduler.runAfter(0, internal.contentStats.incrementLessons, {
+        await ctx.scheduler.runAfter(0, internal.aggregate.incrementLessons, {
           amount: publishedLessonsChange,
         });
       } else {
-        await ctx.scheduler.runAfter(0, internal.contentStats.decrementLessons, {
+        await ctx.scheduler.runAfter(0, internal.aggregate.decrementLessons, {
           amount: Math.abs(publishedLessonsChange),
         });
       }

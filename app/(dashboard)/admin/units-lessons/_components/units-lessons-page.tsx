@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { UnitForm } from "../../_components/unit-form";
-import { LessonForm } from "../../_components/lesson-form";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { Preloaded, usePreloadedQuery, useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";

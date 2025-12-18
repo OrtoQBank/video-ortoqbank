@@ -3,22 +3,19 @@ import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 
 /**
- * Add a lesson to user's favorites
+ * Favorites - Optimized with batch gets
  */
+
 export const addFavorite = mutation({
   args: {
-    userId: v.string(), // clerkUserId
+    userId: v.string(),
     lessonId: v.id("lessons"),
   },
   returns: v.id("favorites"),
   handler: async (ctx, args) => {
-    // Check if lesson exists
     const lesson = await ctx.db.get(args.lessonId);
-    if (!lesson) {
-      throw new Error("Aula não encontrada");
-    }
+    if (!lesson) throw new Error("Aula não encontrada");
 
-    // Check if already favorited
     const existing = await ctx.db
       .query("favorites")
       .withIndex("by_userId_and_lessonId", (q) =>
@@ -26,12 +23,8 @@ export const addFavorite = mutation({
       )
       .unique();
 
-    if (existing) {
-      // Already favorited, return existing ID
-      return existing._id;
-    }
+    if (existing) return existing._id;
 
-    // Create new favorite
     const favoriteId: Id<"favorites"> = await ctx.db.insert("favorites", {
       userId: args.userId,
       lessonId: args.lessonId,
@@ -41,9 +34,6 @@ export const addFavorite = mutation({
   },
 });
 
-/**
- * Remove a lesson from user's favorites
- */
 export const removeFavorite = mutation({
   args: {
     userId: v.string(),
@@ -66,17 +56,13 @@ export const removeFavorite = mutation({
   },
 });
 
-/**
- * Toggle favorite status (add if not favorited, remove if favorited)
- */
 export const toggleFavorite = mutation({
   args: {
     userId: v.string(),
     lessonId: v.id("lessons"),
   },
-  returns: v.boolean(), // true if favorited, false if unfavorited
+  returns: v.boolean(),
   handler: async (ctx, args) => {
-    // Check if already favorited
     const existing = await ctx.db
       .query("favorites")
       .withIndex("by_userId_and_lessonId", (q) =>
@@ -85,17 +71,12 @@ export const toggleFavorite = mutation({
       .unique();
 
     if (existing) {
-      // Remove favorite
       await ctx.db.delete(existing._id);
       return false;
     } else {
-      // Check if lesson exists
       const lesson = await ctx.db.get(args.lessonId);
-      if (!lesson) {
-        throw new Error("Aula não encontrada");
-      }
+      if (!lesson) throw new Error("Aula não encontrada");
 
-      // Add favorite
       await ctx.db.insert("favorites", {
         userId: args.userId,
         lessonId: args.lessonId,
@@ -105,9 +86,6 @@ export const toggleFavorite = mutation({
   },
 });
 
-/**
- * Check if a lesson is favorited by a user
- */
 export const isFavorited = query({
   args: {
     userId: v.string(),
@@ -126,13 +104,8 @@ export const isFavorited = query({
   },
 });
 
-/**
- * Get all favorites for a user
- */
 export const getUserFavorites = query({
-  args: {
-    userId: v.string(),
-  },
+  args: { userId: v.string() },
   returns: v.array(
     v.object({
       _id: v.id("favorites"),
@@ -152,12 +125,11 @@ export const getUserFavorites = query({
 });
 
 /**
- * Get all favorite lessons with full lesson details for a user
+ * Get favorite lessons with full details
+ * OPTIMIZED: Uses batch gets instead of N+1 queries
  */
 export const getUserFavoriteLessons = query({
-  args: {
-    userId: v.string(),
-  },
+  args: { userId: v.string() },
   returns: v.array(
     v.object({
       _id: v.id("favorites"),
@@ -170,6 +142,7 @@ export const getUserFavoriteLessons = query({
         title: v.string(),
         slug: v.string(),
         description: v.string(),
+        bunnyStoragePath: v.optional(v.string()),
         publicUrl: v.optional(v.string()),
         thumbnailUrl: v.optional(v.string()),
         durationSeconds: v.number(),
@@ -188,8 +161,8 @@ export const getUserFavoriteLessons = query({
         description: v.string(),
         order_index: v.number(),
         totalLessonVideos: v.number(),
+        lessonCounter: v.optional(v.number()),
         isPublished: v.boolean(),
-        lessonCounter: v.number(),
       }),
       category: v.object({
         _id: v.id("categories"),
@@ -209,87 +182,54 @@ export const getUserFavoriteLessons = query({
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))
       .collect();
 
-    const favoritesWithDetails = await Promise.all(
-      favorites.map(async (favorite) => {
-        const lesson = await ctx.db.get(favorite.lessonId);
-        if (!lesson) {
-          return null;
-        }
+    // BEFORE: Loop with individual gets (N+1 problem)
+    // AFTER: Batch gets
 
-        const unit = await ctx.db.get(lesson.unitId);
-        if (!unit) {
-          return null;
-        }
+    // Batch 1: Get all lessons
+    const lessons = await Promise.all(
+      favorites.map(f => ctx.db.get(f.lessonId))
+    );
+    const validLessons = lessons.filter((l): l is NonNullable<typeof l> => l !== null);
 
-        const category = await ctx.db.get(unit.categoryId);
-        if (!category) {
-          return null;
-        }
+    // Batch 2: Get all units
+    const units = await Promise.all(
+      validLessons.map(l => ctx.db.get(l.unitId))
+    );
+    const validUnits = units.filter((u): u is NonNullable<typeof u> => u !== null);
 
-        return {
-          _id: favorite._id,
-          _creationTime: favorite._creationTime,
-          lesson,
-          unit,
-          category,
-        };
-      })
+    // Batch 3: Get all categories
+    const categories = await Promise.all(
+      validUnits.map(u => ctx.db.get(u.categoryId))
     );
 
-    // Filter out null values (lessons that were deleted)
-    return favoritesWithDetails.filter((f) => f !== null) as Array<{
-      _id: Id<"favorites">;
-      _creationTime: number;
-      lesson: {
-        _id: Id<"lessons">;
-        _creationTime: number;
-        unitId: Id<"units">;
-        categoryId: Id<"categories">;
-        title: string;
-        slug: string;
-        description: string;
-        publicUrl?: string;
-        thumbnailUrl?: string;
-        durationSeconds: number;
-        order_index: number;
-        lessonNumber: number;
-        isPublished: boolean;
-        tags?: string[];
-        videoId?: string;
-      };
-      unit: {
-        _id: Id<"units">;
-        _creationTime: number;
-        categoryId: Id<"categories">;
-        title: string;
-        slug: string;
-        description: string;
-        order_index: number;
-        totalLessonVideos: number;
-        isPublished: boolean;
-        lessonCounter: number;
-      };
-      category: {
-        _id: Id<"categories">;
-        _creationTime: number;
-        title: string;
-        slug: string;
-        description: string;
-        position: number;
-        iconUrl?: string;
-        isPublished: boolean;
-      };
-    }>;
+    // Build result
+    const result = [];
+    for (let i = 0; i < favorites.length; i++) {
+      const favorite = favorites[i];
+      const lesson = lessons[i];
+      if (!lesson) continue;
+
+      const unit = units.find(u => u?._id === lesson.unitId);
+      if (!unit) continue;
+
+      const category = categories.find(c => c?._id === unit.categoryId);
+      if (!category) continue;
+
+      result.push({
+        _id: favorite._id,
+        _creationTime: favorite._creationTime,
+        lesson,
+        unit,
+        category,
+      });
+    }
+
+    return result;
   },
 });
 
-/**
- * Get count of favorites for a user
- */
 export const getFavoritesCount = query({
-  args: {
-    userId: v.string(),
-  },
+  args: { userId: v.string() },
   returns: v.number(),
   handler: async (ctx, args) => {
     const favorites = await ctx.db
@@ -301,13 +241,8 @@ export const getFavoritesCount = query({
   },
 });
 
-/**
- * Get count of how many users favorited a specific lesson
- */
 export const getLessonFavoritesCount = query({
-  args: {
-    lessonId: v.id("lessons"),
-  },
+  args: { lessonId: v.id("lessons") },
   returns: v.number(),
   handler: async (ctx, args) => {
     const favorites = await ctx.db
@@ -319,14 +254,9 @@ export const getLessonFavoritesCount = query({
   },
 });
 
-/**
- * Remove all favorites for a user (useful for cleanup/testing)
- */
 export const clearUserFavorites = mutation({
-  args: {
-    userId: v.string(),
-  },
-  returns: v.number(), // returns count of removed favorites
+  args: { userId: v.string() },
+  returns: v.number(),
   handler: async (ctx, args) => {
     const favorites = await ctx.db
       .query("favorites")
@@ -340,4 +270,3 @@ export const clearUserFavorites = mutation({
     return favorites.length;
   },
 });
-

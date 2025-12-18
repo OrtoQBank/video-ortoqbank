@@ -1,0 +1,452 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
+import { useConfirmModal } from "@/hooks/use-confirm-modal";
+import { ErrorModal } from "@/components/ui/error-modal";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
+import { LoaderIcon, CheckCircleIcon, XCircleIcon, Trash2Icon, UploadIcon } from "lucide-react";
+import { LessonEditPanelProps } from "./types";
+
+export function LessonEditPanel({
+  lesson,
+  units,
+  onSave,
+  onCancel,
+}: LessonEditPanelProps) {
+  const { toast } = useToast();
+  const { error, showError, hideError } = useErrorModal();
+  const { confirm, showConfirm, hideConfirm } = useConfirmModal();
+  const updateLesson = useMutation(api.lessons.update);
+
+  const [unitId, setUnitId] = useState<string>(lesson.unitId);
+  const [title, setTitle] = useState(lesson.title);
+  const [description, setDescription] = useState(lesson.description);
+  const [lessonNumber, setLessonNumber] = useState(lesson.lessonNumber);
+  const [tags, setTags] = useState(lesson.tags?.join(", ") || "");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Video upload states
+  const [showUploader, setShowUploader] = useState(false);
+  const [currentVideoId, setCurrentVideoId] = useState(lesson.videoId);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const video = useQuery(
+    api.videos.getByVideoId,
+    currentVideoId ? { videoId: currentVideoId } : "skip"
+  );
+
+  // Update form values when lesson changes
+  useEffect(() => {
+    setUnitId(lesson.unitId);
+    setTitle(lesson.title);
+    setDescription(lesson.description);
+    setLessonNumber(lesson.lessonNumber);
+    setTags(lesson.tags?.join(", ") || "");
+    setCurrentVideoId(lesson.videoId);
+  }, [lesson]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const tagsArray = tags
+        ? tags
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter(Boolean)
+        : [];
+
+      await onSave({
+        unitId: unitId as Id<"units">,
+        title,
+        description,
+        lessonNumber,
+        tags: tagsArray.length > 0 ? tagsArray : undefined,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRemoveVideo = () => {
+    showConfirm(
+      "Tem certeza que deseja remover o vídeo desta aula?",
+      async () => {
+        try {
+          const tagsArray = tags
+            ? tags
+              .split(",")
+              .map((tag: string) => tag.trim())
+              .filter(Boolean)
+            : [];
+
+          await updateLesson({
+            id: lesson._id,
+            unitId: unitId as Id<"units">,
+            title,
+            description,
+            durationSeconds: lesson.durationSeconds,
+            order_index: lesson.order_index,
+            lessonNumber,
+            isPublished: lesson.isPublished,
+            tags: tagsArray.length > 0 ? tagsArray : undefined,
+            videoId: undefined,
+          });
+
+          setCurrentVideoId(undefined);
+          toast({
+            title: "Sucesso",
+            description: "Vídeo removido da aula com sucesso!",
+          });
+        } catch (error) {
+          showError(
+            error instanceof Error ? error.message : "Erro ao remover vídeo",
+            "Erro ao remover vídeo"
+          );
+        }
+      },
+      "Remover vídeo"
+    );
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      if (!selectedFile.type.startsWith("video/")) {
+        showError("Por favor, selecione um arquivo de vídeo", "Arquivo inválido");
+        return;
+      }
+
+      const maxSize = 5 * 1024 * 1024 * 1024;
+      if (selectedFile.size > maxSize) {
+        showError("O arquivo é muito grande (máximo 5GB)", "Arquivo muito grande");
+        return;
+      }
+
+      setUploadFile(selectedFile);
+    }
+  };
+
+  const handleUploadVideo = async () => {
+    if (!uploadFile) {
+      showError("Selecione um arquivo de vídeo", "Arquivo não selecionado");
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      // Step 1: Create video in Bunny
+      const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL?.replace(
+        ".convex.cloud",
+        ".convex.site"
+      );
+
+      const createResponse = await fetch(`${convexUrl}/bunny/create-video`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title,
+          description: "",
+          isPrivate: true,
+        }),
+      });
+
+      if (!createResponse.ok) {
+        const error = await createResponse.json();
+        throw new Error(error.error || "Falha ao criar vídeo");
+      }
+
+      const { videoId, libraryId } = await createResponse.json();
+
+      // Step 2: Upload file via Server Action
+      const uploadFormData = new FormData();
+      uploadFormData.append("videoId", videoId);
+      uploadFormData.append("libraryId", libraryId);
+      uploadFormData.append("file", uploadFile);
+
+      const { uploadVideoToBunny } = await import("@/app/actions/bunny");
+      const uploadResult = await uploadVideoToBunny(uploadFormData);
+
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.error || "Falha no upload");
+      }
+
+      // Step 3: Update lesson with videoId
+      const tagsArray = tags
+        ? tags
+          .split(",")
+          .map((tag: string) => tag.trim())
+          .filter(Boolean)
+        : [];
+
+      await updateLesson({
+        id: lesson._id,
+        unitId: unitId as Id<"units">,
+        title,
+        description,
+        durationSeconds: lesson.durationSeconds,
+        order_index: lesson.order_index,
+        lessonNumber,
+        isPublished: lesson.isPublished,
+        tags: tagsArray.length > 0 ? tagsArray : undefined,
+        videoId: videoId,
+      });
+
+      setCurrentVideoId(videoId);
+      setShowUploader(false);
+      setUploadFile(null);
+
+      toast({
+        title: "✅ Vídeo enviado!",
+        description: "Vídeo associado à aula com sucesso!",
+      });
+    } catch (error) {
+      showError(
+        error instanceof Error ? error.message : "Erro desconhecido",
+        "Erro no upload"
+      );
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <Card className="max-w-3xl mx-auto">
+      <CardContent className="pt-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Editar Aula</h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              Atualize as informações da aula abaixo
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-lesson-unit">Unidade *</Label>
+              <Select value={unitId} onValueChange={setUnitId} disabled={isSubmitting}>
+                <SelectTrigger id="edit-lesson-unit">
+                  <SelectValue placeholder="Selecione uma unidade" />
+                </SelectTrigger>
+                <SelectContent>
+                  {units.map((unit) => (
+                    <SelectItem key={unit._id} value={unit._id}>
+                      {unit.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-lesson-title">Título *</Label>
+              <Input
+                id="edit-lesson-title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                disabled={isSubmitting}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-lesson-description">Descrição *</Label>
+              <Textarea
+                id="edit-lesson-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                disabled={isSubmitting}
+                required
+                rows={4}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-lesson-number">Número da Aula *</Label>
+              <Input
+                id="edit-lesson-number"
+                type="number"
+                value={lessonNumber}
+                onChange={(e) => setLessonNumber(parseInt(e.target.value) || 1)}
+                disabled={isSubmitting}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-lesson-tags">Tags (separadas por vírgula)</Label>
+              <Input
+                id="edit-lesson-tags"
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+                disabled={isSubmitting}
+                placeholder="ortopedia, medicina, traumatologia"
+              />
+            </div>
+
+            {/* Video Management Section */}
+            <div className="space-y-3 pt-4 border-t">
+              <Label>Gerenciar Vídeo</Label>
+              {currentVideoId && !showUploader ? (
+                <div className="space-y-2">
+                  {video === undefined ? (
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-gray-100">
+                      <LoaderIcon className="h-5 w-5 text-gray-600 animate-spin" />
+                      <p className="text-sm text-gray-700">Carregando informações do vídeo...</p>
+                    </div>
+                  ) : video === null ? (
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-yellow-50 border border-yellow-200">
+                      <XCircleIcon className="h-5 w-5 text-yellow-600" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-yellow-900">
+                          Vídeo não encontrado
+                        </p>
+                        <p className="text-xs text-yellow-700">
+                          O vídeo foi deletado ou não existe mais no sistema
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleRemoveVideo}
+                        title="Remover referência"
+                      >
+                        <Trash2Icon className="h-4 w-4 mr-1" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200">
+                      <CheckCircleIcon className="h-5 w-5 text-green-600" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-green-900">
+                          Vídeo vinculado
+                        </p>
+                        <p className="text-xs text-green-700">
+                          Status: {video.status === "ready" ? "Pronto" : video.status === "processing" ? "Processando" : video.status}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleRemoveVideo}
+                      >
+                        <Trash2Icon className="h-4 w-4 mr-1" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ) : showUploader ? (
+                <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium">Upload de Vídeo</h4>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Input
+                      type="file"
+                      accept="video/*"
+                      onChange={handleFileSelect}
+                      disabled={isUploading}
+                    />
+                    {uploadFile && (
+                      <p className="text-xs text-muted-foreground">
+                        📁 {uploadFile.name} ({(uploadFile.size / (1024 * 1024)).toFixed(2)} MB)
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      onClick={handleUploadVideo}
+                      disabled={isUploading || !uploadFile}
+                      className="flex-1"
+                    >
+                      {isUploading ? (
+                        <>
+                          <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                          Enviando...
+                        </>
+                      ) : (
+                        <>
+                          <UploadIcon className="h-4 w-4 mr-2" />
+                          Fazer Upload
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setShowUploader(false);
+                        setUploadFile(null);
+                      }}
+                      disabled={isUploading}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowUploader(true)}
+                  className="w-full"
+                >
+                  <UploadIcon className="h-4 w-4 mr-2" />
+                  Fazer Upload de Vídeo
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="flex gap-2 justify-end pt-4 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              disabled={isSubmitting}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Salvando..." : "Salvar Alterações"}
+            </Button>
+          </div>
+        </form>
+
+        {/* Modals */}
+        <ErrorModal
+          open={error.isOpen}
+          onOpenChange={hideError}
+          title={error.title}
+          message={error.message}
+        />
+
+        <ConfirmModal
+          open={confirm.isOpen}
+          onOpenChange={hideConfirm}
+          title={confirm.title}
+          message={confirm.message}
+          onConfirm={confirm.onConfirm}
+        />
+      </CardContent>
+    </Card>
+  );
+}

@@ -369,7 +369,7 @@ export function UnitsPage({
                     <VideoPlayerWithWatermark
                       videoId={currentLesson.videoId}
                       libraryId={
-                        process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID || "550336"
+                        process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID || "566190"
                       }
                       userName={user?.fullName || user?.firstName || "Usuário"}
                       userCpf={

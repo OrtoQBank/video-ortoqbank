@@ -1,8 +1,8 @@
 import crypto from 'crypto';
 
 // Get from command line or use defaults
-const videoId = process.argv[2] || '4c275c9b-a3b6-438c-b342-fee511355628';
-const libraryId = process.argv[3] || '550336';
+const videoId = process.argv[2] || '45a8e078-9305-4102-a008-5ea430032cf0';
+const libraryId = process.argv[3] || '566190';
 const securityKey = process.argv[4];
 
 if (!securityKey) {

@@ -50,7 +50,7 @@ Este projeto utiliza **Bunny.net Stream** para:
        ↓
 ┌─────────────────┐
 │ Convex HTTP     │
-│ /bunny/webhook  │
+│ /bunny-webhook  │
 └──────┬──────────┘
        │ 7. Update Status
        ↓
@@ -83,7 +83,7 @@ Este projeto utiliza **Bunny.net Stream** para:
 | Arquivo | Descrição |
 |---------|-----------|
 | `convex/http.ts` | HTTP actions (create-video, webhook, embed-token) |
-| `convex/bunny/webhookHandler.ts` | Lógica de processamento de webhooks |
+| `convex/bunny-webhookHandler.ts` | Lógica de processamento de webhooks |
 | `convex/videos.ts` | Queries/mutations para tabela videos |
 | `convex/lessons.ts` | Integração lessons ↔ videos |
 | `convex/schema.ts` | Schema da tabela videos |
@@ -132,7 +132,7 @@ NEXT_PUBLIC_BUNNY_LIBRARY_ID=...
 
 Consulte: [`BUNNY_WEBHOOK_CONFIG.md`](./BUNNY_WEBHOOK_CONFIG.md)
 
-URL: `https://your-deployment.convex.site/bunny/webhook`
+URL: `https://your-deployment.convex.site/bunny-webhook`
 
 ### 3. Testar Localmente
 
@@ -184,7 +184,7 @@ vercel --prod  # ou sua plataforma
    - Cria playlist HLS (.m3u8)
 
 5. **Notificação via Webhook**
-   - Bunny envia POST para `/bunny/webhook`
+   - Bunny envia POST para `/bunny-webhook`
    - Payload inclui: VideoGuid, Status, VideoLibraryId
    - Handler atualiza DB: status=ready, URLs, metadata
 

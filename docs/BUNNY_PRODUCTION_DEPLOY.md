@@ -79,7 +79,7 @@ A URL exibida será necessária para:
 
 **Conversão para webhook:**
 - Deployment URL: `https://happy-animal-123.convex.cloud`
-- Webhook URL: `https://happy-animal-123.convex.site/bunny/webhook`
+- Webhook URL: `https://happy-animal-123.convex.site/bunny-webhook`
 
 ## Passo 2: Configurar Variáveis de Ambiente
 
@@ -137,7 +137,7 @@ npx convex deploy --prod
 2. Configure:
 
 ```
-Webhook URL: https://your-deployment.convex.site/bunny/webhook
+Webhook URL: https://your-deployment.convex.site/bunny-webhook
 ```
 
 3. Marque eventos:
@@ -280,11 +280,11 @@ npx convex deploy --prod --debug
 
 1. Verificar URL do webhook no Bunny:
    - Deve ser `.convex.site` (não `.convex.cloud`)
-   - Deve incluir `/bunny/webhook`
+   - Deve incluir `/bunny-webhook`
 
 2. Testar manualmente:
    ```bash
-   curl -X POST https://your-deployment.convex.site/bunny/webhook \
+   curl -X POST https://your-deployment.convex.site/bunny-webhook \
      -H "Content-Type: application/json" \
      -d '{"VideoGuid":"test","Status":4,"VideoLibraryId":"123"}'
    ```

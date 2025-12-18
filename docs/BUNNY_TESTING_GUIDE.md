@@ -276,7 +276,7 @@ Abra DevTools (F12) → Network:
    - Deve retornar 200 OK
 
 3. Verificar URL está correta:
-   - Deve terminar em `.convex.site/bunny/webhook`
+   - Deve terminar em `.convex.site/bunny-webhook`
    - Não pode ser `.convex.cloud`
 
 4. Verificar logs do Convex:

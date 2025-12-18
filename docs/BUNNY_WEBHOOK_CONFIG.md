@@ -15,7 +15,7 @@ Sem o webhook, os vídeos ficariam com status "uploading" indefinidamente, mesmo
 
 Antes de configurar o webhook, você precisa:
 
-1. ✅ **Código deployado**: O endpoint `/bunny/webhook` deve estar no ar
+1. ✅ **Código deployado**: O endpoint `/bunny-webhook` deve estar no ar
 2. ✅ **URL do Convex**: Saber a URL do seu deployment Convex (.convex.site)
 3. ✅ (Opcional) **Variáveis configuradas**: `BUNNY_WEBHOOK_SECRET` no Convex
 
@@ -45,7 +45,7 @@ ngrok http https://your-dev-url.convex.site
 
 **Exemplo:**
 - Deployment URL: `https://happy-animal-123.convex.cloud`
-- Webhook URL: `https://happy-animal-123.convex.site/bunny/webhook`
+- Webhook URL: `https://happy-animal-123.convex.site/bunny-webhook`
 
 ## Passo a Passo de Configuração
 
@@ -61,7 +61,7 @@ ngrok http https://your-dev-url.convex.site
 2. Preencha o formulário:
 
 ```
-Webhook URL: https://{seu-deployment}.convex.site/bunny/webhook
+Webhook URL: https://{seu-deployment}.convex.site/bunny-webhook
 ```
 
 3. Marque os seguintes eventos:
@@ -144,7 +144,7 @@ Bunny webhook received: { VideoGuid: "...", Status: 4, VideoLibraryId: "..." }
 
 **Solução**:
 1. Verifique se usou `.convex.site` (não `.convex.cloud`)
-2. Confirme que `/bunny/webhook` está no final da URL
+2. Confirme que `/bunny-webhook` está no final da URL
 3. Teste acessar a URL no browser (deve retornar erro mas não 404)
 
 ### Webhook retorna 500 Internal Server Error
@@ -201,7 +201,7 @@ Referência dos códigos de status:
 O código valida a assinatura automaticamente se `BUNNY_WEBHOOK_SECRET` estiver configurado:
 
 ```typescript
-// convex/bunny/webhookHandler.ts
+// convex/bunny-webhookHandler.ts
 const expectedSignature = await sha256(
   webhookSecret + JSON.stringify(body)
 );

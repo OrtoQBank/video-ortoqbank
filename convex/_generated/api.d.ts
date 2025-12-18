@@ -10,6 +10,7 @@
 
 import type * as aggregate from "../aggregate.js";
 import type * as categories from "../categories.js";
+import type * as crons from "../crons.js";
 import type * as favorites from "../favorites.js";
 import type * as feedback from "../feedback.js";
 import type * as http from "../http.js";
@@ -38,6 +39,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   aggregate: typeof aggregate;
   categories: typeof categories;
+  crons: typeof crons;
   favorites: typeof favorites;
   feedback: typeof feedback;
   http: typeof http;

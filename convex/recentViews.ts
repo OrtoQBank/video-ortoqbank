@@ -228,14 +228,14 @@ export const getRecentViewsWithDetails = query({
       if (!category) continue;
 
       result.push({
-        _id: view._id,
-        _creationTime: view._creationTime,
-        viewedAt: view.viewedAt,
-        action: view.action,
+          _id: view._id,
+          _creationTime: view._creationTime,
+          viewedAt: view.viewedAt,
+          action: view.action,
         isCompleted: progressResults[i]?.completed || false,
-        lesson,
-        unit,
-        category,
+          lesson,
+          unit,
+          category,
       });
     }
 

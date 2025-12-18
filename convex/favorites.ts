@@ -216,11 +216,11 @@ export const getUserFavoriteLessons = query({
       if (!category) continue;
 
       result.push({
-        _id: favorite._id,
-        _creationTime: favorite._creationTime,
-        lesson,
-        unit,
-        category,
+          _id: favorite._id,
+          _creationTime: favorite._creationTime,
+          lesson,
+          unit,
+          category,
       });
     }
 

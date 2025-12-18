@@ -216,12 +216,8 @@ export const markLessonIncomplete = mutation({
 
     const totalCompletedCount = allCompletedLessons.length;
 
-    const allLessons = await ctx.db
-      .query("lessons")
-      .withIndex("by_isPublished", (q) => q.eq("isPublished", true))
-      .collect();
-
-    const totalLessonsInSystem = allLessons.length;
+    // Get total lessons from aggregate instead of .collect()
+    const totalLessonsInSystem = await getTotalLessonsCount(ctx);
     const globalProgressPercent =
       totalLessonsInSystem > 0
         ? Math.round((totalCompletedCount / totalLessonsInSystem) * 100)

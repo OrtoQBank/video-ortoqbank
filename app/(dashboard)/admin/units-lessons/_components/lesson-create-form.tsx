@@ -48,6 +48,7 @@ export function LessonForm({ units, onSuccess }: LessonFormProps) {
         description,
         lessonNumber,
         durationSeconds: 0,
+        isPublished: false,
         tags: tagsArray.length > 0 ? tagsArray : undefined,
       });
 

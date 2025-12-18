@@ -1,6 +1,7 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { api } from "./_generated/api";
+import { processBunnyWebhook } from "./bunny/webhookHandler";
 
 const http = httpRouter();
 
@@ -254,6 +255,46 @@ http.route({
         "Access-Control-Max-Age": "86400",
       },
     });
+  }),
+});
+
+/**
+ * Bunny Stream Webhook
+ * Receives notifications when videos are processed
+ * @see https://docs.bunny.net/docs/stream-webhooks
+ * 
+ * Configure in Bunny Dashboard:
+ * URL: https://{your-deployment}.convex.site/bunny/webhook
+ * Events: video.uploaded, video.encoded, video.failed
+ */
+http.route({
+  path: "/bunny/webhook",
+  method: "POST",
+  handler: httpAction(async (ctx, req) => {
+    try {
+      const body = await req.json();
+      const signature = req.headers.get("X-Bunny-Signature");
+
+      const result = await processBunnyWebhook(ctx, body, signature);
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("Webhook processing error:", error);
+      return new Response(
+        JSON.stringify({
+          error: error instanceof Error ? error.message : "Unknown error",
+        }),
+        {
+          status: error instanceof Error && error.message.includes("signature")
+            ? 401
+            : 500,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
   }),
 });
 

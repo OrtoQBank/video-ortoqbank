@@ -18,6 +18,7 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { LoaderIcon, CheckCircleIcon, XCircleIcon, Trash2Icon, UploadIcon } from "lucide-react";
 import { LessonEditPanelProps } from "./types";
+import { useUser } from "@clerk/nextjs";
 
 export function LessonEditPanel({
   lesson,
@@ -25,6 +26,7 @@ export function LessonEditPanel({
   onSave,
   onCancel,
 }: LessonEditPanelProps) {
+  const { user } = useUser();
   const { toast } = useToast();
   const { error, showError, hideError } = useErrorModal();
   const { confirm, showConfirm, hideConfirm } = useConfirmModal();
@@ -146,8 +148,13 @@ export function LessonEditPanel({
       return;
     }
 
+    if (!user?.id) {
+      showError("Usuário não autenticado", "Erro de autenticação");
+      return;
+    }
+
     try {
-      const { videoId } = await uploadVideo(uploadFile, title);
+      const { videoId } = await uploadVideo(uploadFile, title, user.id);
 
       // Update lesson with videoId
       const tagsArray = tags

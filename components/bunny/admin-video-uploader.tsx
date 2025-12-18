@@ -15,6 +15,7 @@ import { useErrorModal } from "@/hooks/use-error-modal";
 import { useBunnyUpload } from "@/hooks/use-bunny-upload";
 import { ErrorModal } from "@/components/ui/error-modal";
 import { Upload } from "lucide-react";
+import { useUser } from "@clerk/nextjs";
 
 interface AdminVideoUploaderProps {
   lessonTitle: string;
@@ -26,6 +27,7 @@ export default function AdminVideoUploader({
   onSuccess,
 }: AdminVideoUploaderProps) {
   const [file, setFile] = useState<File | null>(null);
+  const { user } = useUser();
   const { toast } = useToast();
   const { error, showError, hideError } = useErrorModal();
   const { uploadVideo, isUploading } = useBunnyUpload();
@@ -56,8 +58,13 @@ export default function AdminVideoUploader({
       return;
     }
 
+    if (!user?.id) {
+      showError("Usuário não autenticado", "Erro de autenticação");
+      return;
+    }
+
     try {
-      const result = await uploadVideo(file, lessonTitle);
+      const result = await uploadVideo(file, lessonTitle, user.id);
 
       toast({
         title: "Sucesso",

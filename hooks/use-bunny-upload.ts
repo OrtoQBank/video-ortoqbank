@@ -21,7 +21,8 @@ export function useBunnyUpload() {
 
   const uploadVideo = async (
     file: File,
-    title: string
+    title: string,
+    createdBy: string
   ): Promise<BunnyUploadResult> => {
     setIsUploading(true);
     setError(null);
@@ -45,6 +46,7 @@ export function useBunnyUpload() {
           title,
           description: "",
           isPrivate: true,
+          createdBy,
         }),
       });
 

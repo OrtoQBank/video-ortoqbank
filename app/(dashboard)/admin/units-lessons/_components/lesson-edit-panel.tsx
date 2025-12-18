@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
 import { useConfirmModal } from "@/hooks/use-confirm-modal";
+import { useBunnyUpload } from "@/hooks/use-bunny-upload";
 import { ErrorModal } from "@/components/ui/error-modal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { useQuery, useMutation } from "convex/react";
@@ -28,6 +29,7 @@ export function LessonEditPanel({
   const { error, showError, hideError } = useErrorModal();
   const { confirm, showConfirm, hideConfirm } = useConfirmModal();
   const updateLesson = useMutation(api.lessons.update);
+  const { uploadVideo, isUploading } = useBunnyUpload();
 
   const [unitId, setUnitId] = useState<string>(lesson.unitId);
   const [title, setTitle] = useState(lesson.title);
@@ -40,7 +42,6 @@ export function LessonEditPanel({
   const [showUploader, setShowUploader] = useState(false);
   const [currentVideoId, setCurrentVideoId] = useState(lesson.videoId);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
 
   const video = useQuery(
     api.videos.getByVideoId,
@@ -145,51 +146,12 @@ export function LessonEditPanel({
       return;
     }
 
-    setIsUploading(true);
-
     try {
-      // Step 1: Create video in Bunny
-      const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL?.replace(
-        ".convex.cloud",
-        ".convex.site"
-      );
+      const { videoId } = await uploadVideo(uploadFile, title);
 
-      const createResponse = await fetch(`${convexUrl}/bunny/create-video`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: title,
-          description: "",
-          isPrivate: true,
-        }),
-      });
-
-      if (!createResponse.ok) {
-        const error = await createResponse.json();
-        throw new Error(error.error || "Falha ao criar vídeo");
-      }
-
-      const { videoId, libraryId } = await createResponse.json();
-
-      // Step 2: Upload file via Server Action
-      const uploadFormData = new FormData();
-      uploadFormData.append("videoId", videoId);
-      uploadFormData.append("libraryId", libraryId);
-      uploadFormData.append("file", uploadFile);
-
-      const { uploadVideoToBunny } = await import("@/app/actions/bunny");
-      const uploadResult = await uploadVideoToBunny(uploadFormData);
-
-      if (!uploadResult.success) {
-        throw new Error(uploadResult.error || "Falha no upload");
-      }
-
-      // Step 3: Update lesson with videoId
+      // Update lesson with videoId
       const tagsArray = tags
-        ? tags
-          .split(",")
-          .map((tag: string) => tag.trim())
-          .filter(Boolean)
+        ? tags.split(",").map((tag: string) => tag.trim()).filter(Boolean)
         : [];
 
       await updateLesson({
@@ -218,8 +180,6 @@ export function LessonEditPanel({
         error instanceof Error ? error.message : "Erro desconhecido",
         "Erro no upload"
       );
-    } finally {
-      setIsUploading(false);
     }
   };
 

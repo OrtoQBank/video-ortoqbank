@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { Preloaded, usePreloadedQuery, useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";

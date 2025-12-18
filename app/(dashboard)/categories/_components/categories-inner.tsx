@@ -32,7 +32,7 @@ export function CategoriesInner({
   );
 
   const completedCountResult = useQuery(
-    api.progress.getCompletedPublishedLessonsCount,
+    api.progress.queries.getCompletedPublishedLessonsCount,
     user?.clerkUserId ? { userId: user.clerkUserId } : "skip"
   );
 

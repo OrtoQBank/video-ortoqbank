@@ -12,8 +12,8 @@ import {
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
+import { useBunnyUpload } from "@/hooks/use-bunny-upload";
 import { ErrorModal } from "@/components/ui/error-modal";
-import { uploadVideoToBunny } from "@/app/actions/bunny";
 import { Upload } from "lucide-react";
 
 interface AdminVideoUploaderProps {
@@ -26,9 +26,9 @@ export default function AdminVideoUploader({
   onSuccess,
 }: AdminVideoUploaderProps) {
   const [file, setFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
   const { error, showError, hideError } = useErrorModal();
+  const { uploadVideo, isUploading } = useBunnyUpload();
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -56,43 +56,8 @@ export default function AdminVideoUploader({
       return;
     }
 
-    setIsUploading(true);
-
     try {
-      // Step 1: Create video in Bunny
-      const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL?.replace(
-        ".convex.cloud",
-        ".convex.site",
-      );
-
-      const createResponse = await fetch(`${convexUrl}/bunny/create-video`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: lessonTitle,
-          description: "",
-          isPrivate: true,
-        }),
-      });
-
-      if (!createResponse.ok) {
-        const error = await createResponse.json();
-        throw new Error(error.error || "Falha ao criar vídeo");
-      }
-
-      const { videoId, libraryId } = await createResponse.json();
-
-      // Step 2: Upload file via Server Action
-      const formData = new FormData();
-      formData.append("videoId", videoId);
-      formData.append("libraryId", libraryId);
-      formData.append("file", file);
-
-      const uploadResult = await uploadVideoToBunny(formData);
-
-      if (!uploadResult.success) {
-        throw new Error(uploadResult.error || "Falha no upload");
-      }
+      const result = await uploadVideo(file, lessonTitle);
 
       toast({
         title: "Sucesso",
@@ -100,10 +65,7 @@ export default function AdminVideoUploader({
       });
 
       if (onSuccess) {
-        onSuccess({
-          videoId,
-          libraryId,
-        });
+        onSuccess(result);
       }
 
       setFile(null);
@@ -112,8 +74,6 @@ export default function AdminVideoUploader({
         error instanceof Error ? error.message : "Erro no upload",
         "Erro no upload"
       );
-    } finally {
-      setIsUploading(false);
     }
   };
 

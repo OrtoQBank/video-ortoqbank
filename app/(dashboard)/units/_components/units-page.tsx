@@ -45,8 +45,8 @@ export function UnitsPage({
   const { state } = useSidebar();
 
   // Mutations
-  const markCompleted = useMutation(api.progress.markLessonCompleted);
-  const markIncomplete = useMutation(api.progress.markLessonIncomplete);
+  const markCompleted = useMutation(api.progress.mutations.markLessonCompleted);
+  const markIncomplete = useMutation(api.progress.mutations.markLessonIncomplete);
   const toggleFavorite = useMutation(api.favorites.toggleFavorite);
   const addRecentView = useMutation(api.recentViews.addView);
 
@@ -99,13 +99,13 @@ export function UnitsPage({
 
   // Get progress for ALL lessons (not just current unit) so all units show correct completion status
   const allUserProgress = useQuery(
-    api.progress.getCompletedLessons,
+    api.progress.queries.getCompletedLessons,
     user?.id ? { userId: user.id } : "skip",
   );
 
   // Get progress for all units to calculate category progress
   const allUnitsProgress = useQuery(
-    api.progress.getAllUnitProgress,
+    api.progress.queries.getAllUnitProgress,
     user?.id ? { userId: user.id } : "skip",
   );
 
@@ -255,13 +255,13 @@ export function UnitsPage({
   };
 
   const isLessonCompleted = allUserProgress?.some(
-    (p) => p.lessonId === currentLessonId && p.completed,
+    (p: { lessonId: Id<"lessons">; completed: boolean }) => p.lessonId === currentLessonId && p.completed,
   );
 
   // Calculate category progress - only for units in this category
   const totalCompletedLessons = units.reduce((acc, unit) => {
     const unitProgress = allUnitsProgress?.find(
-      (p) => p.unitId === unit._id
+      (p: { unitId: Id<"units">; completedLessonsCount: number }) => p.unitId === unit._id
     );
     return acc + (unitProgress?.completedLessonsCount || 0);
   }, 0);

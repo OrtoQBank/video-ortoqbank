@@ -1,4 +1,6 @@
 import { Doc, Id } from "@/convex/_generated/dataModel";
+import { DragEndEvent } from "@dnd-kit/core";
+import { SensorDescriptor, SensorOptions } from "@dnd-kit/core";
 
 export type EditMode =
   | { type: 'none' }
@@ -23,8 +25,8 @@ export interface UnitTreeItemProps {
   onTogglePublishLesson: (lessonId: Id<"lessons">) => void;
   isDraggingUnit: boolean;
   isDraggingLesson: boolean;
-  sensors: any;
-  onDragEndLessons: (unitId: string) => (event: any) => Promise<void>;
+  sensors: SensorDescriptor<SensorOptions>[];
+  onDragEndLessons: (unitId: string) => (event: DragEndEvent) => Promise<void>;
   onDragStartLesson: () => void;
 }
 
@@ -34,14 +36,14 @@ export interface UnitsTreeSidebarProps {
   expandedUnits: Set<string>;
   isDraggingUnit: boolean;
   isDraggingLesson: boolean;
-  sensors: any;
+  sensors: SensorDescriptor<SensorOptions>[];
   onToggleUnit: (unitId: string) => void;
   onEditUnit: (unit: Doc<"units">) => void;
   onEditLesson: (lesson: Doc<"lessons">) => void;
   onTogglePublishUnit: (unitId: Id<"units">) => void;
   onTogglePublishLesson: (lessonId: Id<"lessons">) => void;
-  onDragEndUnits: (event: any) => Promise<void>;
-  onDragEndLessons: (unitId: string) => (event: any) => Promise<void>;
+  onDragEndUnits: (event: DragEndEvent) => Promise<void>;
+  onDragEndLessons: (unitId: string) => (event: DragEndEvent) => Promise<void>;
   onDragStartUnit: () => void;
   onDragStartLesson: () => void;
 }

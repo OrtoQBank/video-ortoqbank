@@ -6,12 +6,10 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from '@/components/ui/sidebar';
 
 export default function NavUser() {
   const { user } = useUser();
-  const { state } = useSidebar();
 
   if (!user) return;
 

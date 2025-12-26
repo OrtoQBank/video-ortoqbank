@@ -1,6 +1,5 @@
 import { v } from "convex/values";
 import { mutation, query, type MutationCtx } from "./_generated/server";
-import { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 
 // Query para listar todas as categorias ordenadas por position (ADMIN - mostra todas)
@@ -132,7 +131,7 @@ async function getNextPosition(ctx: MutationCtx): Promise<number> {
         counterId: COUNTER_ID,
         nextPosition: initialPosition,
       });
-    } catch (error) {
+    } catch {
       // Another request may have created it concurrently, re-query
       counter = await ctx.db
         .query("categoryPositionCounter")
@@ -232,7 +231,7 @@ export const create = mutation({
     }
 
     // Update contentStats
-    await ctx.scheduler.runAfter(0, internal.contentStats.incrementCategories, { amount: 1 });
+    await ctx.scheduler.runAfter(0, internal.aggregate.incrementCategories, { amount: 1 });
 
     return categoryId;
   },
@@ -363,12 +362,12 @@ export const remove = mutation({
     await ctx.db.delete(args.id);
 
     // Update contentStats
-    await ctx.scheduler.runAfter(0, internal.contentStats.decrementCategories, { amount: 1 });
+    await ctx.scheduler.runAfter(0, internal.aggregate.decrementCategories, { amount: 1 });
     if (units.length > 0) {
-      await ctx.scheduler.runAfter(0, internal.contentStats.decrementUnits, { amount: units.length });
+      await ctx.scheduler.runAfter(0, internal.aggregate.decrementUnits, { amount: units.length });
     }
     if (totalPublishedLessons > 0) {
-      await ctx.scheduler.runAfter(0, internal.contentStats.decrementLessons, { amount: totalPublishedLessons });
+      await ctx.scheduler.runAfter(0, internal.aggregate.decrementLessons, { amount: totalPublishedLessons });
     }
 
     return null;
@@ -454,11 +453,11 @@ export const togglePublish = mutation({
     // Update contentStats if there were changes
     if (publishedLessonsChange !== 0) {
       if (publishedLessonsChange > 0) {
-        await ctx.scheduler.runAfter(0, internal.contentStats.incrementLessons, {
+        await ctx.scheduler.runAfter(0, internal.aggregate.incrementLessons, {
           amount: publishedLessonsChange,
         });
       } else {
-        await ctx.scheduler.runAfter(0, internal.contentStats.decrementLessons, {
+        await ctx.scheduler.runAfter(0, internal.aggregate.decrementLessons, {
           amount: Math.abs(publishedLessonsChange),
         });
       }

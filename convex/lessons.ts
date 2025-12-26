@@ -2,8 +2,17 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
+import { paginationOptsValidator } from "convex/server";
 
-// Query para listar todas as lessons (ADMIN - mostra todas)
+// ADMIN: List all lessons with pagination
+export const listPaginated = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    return await ctx.db.query("lessons").paginate(args.paginationOpts);
+  },
+});
+
+// Query para listar todas as lessons (ADMIN - deprecated)
 export const list = query({
   args: {},
   returns: v.array(
@@ -11,9 +20,11 @@ export const list = query({
       _id: v.id("lessons"),
       _creationTime: v.number(),
       unitId: v.id("units"),
+      categoryId: v.id("categories"),
       title: v.string(),
       slug: v.string(),
       description: v.string(),
+      bunnyStoragePath: v.optional(v.string()),
       publicUrl: v.optional(v.string()),
       thumbnailUrl: v.optional(v.string()),
       durationSeconds: v.number(),
@@ -25,7 +36,7 @@ export const list = query({
     }),
   ),
   handler: async (ctx) => {
-    const lessons = await ctx.db.query("lessons").collect();
+    const lessons = await ctx.db.query("lessons").take(100);
     return lessons;
   },
 });
@@ -38,9 +49,11 @@ export const listPublished = query({
       _id: v.id("lessons"),
       _creationTime: v.number(),
       unitId: v.id("units"),
+      categoryId: v.id("categories"),
       title: v.string(),
       slug: v.string(),
       description: v.string(),
+      bunnyStoragePath: v.optional(v.string()),
       publicUrl: v.optional(v.string()),
       thumbnailUrl: v.optional(v.string()),
       durationSeconds: v.number(),
@@ -60,7 +73,21 @@ export const listPublished = query({
   },
 });
 
-// Query para listar lessons de um módulo específico
+// ADMIN: List lessons by unit with pagination
+export const listByUnitPaginated = query({
+  args: {
+    unitId: v.id("units"),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("lessons")
+      .withIndex("by_unitId_and_order", (q) => q.eq("unitId", args.unitId))
+      .paginate(args.paginationOpts);
+  },
+});
+
+// Query para listar lessons de uma unidade específica (deprecated)
 export const listByUnit = query({
   args: { unitId: v.id("units") },
   returns: v.array(
@@ -68,9 +95,11 @@ export const listByUnit = query({
       _id: v.id("lessons"),
       _creationTime: v.number(),
       unitId: v.id("units"),
+      categoryId: v.id("categories"),
       title: v.string(),
       slug: v.string(),
       description: v.string(),
+      bunnyStoragePath: v.optional(v.string()),
       publicUrl: v.optional(v.string()),
       thumbnailUrl: v.optional(v.string()),
       durationSeconds: v.number(),
@@ -87,7 +116,7 @@ export const listByUnit = query({
       .withIndex("by_unitId_and_order", (q) =>
         q.eq("unitId", args.unitId),
       )
-      .collect();
+      .take(100);
 
     return lessons;
   },
@@ -105,6 +134,7 @@ export const listByCategory = query({
       title: v.string(),
       slug: v.string(),
       description: v.string(),
+      bunnyStoragePath: v.optional(v.string()),
       publicUrl: v.optional(v.string()),
       thumbnailUrl: v.optional(v.string()),
       durationSeconds: v.number(),
@@ -116,17 +146,19 @@ export const listByCategory = query({
     }),
   ),
   handler: async (ctx, args) => {
-    // Direct query using the categoryId index - much more efficient!
+    // Use the categoryId index for efficient querying
     const lessons = await ctx.db
       .query("lessons")
-      .withIndex("by_categoryId", (q) => q.eq("categoryId", args.categoryId))
+      .withIndex("by_categoryId_and_order", (q) => 
+        q.eq("categoryId", args.categoryId)
+      )
       .collect();
     
     return lessons;
   },
 });
 
-// Query para listar apenas lessons PUBLICADAS de um módulo PUBLICADO (USER)
+// Query para listar apenas lessons PUBLICADAS de uma unidade PUBLICADA (USER)
 export const listPublishedByUnit = query({
   args: { unitId: v.id("units") },
   returns: v.array(
@@ -134,9 +166,11 @@ export const listPublishedByUnit = query({
       _id: v.id("lessons"),
       _creationTime: v.number(),
       unitId: v.id("units"),
+      categoryId: v.id("categories"),
       title: v.string(),
       slug: v.string(),
       description: v.string(),
+      bunnyStoragePath: v.optional(v.string()),
       publicUrl: v.optional(v.string()),
       thumbnailUrl: v.optional(v.string()),
       durationSeconds: v.number(),
@@ -179,9 +213,11 @@ export const getById = query({
       _id: v.id("lessons"),
       _creationTime: v.number(),
       unitId: v.id("units"),
+      categoryId: v.id("categories"),
       title: v.string(),
       slug: v.string(),
       description: v.string(),
+      bunnyStoragePath: v.optional(v.string()),
       publicUrl: v.optional(v.string()),
       thumbnailUrl: v.optional(v.string()),
       durationSeconds: v.number(),
@@ -207,9 +243,11 @@ export const getBySlug = query({
       _id: v.id("lessons"),
       _creationTime: v.number(),
       unitId: v.id("units"),
+      categoryId: v.id("categories"),
       title: v.string(),
       slug: v.string(),
       description: v.string(),
+      bunnyStoragePath: v.optional(v.string()),
       publicUrl: v.optional(v.string()),
       thumbnailUrl: v.optional(v.string()),
       durationSeconds: v.number(),
@@ -247,6 +285,7 @@ export const create = mutation({
     unitId: v.id("units"),
     title: v.string(),
     description: v.string(),
+    bunnyStoragePath: v.optional(v.string()),
     publicUrl: v.optional(v.string()),
     thumbnailUrl: v.optional(v.string()),
     durationSeconds: v.optional(v.number()),
@@ -289,10 +328,11 @@ export const create = mutation({
 
     const lessonId: Id<"lessons"> = await ctx.db.insert("lessons", {
       unitId: args.unitId,
-      categoryId: unit.categoryId, // Store categoryId for efficient queries
+      categoryId: unit.categoryId, // Denormalized for efficient querying
       title: args.title,
       slug: slug,
       description: args.description,
+      bunnyStoragePath: args.bunnyStoragePath,
       publicUrl: args.publicUrl,
       thumbnailUrl: args.thumbnailUrl,
       durationSeconds: args.durationSeconds || 0,
@@ -305,7 +345,7 @@ export const create = mutation({
 
     // Atualizar contentStats se a lesson foi publicada
     if (args.isPublished) {
-      await ctx.scheduler.runAfter(0, internal.contentStats.incrementLessons, {
+      await ctx.scheduler.runAfter(0, internal.aggregate.incrementLessons, {
         amount: 1,
       });
     }
@@ -321,6 +361,7 @@ export const update = mutation({
     unitId: v.id("units"),
     title: v.string(),
     description: v.string(),
+    bunnyStoragePath: v.optional(v.string()),
     publicUrl: v.optional(v.string()),
     thumbnailUrl: v.optional(v.string()),
     durationSeconds: v.optional(v.number()),
@@ -350,7 +391,7 @@ export const update = mutation({
     const wasPublished = currentLesson?.isPublished || false;
     const willBePublished = args.isPublished;
 
-    // Get unit to update categoryId if unit changed
+    // Get the unit to get the categoryId
     const unit = await ctx.db.get(args.unitId);
     if (!unit) {
       throw new Error("Unidade não encontrada");
@@ -358,10 +399,11 @@ export const update = mutation({
 
     await ctx.db.patch(args.id, {
       unitId: args.unitId,
-      categoryId: unit.categoryId, // Update categoryId in case unit changed
+      categoryId: unit.categoryId, // Update categoryId when unit changes
       title: args.title,
       slug: slug,
       description: args.description,
+      bunnyStoragePath: args.bunnyStoragePath,
       publicUrl: args.publicUrl,
       thumbnailUrl: args.thumbnailUrl,
       durationSeconds: args.durationSeconds || 0,
@@ -375,12 +417,12 @@ export const update = mutation({
     // Update contentStats if publish status changed
     if (!wasPublished && willBePublished) {
       // Was unpublished, now published
-      await ctx.scheduler.runAfter(0, internal.contentStats.incrementLessons, {
+      await ctx.scheduler.runAfter(0, internal.aggregate.incrementLessons, {
         amount: 1,
       });
     } else if (wasPublished && !willBePublished) {
       // Was published, now unpublished
-      await ctx.scheduler.runAfter(0, internal.contentStats.decrementLessons, {
+      await ctx.scheduler.runAfter(0, internal.aggregate.decrementLessons, {
         amount: 1,
       });
     }
@@ -406,7 +448,7 @@ export const remove = mutation({
 
     await ctx.db.delete(args.id);
 
-    // Atualizar o total de lessons no módulo
+    // Atualizar o total de lessons na unidade
     const unit = await ctx.db.get(lesson.unitId);
     if (unit && unit.totalLessonVideos > 0) {
       await ctx.db.patch(lesson.unitId, {
@@ -416,7 +458,7 @@ export const remove = mutation({
 
     // Update contentStats if lesson was published
     if (wasPublished) {
-      await ctx.scheduler.runAfter(0, internal.contentStats.decrementLessons, {
+      await ctx.scheduler.runAfter(0, internal.aggregate.decrementLessons, {
         amount: 1,
       });
     }
@@ -447,12 +489,12 @@ export const togglePublish = mutation({
     // Update contentStats
     if (newPublishStatus) {
       // Now published
-      await ctx.scheduler.runAfter(0, internal.contentStats.incrementLessons, {
+      await ctx.scheduler.runAfter(0, internal.aggregate.incrementLessons, {
         amount: 1,
       });
     } else {
       // Now unpublished
-      await ctx.scheduler.runAfter(0, internal.contentStats.decrementLessons, {
+      await ctx.scheduler.runAfter(0, internal.aggregate.decrementLessons, {
         amount: 1,
       });
     }
@@ -481,5 +523,43 @@ export const reorder = mutation({
     }
 
     return null;
+  },
+});
+
+// Migration: Backfill categoryId for existing lessons
+export const backfillCategoryId = mutation({
+  args: {},
+  returns: v.object({
+    updated: v.number(),
+    skipped: v.number(),
+  }),
+  handler: async (ctx) => {
+    const lessons = await ctx.db.query("lessons").collect();
+    let updated = 0;
+    let skipped = 0;
+
+    for (const lesson of lessons) {
+      // Check if categoryId is already set
+      if ("categoryId" in lesson && lesson.categoryId) {
+        skipped++;
+        continue;
+      }
+
+      // Get the unit to find the categoryId
+      const unit = await ctx.db.get(lesson.unitId);
+      if (!unit) {
+        console.warn(`Unit ${lesson.unitId} not found for lesson ${lesson._id}`);
+        skipped++;
+        continue;
+      }
+
+      // Patch the lesson with the categoryId
+      await ctx.db.patch(lesson._id, {
+        categoryId: unit.categoryId,
+      });
+      updated++;
+    }
+
+    return { updated, skipped };
   },
 });

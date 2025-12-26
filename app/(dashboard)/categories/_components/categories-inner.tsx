@@ -9,31 +9,32 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Preloaded, usePreloadedQuery, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 interface CategoriesInnerProps {
   preloadedCategories: Preloaded<typeof api.categories.listPublished>;
-  preloadedContentStats: Preloaded<typeof api.contentStats.get> | null;
-  preloadedCompletedCount: Preloaded<typeof api.progress.getCompletedPublishedLessonsCount> | null;
 }
 
 export function CategoriesInner({
-  preloadedCategories,
-  preloadedContentStats,
-  preloadedCompletedCount
+  preloadedCategories
 }: CategoriesInnerProps) {
   const categories = usePreloadedQuery(preloadedCategories);
-
-  // Load progress data if available
-  const contentStats = preloadedContentStats
-    ? usePreloadedQuery(preloadedContentStats)
-    : null;
-
-  const completedCountResult = preloadedCompletedCount
-    ? usePreloadedQuery(preloadedCompletedCount)
-    : null;
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
   const { state } = useSidebar();
+  const { user } = useCurrentUser();
+
+  // Fetch progress data on client side - simpler than conditional preloading
+  // These queries only run when user is authenticated
+  const contentStats = useQuery(
+    api.aggregate.get,
+    user ? {} : "skip"
+  );
+
+  const completedCountResult = useQuery(
+    api.progress.queries.getCompletedPublishedLessonsCount,
+    user?.clerkUserId ? { userId: user.clerkUserId } : "skip"
+  );
 
   // Buscar categorias usando a query avançada
   const searchResults = useQuery(

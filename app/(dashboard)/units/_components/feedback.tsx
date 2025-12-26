@@ -21,14 +21,20 @@ export function Feedback({
   unitId,
   onFeedbackSubmitted,
 }: FeedbackProps) {
+  // Use lessonId as key dependency to derive initial state
   const [feedbackText, setFeedbackText] = useState("");
+  const [lastLessonId, setLastLessonId] = useState(lessonId);
+
+  // Detect lesson change and reset text
+  useEffect(() => {
+    if (lessonId !== lastLessonId) {
+      setLastLessonId(lessonId);
+      setFeedbackText("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lessonId]);
 
   const submitFeedback = useMutation(api.feedback.submitFeedback);
-
-  // Reset feedback when lesson changes
-  useEffect(() => {
-    setFeedbackText("");
-  }, [lessonId]);
 
   const handleSubmitFeedback = async () => {
     if (!userId || !lessonId || !unitId || !feedbackText.trim()) return;
@@ -47,19 +53,19 @@ export function Feedback({
   };
 
   return (
-    <div className="flex gap-2 w-full">
+    <div className="flex gap-2 w-full items-start h-full">
       <Textarea
         placeholder="Digite seu feedback ou dúvida aqui..."
         value={feedbackText}
         onChange={(e) => setFeedbackText(e.target.value)}
-        className="min-h-[100px] flex-1"
+        className="h-full flex-1 resize-none"
         aria-label="Campo de feedback"
       />
       <Button
         onClick={handleSubmitFeedback}
         disabled={!feedbackText.trim()}
         size="icon"
-        className="h-[100px] shrink-0"
+        className="shrink-0"
         aria-label="Enviar feedback"
       >
         <SendIcon size={18} />

@@ -1,6 +1,6 @@
 'use client';
 
-import { GraduationCap, LayoutGrid, Menu, Settings, User } from 'lucide-react';
+import { GraduationCap, LayoutGrid, Menu, User } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 

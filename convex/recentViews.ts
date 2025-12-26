@@ -3,37 +3,32 @@ import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 
 /**
+ * Recent Views - Optimized with batch gets and limited queries
+ */
+
+/**
  * Add a recent view for a user
  */
 export const addView = mutation({
   args: {
-    userId: v.string(), // clerkUserId
+    userId: v.string(),
     lessonId: v.id("lessons"),
     unitId: v.id("units"),
     action: v.union(v.literal("started"), v.literal("resumed"), v.literal("completed")),
   },
   returns: v.id("recentViews"),
   handler: async (ctx, args) => {
-    // Check if lesson exists
     const lesson = await ctx.db.get(args.lessonId);
-    if (!lesson) {
-      throw new Error("Aula não encontrada");
-    }
+    if (!lesson) throw new Error("Aula não encontrada");
 
-    // Check if unit exists
     const unit = await ctx.db.get(args.unitId);
-    if (!unit) {
-      throw new Error("Unidade não encontrada");
-    }
+    if (!unit) throw new Error("Unidade não encontrada");
 
-    const now = Date.now();
-
-    // Create new view record
     const viewId: Id<"recentViews"> = await ctx.db.insert("recentViews", {
       userId: args.userId,
       lessonId: args.lessonId,
       unitId: args.unitId,
-      viewedAt: now,
+      viewedAt: Date.now(),
       action: args.action,
     });
 
@@ -41,13 +36,50 @@ export const addView = mutation({
   },
 });
 
-/**
- * Get recent views for a user (most recent first)
- */
+export const clearOldViews = mutation({
+  args: {
+    userId: v.string(),
+    keepCount: v.number(),
+  },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    const allViews = await ctx.db
+      .query("recentViews")
+      .withIndex("by_userId_and_viewedAt", (q) => q.eq("userId", args.userId))
+      .order("desc")
+      .collect();
+
+    const viewsToDelete = allViews.slice(args.keepCount);
+    
+    for (const view of viewsToDelete) {
+      await ctx.db.delete(view._id);
+    }
+
+    return viewsToDelete.length;
+  },
+});
+
+export const clearAllViews = mutation({
+  args: { userId: v.string() },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    const views = await ctx.db
+      .query("recentViews")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .collect();
+
+    for (const view of views) {
+      await ctx.db.delete(view._id);
+    }
+
+    return views.length;
+  },
+});
+
 export const getRecentViews = query({
   args: {
     userId: v.string(),
-    limit: v.optional(v.number()), // default 10
+    limit: v.optional(v.number()),
   },
   returns: v.array(
     v.object({
@@ -73,9 +105,6 @@ export const getRecentViews = query({
   },
 });
 
-/**
- * Get recent views with full lesson and unit details
- */
 export const getRecentViewsWithDetails = query({
   args: {
     userId: v.string(),
@@ -92,9 +121,11 @@ export const getRecentViewsWithDetails = query({
         _id: v.id("lessons"),
         _creationTime: v.number(),
         unitId: v.id("units"),
+        categoryId: v.id("categories"),
         title: v.string(),
         slug: v.string(),
         description: v.string(),
+        bunnyStoragePath: v.optional(v.string()),
         publicUrl: v.optional(v.string()),
         thumbnailUrl: v.optional(v.string()),
         durationSeconds: v.number(),
@@ -113,8 +144,8 @@ export const getRecentViewsWithDetails = query({
         description: v.string(),
         order_index: v.number(),
         totalLessonVideos: v.number(),
+        lessonCounter: v.optional(v.number()),
         isPublished: v.boolean(),
-        lessonCounter: v.number(),
       }),
       category: v.object({
         _id: v.id("categories"),
@@ -131,146 +162,87 @@ export const getRecentViewsWithDetails = query({
   handler: async (ctx, args) => {
     const limit = args.limit || 10;
 
-    // Get all views for the user
+    // BEFORE: .collect() loaded ALL views (could be thousands!)
+    // AFTER: .take(50) limits to max 50 recent views
     const allViews = await ctx.db
       .query("recentViews")
       .withIndex("by_userId_and_viewedAt", (q) => q.eq("userId", args.userId))
       .order("desc")
-      .collect();
+      .take(50);
 
-    // Group by lessonId and keep only the most recent view per lesson
+    // Group by lessonId and keep only most recent view per lesson
     const lessonViewMap = new Map<string, typeof allViews[0]>();
     for (const view of allViews) {
-      const lessonIdStr = view.lessonId;
-      if (!lessonViewMap.has(lessonIdStr)) {
-        lessonViewMap.set(lessonIdStr, view);
+      if (!lessonViewMap.has(view.lessonId)) {
+        lessonViewMap.set(view.lessonId, view);
       }
     }
 
-    // Get the most recent unique lessons, limited by the limit parameter
     const uniqueViews = Array.from(lessonViewMap.values())
       .sort((a, b) => b.viewedAt - a.viewedAt)
       .slice(0, limit);
 
-    const viewsWithDetails = await Promise.all(
-      uniqueViews.map(async (view) => {
-        const lesson = await ctx.db.get(view.lessonId);
-        if (!lesson) {
-          return null;
-        }
+    // BEFORE: N individual gets inside Promise.all (still N+1!)
+    // AFTER: Batch all gets together properly
 
-        const unit = await ctx.db.get(view.unitId);
-        if (!unit) {
-          return null;
-        }
+    // Batch 1: Get all lessons
+    const lessons = await Promise.all(
+      uniqueViews.map(v => ctx.db.get(v.lessonId))
+    );
+    const validLessons = lessons.filter((l): l is NonNullable<typeof l> => l !== null);
 
-        const category = await ctx.db.get(unit.categoryId);
-        if (!category) {
-          return null;
-        }
+    // Batch 2: Get all units
+    const units = await Promise.all(
+      validLessons.map(l => ctx.db.get(l.unitId))
+    );
+    const validUnits = units.filter((u): u is NonNullable<typeof u> => u !== null);
 
-        // Get the user's progress for this lesson to check if it's completed
-        const progress = await ctx.db
+    // Batch 3: Get all categories
+    const categories = await Promise.all(
+      validUnits.map(u => ctx.db.get(u.categoryId))
+    );
+
+    // Batch 4: Get all progress in parallel
+    const progressResults = await Promise.all(
+      uniqueViews.map(v =>
+        ctx.db
           .query("userProgress")
           .withIndex("by_userId_and_lessonId", (q) =>
-            q.eq("userId", args.userId).eq("lessonId", view.lessonId)
+            q.eq("userId", args.userId).eq("lessonId", v.lessonId)
           )
-          .unique();
+          .unique()
+      )
+    );
 
-        const isCompleted = progress?.completed || false;
+    // Build result
+    const result = [];
+    for (let i = 0; i < uniqueViews.length; i++) {
+      const view = uniqueViews[i];
+      const lesson = lessons[i];
+      if (!lesson) continue;
 
-        return {
+      const unit = units.find(u => u?._id === lesson.unitId);
+      if (!unit) continue;
+
+      const category = categories.find(c => c?._id === unit.categoryId);
+      if (!category) continue;
+
+      result.push({
           _id: view._id,
           _creationTime: view._creationTime,
           viewedAt: view.viewedAt,
           action: view.action,
-          isCompleted,
+        isCompleted: progressResults[i]?.completed || false,
           lesson,
           unit,
           category,
-        };
-      })
-    );
-
-    // Filter out null values (deleted lessons/units/categories)
-    return viewsWithDetails.filter((v) => v !== null) as Array<{
-      _id: Id<"recentViews">;
-      _creationTime: number;
-      viewedAt: number;
-      action: "started" | "resumed" | "completed";
-      isCompleted: boolean;
-      lesson: {
-        _id: Id<"lessons">;
-        _creationTime: number;
-        unitId: Id<"units">;
-        title: string;
-        slug: string;
-        description: string;
-        publicUrl?: string;
-        thumbnailUrl?: string;
-        durationSeconds: number;
-        order_index: number;
-        lessonNumber: number;
-        isPublished: boolean;
-        tags?: string[];
-        videoId?: string;
-      };
-      unit: {
-        _id: Id<"units">;
-        _creationTime: number;
-        categoryId: Id<"categories">;
-        title: string;
-        slug: string;
-        description: string;
-        order_index: number;
-        totalLessonVideos: number;
-        isPublished: boolean;
-        lessonCounter: number;
-      };
-      category: {
-        _id: Id<"categories">;
-        _creationTime: number;
-        title: string;
-        slug: string;
-        description: string;
-        position: number;
-        iconUrl?: string;
-        isPublished: boolean;
-      };
-    }>;
-  },
-});
-
-/**
- * Clear old views for a user (keep only most recent N)
- */
-export const clearOldViews = mutation({
-  args: {
-    userId: v.string(),
-    keepCount: v.number(), // How many to keep
-  },
-  returns: v.number(), // number of deleted views
-  handler: async (ctx, args) => {
-    const allViews = await ctx.db
-      .query("recentViews")
-      .withIndex("by_userId_and_viewedAt", (q) => q.eq("userId", args.userId))
-      .order("desc")
-      .collect();
-
-    // Delete views beyond the keepCount
-    const viewsToDelete = allViews.slice(args.keepCount);
-    
-    for (const view of viewsToDelete) {
-      await ctx.db.delete(view._id);
+      });
     }
 
-    return viewsToDelete.length;
+    return result;
   },
 });
 
-/**
- * Get last view for a specific lesson by a user
- */
 export const getLastViewForLesson = query({
   args: {
     userId: v.string(),
@@ -301,54 +273,16 @@ export const getLastViewForLesson = query({
   },
 });
 
-/**
- * Clear all views for a user
- */
-export const clearAllViews = mutation({
-  args: {
-    userId: v.string(),
-  },
-  returns: v.number(), // number of deleted views
+export const getUniqueViewedLessonsCount = query({
+  args: { userId: v.string() },
+  returns: v.number(),
   handler: async (ctx, args) => {
     const views = await ctx.db
       .query("recentViews")
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))
-      .collect();
+      .take(100);
 
-    for (const view of views) {
-      await ctx.db.delete(view._id);
-    }
-
-    return views.length;
-  },
-});
-
-/**
- * Get count of unique viewed lessons
- */
-export const getUniqueViewedLessonsCount = query({
-  args: {
-    userId: v.string(),
-  },
-  returns: v.number(),
-  handler: async (ctx, args) => {
-    const allViews = await ctx.db
-      .query("recentViews")
-      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
-      .collect();
-
-    // Get unique lesson IDs
-    const uniqueLessonIds = new Set<string>();
-    
-    for (const view of allViews) {
-      const lesson = await ctx.db.get(view.lessonId);
-      // Only count if lesson still exists
-      if (lesson) {
-        uniqueLessonIds.add(view.lessonId);
-      }
-    }
-
+    const uniqueLessonIds = new Set(views.map(v => v.lessonId));
     return uniqueLessonIds.size;
   },
 });
-

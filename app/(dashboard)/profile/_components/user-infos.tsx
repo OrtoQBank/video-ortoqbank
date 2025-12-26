@@ -4,16 +4,12 @@ import Image from "next/image";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { User } from "lucide-react";
-import { Preloaded, usePreloadedQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
-interface UserInfosProps {
-  preloadedUserData: Preloaded<typeof api.users.current>;
-}
-
-export default function UserInfos({ preloadedUserData }: UserInfosProps) {
-  // Use preloaded query instead of regular query
-  const userData = usePreloadedQuery(preloadedUserData);
+export default function UserInfos() {
+  // Use regular query - hook called unconditionally
+  const userData = useQuery(api.users.current, {});
 
   return (
     <Card>

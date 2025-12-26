@@ -37,6 +37,7 @@ export const getByVideoId = query({
         height: v.optional(v.number()),
         framerate: v.optional(v.number()),
         bitrate: v.optional(v.number()),
+        extras: v.optional(v.record(v.string(), v.any())),
       })),
     }),
     v.null()
@@ -81,6 +82,7 @@ export const getById = query({
         height: v.optional(v.number()),
         framerate: v.optional(v.number()),
         bitrate: v.optional(v.number()),
+        extras: v.optional(v.record(v.string(), v.any())),
       })),
     }),
     v.null()
@@ -120,6 +122,7 @@ export const listByUser = query({
         height: v.optional(v.number()),
         framerate: v.optional(v.number()),
         bitrate: v.optional(v.number()),
+        extras: v.optional(v.record(v.string(), v.any())),
       })),
     })
   ),
@@ -241,6 +244,7 @@ export const update = mutation({
       height?: number;
       framerate?: number;
       bitrate?: number;
+      extras?: Record<string, unknown>;
     };
 
     const updates: Partial<{
@@ -320,6 +324,115 @@ export const markAsReady = mutation({
 });
 
 /**
+ * Get video status for polling
+ * Returns just the status and basic info for UI updates
+ */
+export const getVideoStatus = query({
+  args: { videoId: v.string() },
+  returns: v.union(
+    v.object({
+      status: v.union(
+        v.literal("uploading"),
+        v.literal("processing"),
+        v.literal("ready"),
+        v.literal("failed")
+      ),
+      hlsUrl: v.optional(v.string()),
+      thumbnailUrl: v.optional(v.string()),
+    }),
+    v.null()
+  ),
+  handler: async (ctx, args) => {
+    const video = await ctx.db
+      .query("videos")
+      .withIndex("by_videoId", (q) => q.eq("videoId", args.videoId))
+      .unique();
+
+    if (!video) {
+      return null;
+    }
+
+    return {
+      status: video.status,
+      hlsUrl: video.hlsUrl,
+      thumbnailUrl: video.thumbnailUrl,
+    };
+  },
+});
+
+/**
+ * Sync video info from Bunny manually (admin only)
+ * Useful for debugging or if webhook fails
+ */
+export const syncFromBunny = mutation({
+  args: { videoId: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const video = await ctx.db
+      .query("videos")
+      .withIndex("by_videoId", (q) => q.eq("videoId", args.videoId))
+      .unique();
+
+    if (!video) {
+      throw new Error("Vídeo não encontrado no banco de dados");
+    }
+
+    const apiKey = process.env.BUNNY_API_KEY;
+    if (!apiKey) {
+      throw new Error("BUNNY_API_KEY não configurada");
+    }
+
+    // Fetch video info from Bunny API
+    const response = await fetch(
+      `https://video.bunnycdn.com/library/${video.libraryId}/videos/${args.videoId}`,
+      {
+        headers: {
+          AccessKey: apiKey,
+          Accept: "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Falha ao buscar vídeo do Bunny: ${response.status}`);
+    }
+
+    const bunnyData = await response.json();
+
+    // Map Bunny status to our schema
+    let status: "uploading" | "processing" | "ready" | "failed" = "processing";
+    if (bunnyData.status === 4) {
+      status = "ready";
+    } else if (bunnyData.status === 5) {
+      status = "failed";
+    }
+
+    // Update video in database
+    await ctx.db.patch(video._id, {
+      status: status,
+      hlsUrl:
+        status === "ready"
+          ? `https://vz-${video.libraryId}.b-cdn.net/${args.videoId}/playlist.m3u8`
+          : undefined,
+      thumbnailUrl: bunnyData.thumbnailFileName
+        ? `https://vz-${video.libraryId}.b-cdn.net/${args.videoId}/${bunnyData.thumbnailFileName}`
+        : undefined,
+      metadata: {
+        duration: bunnyData.length || undefined,
+        width: bunnyData.width || undefined,
+        height: bunnyData.height || undefined,
+        framerate: bunnyData.framerate || undefined,
+        bitrate: bunnyData.bitrate || undefined,
+      },
+    });
+
+    return null;
+  },
+});
+
+/**
  * List all videos (admin only)
  */
 export const listAll = query({
@@ -349,12 +462,13 @@ export const listAll = query({
         height: v.optional(v.number()),
         framerate: v.optional(v.number()),
         bitrate: v.optional(v.number()),
+        extras: v.optional(v.record(v.string(), v.any())),
       })),
     })
   ),
   handler: async (ctx) => {
     await requireAdmin(ctx);
-    return await ctx.db.query("videos").collect();
+    return await ctx.db.query("videos").take(100);
   },
 });
 
@@ -407,6 +521,7 @@ export const updateFromWebhook = internalMutation({
       height?: number;
       framerate?: number;
       bitrate?: number;
+      extras?: Record<string, unknown>;
     };
 
     const updates: Partial<{

@@ -2,8 +2,17 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
+import { paginationOptsValidator } from "convex/server";
 
-// Query para listar todas as unidades (ADMIN - mostra todas)
+// ADMIN: List all units with pagination
+export const listPaginated = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    return await ctx.db.query("units").paginate(args.paginationOpts);
+  },
+});
+
+// Query para listar todas as unidades (ADMIN - deprecated, use listPaginated)
 export const list = query({
   args: {},
   returns: v.array(
@@ -21,7 +30,8 @@ export const list = query({
     })
   ),
   handler: async (ctx) => {
-    const units = await ctx.db.query("units").collect();
+    // DEPRECATED: Use listPaginated for better performance
+    const units = await ctx.db.query("units").take(100); // Limited to 100
     return units;
   },
 });
@@ -52,7 +62,21 @@ export const listPublished = query({
   },
 });
 
-// Query para listar unidades de uma categoria específica (ADMIN - mostra todas)
+// ADMIN: List units by category with pagination
+export const listByCategoryPaginated = query({
+  args: {
+    categoryId: v.id("categories"),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("units")
+      .withIndex("by_categoryId_and_order", (q) => q.eq("categoryId", args.categoryId))
+      .paginate(args.paginationOpts);
+  },
+});
+
+// Query para listar unidades de uma categoria específica (ADMIN - deprecated)
 export const listByCategory = query({
   args: { categoryId: v.id("categories") },
   returns: v.array(
@@ -75,7 +99,7 @@ export const listByCategory = query({
       .withIndex("by_categoryId_and_order", (q) => 
         q.eq("categoryId", args.categoryId)
       )
-      .collect();
+      .take(100);
 
     return units;
   },
@@ -232,7 +256,7 @@ export const create = mutation({
     });
 
     // Update contentStats
-    await ctx.scheduler.runAfter(0, internal.contentStats.incrementUnits, { amount: 1 });
+    await ctx.scheduler.runAfter(0, internal.aggregate.incrementUnits, { amount: 1 });
 
     return unitId;
   },
@@ -320,9 +344,9 @@ export const remove = mutation({
     await ctx.db.delete(args.id);
 
     // Update contentStats
-    await ctx.scheduler.runAfter(0, internal.contentStats.decrementUnits, { amount: 1 });
+    await ctx.scheduler.runAfter(0, internal.aggregate.decrementUnits, { amount: 1 });
     if (publishedLessonsCount > 0) {
-      await ctx.scheduler.runAfter(0, internal.contentStats.decrementLessons, { amount: publishedLessonsCount });
+      await ctx.scheduler.runAfter(0, internal.aggregate.decrementLessons, { amount: publishedLessonsCount });
     }
 
     return null;
@@ -393,11 +417,11 @@ export const togglePublish = mutation({
     // Update contentStats if there were changes
     if (publishedLessonsChange !== 0) {
       if (publishedLessonsChange > 0) {
-        await ctx.scheduler.runAfter(0, internal.contentStats.incrementLessons, {
+        await ctx.scheduler.runAfter(0, internal.aggregate.incrementLessons, {
           amount: publishedLessonsChange,
         });
       } else {
-        await ctx.scheduler.runAfter(0, internal.contentStats.decrementLessons, {
+        await ctx.scheduler.runAfter(0, internal.aggregate.decrementLessons, {
           amount: Math.abs(publishedLessonsChange),
         });
       }

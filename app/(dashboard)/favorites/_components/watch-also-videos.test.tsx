@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import { WatchAlsoVideos } from "./watch-also-videos";
 
 describe('WatchAlsoVideos', () => {

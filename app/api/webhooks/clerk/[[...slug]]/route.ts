@@ -2,7 +2,6 @@ import type { WebhookEvent } from '@clerk/backend';
 import { createClerkClient } from '@clerk/backend';
 import { NextResponse } from 'next/server';
 import { Webhook } from 'svix';
-import { internal } from '@/convex/_generated/api';
 
 // Import env variables to make sure they're available
 const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY;

@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
@@ -18,7 +19,7 @@ export function SearchBar({
   onSearch,
 }: SearchBarProps) {
   const [query, setQuery] = useState("");
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isManuallyHidden, setIsManuallyHidden] = useState(false);
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const router = useRouter();
   const wrapperRef = useRef<HTMLFormElement>(null);
@@ -38,11 +39,15 @@ export function SearchBar({
     debouncedQuery.length >= 2 ? { query: debouncedQuery } : "skip"
   );
 
+  // Derive showSuggestions from data (no setState in effect)
+  const hasSuggestions = suggestions && (suggestions.units.length > 0 || suggestions.lessons.length > 0);
+  const showSuggestions = !isManuallyHidden && Boolean(hasSuggestions);
+
   // Fechar sugestões quando clicar fora
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
-        setShowSuggestions(false);
+        setIsManuallyHidden(true);
       }
     }
 
@@ -50,40 +55,33 @@ export function SearchBar({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Mostrar sugestões quando há resultados
-  useEffect(() => {
-    if (suggestions && (suggestions.units.length > 0 || suggestions.lessons.length > 0)) {
-      setShowSuggestions(true);
-    } else {
-      setShowSuggestions(false);
-    }
-  }, [suggestions]);
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setShowSuggestions(false);
+    setIsManuallyHidden(true);
     if (onSearch) {
       onSearch(query);
     }
   };
 
-  const handleUnitClick = (categoryId: string) => {
-    setShowSuggestions(false);
+  const handleUnitClick = (categoryId: Id<"categories">) => {
+    setIsManuallyHidden(true);
     setQuery("");
     router.push(`/units/${categoryId}`);
   };
 
-  const handleLessonClick = (lessonId: string) => {
-    setShowSuggestions(false);
+  const handleLessonClick = (lessonId: Id<"lessons">) => {
+    setIsManuallyHidden(true);
     setQuery("");
     router.push(`/lesson/${lessonId}`);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
+    // Reset manual hide when user types
+    if (isManuallyHidden) {
+      setIsManuallyHidden(false);
+    }
   };
-
-  const hasSuggestions = suggestions && (suggestions.units.length > 0 || suggestions.lessons.length > 0);
 
   return (
     <form onSubmit={handleSubmit} className="w-full relative" ref={wrapperRef}>
@@ -99,7 +97,7 @@ export function SearchBar({
           className="pl-10 md:pl-11 pr-3 md:pr-4 h-12 md:h-14 rounded-full border text-sm md:text-base"
           onFocus={() => {
             if (hasSuggestions) {
-              setShowSuggestions(true);
+              setIsManuallyHidden(false);
             }
           }}
         />

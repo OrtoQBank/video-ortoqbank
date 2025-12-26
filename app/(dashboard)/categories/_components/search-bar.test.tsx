@@ -87,7 +87,6 @@ describe("SearchBar", () => {
 
     render(<SearchBar onSearch={mockOnSearch} />);
 
-    const input = screen.getByPlaceholderText("Pesquise por temas, subtemas e grupos...");
     await user.keyboard("{Enter}");
 
     await waitFor(() => {

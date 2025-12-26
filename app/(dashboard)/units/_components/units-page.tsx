@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { useRouter } from "next/navigation";
 import {
@@ -13,6 +13,9 @@ import { api } from "@/convex/_generated/api";
 import {
   ArrowLeftIcon,
   PlayCircleIcon,
+  CheckCircleIcon,
+  StarIcon,
+  ChevronRightIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -23,21 +26,48 @@ import { VideoPlayerWithWatermark } from "@/components/bunny/video-player-with-w
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { LessonInfoSection } from "./lesson-info-section";
 import { Feedback } from "./feedback";
+import { Rating } from "./rating";
+import { cn } from "@/lib/utils";
+import { getSignedEmbedUrl } from "@/app/actions/bunny";
 
 
-interface UnitsInnerProps {
+interface UnitsPageProps {
   preloadedUnits: Preloaded<typeof api.units.listPublishedByCategory>;
   categoryTitle: string;
 }
 
-export function UnitsInner({
+export function UnitsPage({
   preloadedUnits,
   categoryTitle,
-}: UnitsInnerProps) {
+}: UnitsPageProps) {
   const units = usePreloadedQuery(preloadedUnits);
   const router = useRouter();
   const { user } = useUser();
   const { state } = useSidebar();
+
+  // Mutations
+  const markCompleted = useMutation(api.progress.mutations.markLessonCompleted);
+  const markIncomplete = useMutation(api.progress.mutations.markLessonIncomplete);
+  const toggleFavorite = useMutation(api.favorites.toggleFavorite);
+  const addRecentView = useMutation(api.recentViews.addView);
+
+  // Load lessons for first unit to get the first lesson (only published)
+  const firstUnitLessons = useQuery(
+    api.lessons.listPublishedByUnit,
+    units[0] ? { unitId: units[0]._id } : "skip",
+  );
+
+  // Compute initial values using useMemo
+  const initialValues = useMemo(() => {
+    if (firstUnitLessons && firstUnitLessons.length > 0 && units.length > 0) {
+      return {
+        lessonId: firstUnitLessons[0]._id,
+        unitId: units[0]._id,
+        expandedUnits: new Set([units[0]._id]),
+      };
+    }
+    return null;
+  }, [firstUnitLessons, units]);
 
   const [expandedUnits, setExpandedUnits] = useState<Set<string>>(
     new Set(),
@@ -50,17 +80,9 @@ export function UnitsInner({
   );
   const [nextUnitId, setNextUnitId] = useState<Id<"units"> | null>(null);
 
-  // Mutations
-  const markCompleted = useMutation(api.progress.markLessonCompleted);
-  const markIncomplete = useMutation(api.progress.markLessonIncomplete);
-  const toggleFavorite = useMutation(api.favorites.toggleFavorite);
-  const addRecentView = useMutation(api.recentViews.addView);
-
-  // Load lessons for first unit to get the first lesson (only published)
-  const firstUnitLessons = useQuery(
-    api.lessons.listPublishedByUnit,
-    units[0] ? { unitId: units[0]._id } : "skip",
-  );
+  // Video embed URL state
+  const [embedUrl, setEmbedUrl] = useState<string | null>(null);
+  const [embedLoading, setEmbedLoading] = useState(false);
 
   // Load lessons for current unit (only published)
   const currentUnitLessons = useQuery(
@@ -80,20 +102,17 @@ export function UnitsInner({
     currentLessonId ? { id: currentLessonId } : "skip",
   );
 
+  // OPTIMIZED: Get progress only for THIS category (not all 5000 lessons!)
+  const categoryId = units[0]?.categoryId;
   const allUserProgress = useQuery(
-    api.progress.getUnitLessonsProgress,
-    user?.id && currentUnitId
-      ? {
-        userId: user.id,
-        unitId: currentUnitId,
-      }
-      : "skip",
+    api.progress.queries.getCompletedLessonsByCategory,
+    user?.id && categoryId ? { userId: user.id, categoryId } : "skip",
   );
 
-  // Get progress for all units to calculate category progress
+  // OPTIMIZED: Get unit progress only for THIS category (not all 1000 units!)
   const allUnitsProgress = useQuery(
-    api.progress.getAllUnitProgress,
-    user?.id ? { userId: user.id } : "skip",
+    api.progress.queries.getUnitProgressByCategory,
+    user?.id && categoryId ? { userId: user.id, categoryId } : "skip",
   );
 
   const isFavorited = useQuery(
@@ -103,37 +122,41 @@ export function UnitsInner({
       : "skip",
   );
 
-  // Set first lesson as current when data loads
+  // Initialize first lesson when data becomes available
+  // Using queueMicrotask to defer state updates and avoid cascading renders
   useEffect(() => {
-    if (
-      firstUnitLessons &&
-      firstUnitLessons.length > 0 &&
-      !currentLessonId
-    ) {
-      setCurrentLessonId(firstUnitLessons[0]._id);
-      setCurrentUnitId(units[0]._id);
-      setExpandedUnits(new Set([units[0]._id]));
+    if (initialValues && !currentLessonId) {
+      queueMicrotask(() => {
+        setCurrentLessonId(initialValues.lessonId);
+        setCurrentUnitId(initialValues.unitId);
+        setExpandedUnits(initialValues.expandedUnits);
+      });
     }
-  }, [firstUnitLessons, currentLessonId, units]);
+  }, [initialValues, currentLessonId]);
 
-  // Handle transition to first lesson of next unit
+  // Fetch signed embed URL when lesson changes
   useEffect(() => {
-    const transitionToNextUnit = async () => {
-      if (nextUnitId && nextUnitLessons && nextUnitLessons.length > 0) {
-        const firstLesson = nextUnitLessons[0];
+    if (!currentLesson?.videoId) {
+      setEmbedUrl(null);
+      return;
+    }
 
-        // Only transition if we haven't already switched to this lesson
-        if (currentLessonId !== firstLesson._id) {
-          await handleLessonClick(firstLesson._id, nextUnitId);
-        }
-
-        // Reset nextUnitId after handling
-        setNextUnitId(null);
+    const fetchEmbedUrl = async () => {
+      setEmbedLoading(true);
+      try {
+        const libraryId = process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID || "566190";
+        const result = await getSignedEmbedUrl(currentLesson.videoId!, libraryId);
+        setEmbedUrl(result.embedUrl);
+      } catch (error) {
+        console.error("Error fetching embed URL:", error);
+        setEmbedUrl(null);
+      } finally {
+        setEmbedLoading(false);
       }
     };
 
-    transitionToNextUnit();
-  }, [nextUnitId, nextUnitLessons, currentLessonId, user?.id]);
+    fetchEmbedUrl();
+  }, [currentLesson?.videoId]);
 
   const handleBackClick = () => {
     router.push("/categories");
@@ -151,7 +174,8 @@ export function UnitsInner({
     });
   };
 
-  const handleLessonClick = async (
+  // Move handleLessonClick before the effect that uses it
+  const handleLessonClick = useCallback(async (
     lessonId: Id<"lessons">,
     unitId: Id<"units">,
   ) => {
@@ -171,7 +195,26 @@ export function UnitsInner({
         console.error("Error adding recent view:", error);
       }
     }
-  };
+  }, [user, addRecentView]);
+
+  // Handle transition to first lesson of next unit
+  useEffect(() => {
+    const transitionToNextUnit = async () => {
+      if (nextUnitId && nextUnitLessons && nextUnitLessons.length > 0) {
+        const firstLesson = nextUnitLessons[0];
+
+        // Only transition if we haven't already switched to this lesson
+        if (currentLessonId !== firstLesson._id) {
+          await handleLessonClick(firstLesson._id, nextUnitId);
+        }
+
+        // Reset nextUnitId after handling
+        setNextUnitId(null);
+      }
+    };
+
+    transitionToNextUnit();
+  }, [nextUnitId, nextUnitLessons, currentLessonId, handleLessonClick]);
 
   const handleMarkCompleted = async () => {
     if (!user?.id || !currentLessonId || !currentUnitId) return;
@@ -242,19 +285,13 @@ export function UnitsInner({
   };
 
   const isLessonCompleted = allUserProgress?.some(
-    (p) => p.lessonId === currentLessonId && p.completed,
+    (p: { lessonId: Id<"lessons">; completed: boolean }) => p.lessonId === currentLessonId && p.completed,
   );
-
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
 
   // Calculate category progress - only for units in this category
   const totalCompletedLessons = units.reduce((acc, unit) => {
     const unitProgress = allUnitsProgress?.find(
-      (p) => p.unitId === unit._id
+      (p: { unitId: Id<"units">; completedLessonsCount: number }) => p.unitId === unit._id
     );
     return acc + (unitProgress?.completedLessonsCount || 0);
   }, 0);
@@ -359,16 +396,26 @@ export function UnitsInner({
                 {/* Video Player with Watermark */}
                 {currentLesson.videoId ? (
                   <div className="mb-6">
-                    <VideoPlayerWithWatermark
-                      videoId={currentLesson.videoId}
-                      libraryId={
-                        process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID || "550336"
-                      }
-                      userName={user?.fullName || user?.firstName || "Usuário"}
-                      userCpf={
-                        (user?.publicMetadata?.cpf as string) || "000.000.000-00"
-                      }
-                    />
+                    {embedLoading ? (
+                      <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900 mx-auto mb-3" />
+                          <p className="text-gray-600 text-sm">Carregando vídeo...</p>
+                        </div>
+                      </div>
+                    ) : embedUrl ? (
+                      <VideoPlayerWithWatermark
+                        embedUrl={embedUrl}
+                        userName={user?.fullName || user?.firstName || "Usuário"}
+                        userCpf={
+                          (user?.publicMetadata?.cpf as string) || "000.000.000-00"
+                        }
+                      />
+                    ) : (
+                      <div className="aspect-video bg-red-50 rounded-lg flex items-center justify-center">
+                        <p className="text-red-600 text-sm">Erro ao carregar vídeo</p>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="bg-black rounded-lg aspect-video flex items-center justify-center mb-6">
@@ -437,24 +484,79 @@ export function UnitsInner({
 
               {/* Desktop: Lesson info (no tabs) */}
               <div className="hidden md:block px-6">
-                <LessonInfoSection
-                  title={currentLesson.title}
-                  description={currentLesson.description}
-                  isCompleted={isLessonCompleted ?? false}
-                  isFavorited={isFavorited ?? false}
-                  onMarkCompleted={handleMarkCompleted}
-                  onToggleFavorite={handleToggleFavorite}
-                  onNextLesson={handleNextLesson}
-                  variant="desktop"
-                />
+                {/* Título e Descrição */}
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold mb-3">{currentLesson.title}</h2>
+                  <p className="text-base text-muted-foreground mb-6">
+                    {currentLesson.description}
+                  </p>
+                </div>
 
-                {user?.id && currentLessonId && currentUnitId && (
-                  <Feedback
-                    userId={user.id}
-                    lessonId={currentLessonId}
-                    unitId={currentUnitId}
-                  />
-                )}
+                {/* Layout de 2 colunas: Feedback à esquerda, Actions + Rating à direita */}
+                <div className="flex gap-6 items-stretch">
+                  {/* Coluna Esquerda: Feedback */}
+                  <div className="flex-1 flex">
+                    {user?.id && currentLessonId && currentUnitId && (
+                      <Feedback
+                        userId={user.id}
+                        lessonId={currentLessonId}
+                        unitId={currentUnitId}
+                      />
+                    )}
+                  </div>
+
+                  {/* Coluna Direita: Action Buttons + Rating */}
+                  <div className="flex flex-col gap-4 w-auto min-w-[200px] shrink-0">
+                    {/* Action Buttons */}
+                    <div className="flex flex-col gap-3">
+                      <div className="flex gap-3">
+                        <Button
+                          onClick={handleMarkCompleted}
+                          variant={isLessonCompleted ? "outline" : "default"}
+                          className={cn(
+                            "flex-1 lg:flex-none lg:min-w-[160px]",
+                            isLessonCompleted && "bg-white text-green-600 hover:bg-green-50 border-green-600 border-2"
+                          )}
+                        >
+                          <CheckCircleIcon
+                            size={18}
+                            className={cn("mr-2", isLessonCompleted && "text-green-600")}
+                          />
+                          {isLessonCompleted ? "Concluída" : "Marcar como concluída"}
+                        </Button>
+                        <Button
+                          onClick={handleToggleFavorite}
+                          variant="outline"
+                          className="shrink-0"
+                        >
+                          <StarIcon
+                            size={18}
+                            className={cn(isFavorited && "fill-yellow-500 text-yellow-500")}
+                          />
+                        </Button>
+                      </div>
+                      <Button
+                        onClick={handleNextLesson}
+                        variant="outline"
+                        className="w-full lg:w-auto lg:min-w-[160px]"
+                      >
+                        Próxima aula
+                        <ChevronRightIcon size={18} className="ml-2" />
+                      </Button>
+                    </div>
+
+                    {/* Rating */}
+                    {user?.id && currentLessonId && currentUnitId && (
+                      <div className="border-t pt-4">
+                        <Rating
+                          userId={user.id}
+                          lessonId={currentLessonId}
+                          unitId={currentUnitId}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </>
           ) : (

@@ -1,6 +1,7 @@
 import { v } from "convex/values";
-import { mutation, query, type MutationCtx } from "./_generated/server";
-import { Id } from "./_generated/dataModel";
+import { mutation } from "../_generated/server";
+import { updateUnitAndGlobalProgress } from "./helpers";
+import { getTotalLessonsCount } from "../aggregate";
 
 /**
  * Mark a lesson as completed for a user
@@ -104,9 +105,8 @@ export const markLessonCompleted = mutation({
 
     const totalCompletedCount = allCompletedLessons.length;
 
-    // Get total lessons from contentStats
-    const contentStats = await ctx.db.query("contentStats").first();
-    const totalLessonsInSystem = contentStats?.totalLessons || 0;
+    // Get total lessons from aggregate
+    const totalLessonsInSystem = await getTotalLessonsCount(ctx);
     const globalProgressPercent =
       totalLessonsInSystem > 0
         ? Math.round((totalCompletedCount / totalLessonsInSystem) * 100)
@@ -216,12 +216,8 @@ export const markLessonIncomplete = mutation({
 
     const totalCompletedCount = allCompletedLessons.length;
 
-    const allLessons = await ctx.db
-      .query("lessons")
-      .withIndex("by_isPublished", (q) => q.eq("isPublished", true))
-      .collect();
-
-    const totalLessonsInSystem = allLessons.length;
+    // Get total lessons from aggregate instead of .collect()
+    const totalLessonsInSystem = await getTotalLessonsCount(ctx);
     const globalProgressPercent =
       totalLessonsInSystem > 0
         ? Math.round((totalCompletedCount / totalLessonsInSystem) * 100)
@@ -241,224 +237,6 @@ export const markLessonIncomplete = mutation({
     }
 
     return null;
-  },
-});
-
-/**
- * Get user progress for a specific lesson
- */
-export const getLessonProgress = query({
-  args: {
-    userId: v.string(),
-    lessonId: v.id("lessons"),
-  },
-  returns: v.union(
-    v.object({
-      _id: v.id("userProgress"),
-      _creationTime: v.number(),
-      userId: v.string(),
-      lessonId: v.id("lessons"),
-      unitId: v.id("units"),
-      completed: v.boolean(),
-      completedAt: v.optional(v.number()),
-    }),
-    v.null()
-  ),
-  handler: async (ctx, args) => {
-    const progress = await ctx.db
-      .query("userProgress")
-      .withIndex("by_userId_and_lessonId", (q) =>
-        q.eq("userId", args.userId).eq("lessonId", args.lessonId)
-      )
-      .unique();
-
-    return progress;
-  },
-});
-
-/**
- * Get user progress for a specific unit
- */
-export const getUnitProgress = query({
-  args: {
-    userId: v.string(),
-    unitId: v.id("units"),
-  },
-  returns: v.union(
-    v.object({
-      _id: v.id("unitProgress"),
-      _creationTime: v.number(),
-      userId: v.string(),
-      unitId: v.id("units"),
-      completedLessonsCount: v.number(),
-      totalLessonVideos: v.number(),
-      progressPercent: v.number(),
-      updatedAt: v.number(),
-    }),
-    v.null()
-  ),
-  handler: async (ctx, args) => {
-    const progress = await ctx.db
-      .query("unitProgress")
-      .withIndex("by_userId_and_unitId", (q) =>
-        q.eq("userId", args.userId).eq("unitId", args.unitId)
-      )
-      .unique();
-
-    return progress;
-  },
-});
-
-/**
- * Get global progress for a user
- */
-export const getGlobalProgress = query({
-  args: {
-    userId: v.string(),
-  },
-  returns: v.union(
-    v.object({
-      _id: v.id("userGlobalProgress"),
-      _creationTime: v.number(),
-      userId: v.string(),
-      completedLessonsCount: v.number(),
-      progressPercent: v.number(),
-      updatedAt: v.number(),
-    }),
-    v.null()
-  ),
-  handler: async (ctx, args) => {
-    const progress = await ctx.db
-      .query("userGlobalProgress")
-      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
-      .unique();
-
-    return progress;
-  },
-});
-
-/**
- * Get all lesson progress for a user in a specific unit
- */
-export const getUnitLessonsProgress = query({
-  args: {
-    userId: v.string(),
-    unitId: v.id("units"),
-  },
-  returns: v.array(
-    v.object({
-      _id: v.id("userProgress"),
-      _creationTime: v.number(),
-      userId: v.string(),
-      lessonId: v.id("lessons"),
-      unitId: v.id("units"),
-      completed: v.boolean(),
-      completedAt: v.optional(v.number()),
-    })
-  ),
-  handler: async (ctx, args) => {
-    const progress = await ctx.db
-      .query("userProgress")
-      .withIndex("by_userId_and_unitId", (q) =>
-        q.eq("userId", args.userId).eq("unitId", args.unitId)
-      )
-      .collect();
-
-    return progress;
-  },
-});
-
-/**
- * Get all unit progress for a user
- */
-export const getAllUnitProgress = query({
-  args: {
-    userId: v.string(),
-  },
-  returns: v.array(
-    v.object({
-      _id: v.id("unitProgress"),
-      _creationTime: v.number(),
-      userId: v.string(),
-      unitId: v.id("units"),
-      completedLessonsCount: v.number(),
-      totalLessonVideos: v.number(),
-      progressPercent: v.number(),
-      updatedAt: v.number(),
-    })
-  ),
-  handler: async (ctx, args) => {
-    const progress = await ctx.db
-      .query("unitProgress")
-      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
-      .collect();
-
-    return progress;
-  },
-});
-
-/**
- * Get all completed lessons for a user
- */
-export const getCompletedLessons = query({
-  args: {
-    userId: v.string(),
-  },
-  returns: v.array(
-    v.object({
-      _id: v.id("userProgress"),
-      _creationTime: v.number(),
-      userId: v.string(),
-      lessonId: v.id("lessons"),
-      unitId: v.id("units"),
-      completed: v.boolean(),
-      completedAt: v.optional(v.number()),
-    })
-  ),
-  handler: async (ctx, args) => {
-    const progress = await ctx.db
-      .query("userProgress")
-      .withIndex("by_userId_and_completed", (q) =>
-        q.eq("userId", args.userId).eq("completed", true)
-      )
-      .collect();
-
-    return progress;
-  },
-});
-
-/**
- * Get count of completed lessons (only for lessons that still exist and are published)
- */
-export const getCompletedPublishedLessonsCount = query({
-  args: {
-    userId: v.string(),
-  },
-  returns: v.number(),
-  handler: async (ctx, args) => {
-    const completedProgress = await ctx.db
-      .query("userProgress")
-      .withIndex("by_userId_and_completed", (q) =>
-        q.eq("userId", args.userId).eq("completed", true)
-      )
-      .collect();
-
-    let count = 0;
-    for (const progress of completedProgress) {
-      try {
-        const lesson = await ctx.db.get(progress.lessonId);
-        // Only count if lesson exists and is published
-        if (lesson && lesson.isPublished) {
-          count++;
-        }
-      } catch (error) {
-        // Skip invalid lesson references
-        console.error(`Error checking lesson ${progress.lessonId}:`, error);
-        continue;
-      }
-    }
-
-    return count;
   },
 });
 
@@ -484,9 +262,8 @@ export const recalculateGlobalProgress = mutation({
 
     const totalCompletedCount = allCompletedLessons.length;
 
-    // Get total lessons from contentStats
-    const contentStats = await ctx.db.query("contentStats").first();
-    const totalLessonsInSystem = contentStats?.totalLessons || 0;
+    // Get total lessons from aggregate
+    const totalLessonsInSystem = await getTotalLessonsCount(ctx);
     const globalProgressPercent =
       totalLessonsInSystem > 0
         ? Math.round((totalCompletedCount / totalLessonsInSystem) * 100)
@@ -589,97 +366,3 @@ export const saveVideoProgress = mutation({
     return null;
   },
 });
-
-/**
- * Helper function to update unit and global progress
- */
-async function updateUnitAndGlobalProgress(
-  ctx: MutationCtx,
-  userId: string,
-  unitId: Id<"units">
-) {
-  const now = Date.now();
-
-  // Update unitProgress
-  const unit = await ctx.db.get(unitId);
-  if (unit) {
-    const completedLessonsInUnit = await ctx.db
-      .query("userProgress")
-      .withIndex("by_userId_and_unitId", (q) =>
-        q.eq("userId", userId).eq("unitId", unitId)
-      )
-      .collect();
-
-    const completedCount = completedLessonsInUnit.filter(
-      (p) => p.completed
-    ).length;
-    const progressPercent =
-      unit.totalLessonVideos > 0
-        ? Math.round((completedCount / unit.totalLessonVideos) * 100)
-        : 0;
-
-    const unitProgressDoc = await ctx.db
-      .query("unitProgress")
-      .withIndex("by_userId_and_unitId", (q) =>
-        q.eq("userId", userId).eq("unitId", unitId)
-      )
-      .unique();
-
-    if (!unitProgressDoc) {
-      await ctx.db.insert("unitProgress", {
-        userId,
-        unitId,
-        completedLessonsCount: completedCount,
-        totalLessonVideos: unit.totalLessonVideos,
-        progressPercent,
-        updatedAt: now,
-      });
-    } else {
-      await ctx.db.patch(unitProgressDoc._id, {
-        completedLessonsCount: completedCount,
-        totalLessonVideos: unit.totalLessonVideos,
-        progressPercent,
-        updatedAt: now,
-      });
-    }
-  }
-
-  // Update userGlobalProgress
-  const allCompletedLessons = await ctx.db
-    .query("userProgress")
-    .withIndex("by_userId_and_completed", (q) =>
-      q.eq("userId", userId).eq("completed", true)
-    )
-    .collect();
-
-  const totalCompletedCount = allCompletedLessons.length;
-
-  // Get total lessons from contentStats
-  const contentStats = await ctx.db.query("contentStats").first();
-  const totalLessonsInSystem = contentStats?.totalLessons || 0;
-  const globalProgressPercent =
-    totalLessonsInSystem > 0
-      ? Math.round((totalCompletedCount / totalLessonsInSystem) * 100)
-      : 0;
-
-  const globalProgressDoc = await ctx.db
-    .query("userGlobalProgress")
-    .withIndex("by_userId", (q) => q.eq("userId", userId))
-    .unique();
-
-  if (!globalProgressDoc) {
-    await ctx.db.insert("userGlobalProgress", {
-      userId,
-      completedLessonsCount: totalCompletedCount,
-      progressPercent: globalProgressPercent,
-      updatedAt: now,
-    });
-  } else {
-    await ctx.db.patch(globalProgressDoc._id, {
-      completedLessonsCount: totalCompletedCount,
-      progressPercent: globalProgressPercent,
-      updatedAt: now,
-    });
-  }
-}
-

@@ -2,7 +2,6 @@ import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { requireAdmin } from "./users";
-import { paginationOptsValidator } from "convex/server";
 
 // ============================================================================
 // PUBLIC QUERIES

@@ -1,271 +1,57 @@
+/**
+ * Convex HTTP Router
+ *
+ * Only used for external webhooks that require HTTP endpoints.
+ * For client-side operations, use Convex actions instead:
+ * - api.bunny.tokens.getSignedEmbedUrl - Get signed embed URL
+ * - api.bunny.videos.createVideo - Create video in Bunny
+ */
+
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
-import { api } from "./_generated/api";
-import { processBunnyWebhook } from "./bunny/webhookHandler";
+import { internal } from "./_generated/api";
+import { sha256Hex } from "./bunny/utils";
 
 const http = httpRouter();
 
-/**
- * Generate SHA256 hash using Web Crypto API
- */
-async function sha256(message: string): Promise<string> {
-  const msgBuffer = new TextEncoder().encode(message);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-  return hashHex;
-}
+// =============================================================================
+// BUNNY STREAM WEBHOOK
+// @see https://docs.bunny.net/docs/stream-webhook
+// =============================================================================
+
+type VideoStatus = "uploading" | "processing" | "ready" | "failed";
 
 /**
- * Generate signed embed URL for Bunny Stream with token authentication
- * @see https://docs.bunny.net/docs/stream-embed-token-authentication
- *
- * Usage: GET /bunny/embed-token?videoId=xxx&libraryId=xxx
+ * Bunny Stream webhook status configuration
+ * Single source of truth for status mapping
  */
+const BUNNY_STATUS_CONFIG: Record<number, {
+  name: string;
+  status: VideoStatus;
+  playable: boolean;
+  skip?: boolean;
+}> = {
+  0:  { name: "Queued",                     status: "processing", playable: false },
+  1:  { name: "Processing",                 status: "processing", playable: false },
+  2:  { name: "Encoding",                   status: "processing", playable: false },
+  3:  { name: "Finished",                   status: "ready",      playable: true },
+  4:  { name: "Resolution Finished",        status: "ready",      playable: true },
+  5:  { name: "Failed",                     status: "failed",     playable: false },
+  6:  { name: "Presigned Upload Started",   status: "uploading",  playable: false },
+  7:  { name: "Presigned Upload Finished",  status: "processing", playable: false },
+  8:  { name: "Presigned Upload Failed",    status: "failed",     playable: false },
+  9:  { name: "Captions Generated",         status: "ready",      playable: true, skip: true },
+  10: { name: "Title/Description Generated", status: "ready",     playable: true, skip: true },
+};
 
-// OPTIONS handler for CORS preflight
-http.route({
-  path: "/bunny/embed-token",
-  method: "OPTIONS",
-  handler: httpAction(async () => {
-    return new Response(null, {
-      status: 200,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-        "Access-Control-Max-Age": "86400",
-      },
-    });
-  }),
-});
-
-http.route({
-  path: "/bunny/embed-token",
-  method: "GET",
-  handler: httpAction(async (ctx, req) => {
-    const url = new URL(req.url);
-    const videoId = url.searchParams.get("videoId");
-    const libraryId = url.searchParams.get("libraryId");
-
-    if (!videoId || !libraryId) {
-      return new Response(
-        JSON.stringify({ error: "videoId and libraryId are required" }),
-        {
-          status: 400,
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-          },
-        },
-      );
-    }
-
-    const tokenSecurityKey = process.env.BUNNY_EMBED_SECRET;
-    if (!tokenSecurityKey) {
-      return new Response(
-        JSON.stringify({ error: "BUNNY_EMBED_SECRET not configured" }),
-        {
-          status: 500,
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-          },
-        },
-      );
-    }
-
-    try {
-      // Token expires in 1 hour
-      const expirationTime = Math.floor(Date.now() / 1000) + 3600;
-
-      // Generate token: SHA256(token_security_key + video_id + expiration)
-      const signatureString = tokenSecurityKey + videoId + expirationTime;
-      const token = await sha256(signatureString);
-
-      // Build signed embed URL
-      const embedUrl = `https://player.mediadelivery.net/embed/${libraryId}/${videoId}?token=${token}&expires=${expirationTime}`;
-
-      return new Response(
-        JSON.stringify({
-          embedUrl,
-          token,
-          expires: expirationTime,
-        }),
-        {
-          status: 200,
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET",
-            "Access-Control-Allow-Headers": "Content-Type",
-          },
-        },
-      );
-    } catch (error) {
-      return new Response(
-        JSON.stringify({
-          error: error instanceof Error ? error.message : "Unknown error",
-        }),
-        {
-          status: 500,
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-          },
-        },
-      );
-    }
-  }),
-});
-
-/**
- * Create video in Bunny library
- * Usage: POST /bunny/create-video
- * Body: { title: string, createdBy: string }
- */
-http.route({
-  path: "/bunny/create-video",
-  method: "POST",
-  handler: httpAction(async (ctx, req) => {
-    try {
-      const body = await req.json();
-      const { title, createdBy } = body;
-
-      if (!title || !createdBy) {
-        return new Response(
-          JSON.stringify({ error: "Title and createdBy are required" }),
-          {
-            status: 400,
-            headers: {
-              "Content-Type": "application/json",
-              "Access-Control-Allow-Origin": "*",
-            },
-          },
-        );
-      }
-
-      const apiKey = process.env.BUNNY_API_KEY;
-      const libraryId = process.env.BUNNY_LIBRARY_ID;
-
-      if (!apiKey || !libraryId) {
-        return new Response(
-          JSON.stringify({ error: "Bunny credentials not configured" }),
-          {
-            status: 500,
-            headers: {
-              "Content-Type": "application/json",
-              "Access-Control-Allow-Origin": "*",
-            },
-          },
-        );
-      }
-
-      // Create video in Bunny
-      const response = await fetch(
-        `https://video.bunnycdn.com/library/${libraryId}/videos`,
-        {
-          method: "POST",
-          headers: {
-            AccessKey: apiKey,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ title }),
-        },
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        return new Response(
-          JSON.stringify({ error: "Bunny API error", detail: errorText }),
-          {
-            status: response.status,
-            headers: {
-              "Content-Type": "application/json",
-              "Access-Control-Allow-Origin": "*",
-            },
-          },
-        );
-      }
-
-      const videoData = await response.json();
-      const videoId = videoData.guid;
-
-      // Save video to Convex database
-      try {
-        await ctx.runMutation(api.videos.create, {
-          videoId: videoId,
-          libraryId: libraryId,
-          title: title,
-          description: "",
-          createdBy: createdBy,
-          isPrivate: true,
-          status: "uploading",
-        });
-      } catch (dbError) {
-        console.error("Failed to save video to database:", dbError);
-        // Video is created in Bunny but not saved in DB
-        // Return success anyway so upload can proceed
-      }
-
-      return new Response(
-        JSON.stringify({
-          videoId: videoId,
-          libraryId,
-          title,
-        }),
-        {
-          status: 200,
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-          },
-        },
-      );
-    } catch (error) {
-      return new Response(
-        JSON.stringify({
-          error: error instanceof Error ? error.message : "Unknown error",
-        }),
-        {
-          status: 500,
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-          },
-        },
-      );
-    }
-  }),
-});
-
-// OPTIONS for CORS preflight
-http.route({
-  path: "/bunny/create-video",
-  method: "OPTIONS",
-  handler: httpAction(async () => {
-    return new Response(null, {
-      status: 200,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-        "Access-Control-Max-Age": "86400",
-      },
-    });
-  }),
-});
+const DEFAULT_STATUS = { name: "Unknown", status: "processing" as VideoStatus, playable: false };
 
 /**
  * Bunny Stream Webhook
  * Receives notifications when videos are processed
- * @see https://docs.bunny.net/docs/stream-webhooks
- * 
+ *
  * Configure in Bunny Dashboard:
- * URL: https://{your-deployment}.convex.site/bunny/webhook
- * Events: video.uploaded, video.encoded, video.failed
+ * URL: https://{your-deployment}.convex.site/bunny-webhook
  */
 http.route({
   path: "/bunny-webhook",
@@ -275,24 +61,104 @@ http.route({
       const body = await req.json();
       const signature = req.headers.get("X-Bunny-Signature");
 
-      const result = await processBunnyWebhook(ctx, body, signature);
+      // Validate webhook signature if secret is configured
+      const webhookSecret = process.env.BUNNY_WEBHOOK_SECRET;
+      if (webhookSecret && signature) {
+        const expectedSignature = await sha256Hex(
+          webhookSecret + JSON.stringify(body)
+        );
+        if (signature !== expectedSignature) {
+          return new Response(
+            JSON.stringify({ error: "Invalid webhook signature" }),
+            { status: 401, headers: { "Content-Type": "application/json" } }
+          );
+        }
+      }
 
-      return new Response(JSON.stringify(result), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
+      const { VideoGuid, Status, VideoLibraryId } = body;
+      const libraryId = String(VideoLibraryId);
+
+      if (!VideoGuid || !VideoLibraryId) {
+        return new Response(
+          JSON.stringify({ error: "Missing VideoGuid or VideoLibraryId" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const config = BUNNY_STATUS_CONFIG[Status] ?? DEFAULT_STATUS;
+      console.log(`[Bunny Webhook] Video ${VideoGuid}: ${config.name} (${Status})`);
+
+      // Skip non-critical status updates
+      if (config.skip) {
+        console.log(`[Bunny Webhook] ${config.name} - no update needed`);
+        return new Response(
+          JSON.stringify({ success: true, videoId: VideoGuid, skipped: true }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      // Fetch video details from Bunny API
+      const apiKey = process.env.BUNNY_API_KEY;
+      if (!apiKey) {
+        throw new Error("BUNNY_API_KEY not configured");
+      }
+
+      const videoInfoResponse = await fetch(
+        `https://video.bunnycdn.com/library/${libraryId}/videos/${VideoGuid}`,
+        {
+          headers: {
+            AccessKey: apiKey,
+            Accept: "application/json",
+          },
+        }
+      );
+
+      if (videoInfoResponse.ok) {
+        const videoInfo = await videoInfoResponse.json();
+
+        await ctx.runMutation(internal.videos.updateFromWebhook, {
+          videoId: VideoGuid,
+          status: config.status,
+          thumbnailUrl: videoInfo.thumbnailFileName
+            ? `https://vz-${libraryId}.b-cdn.net/${VideoGuid}/${videoInfo.thumbnailFileName}`
+            : undefined,
+          hlsUrl: config.playable
+            ? `https://vz-${libraryId}.b-cdn.net/${VideoGuid}/playlist.m3u8`
+            : undefined,
+          metadata: {
+            duration: videoInfo.length || undefined,
+            width: videoInfo.width || undefined,
+            height: videoInfo.height || undefined,
+            framerate: videoInfo.framerate || undefined,
+            bitrate: videoInfo.bitrate || undefined,
+          },
+        });
+      } else {
+        console.warn(`[Bunny Webhook] Could not fetch video details`);
+        await ctx.runMutation(internal.videos.updateFromWebhook, {
+          videoId: VideoGuid,
+          status: config.status,
+        });
+      }
+
+      console.log(`[Bunny Webhook] Updated video ${VideoGuid} → ${config.status}`);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          videoId: VideoGuid,
+          status: config.status,
+          bunnyStatus: config.name,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
     } catch (error) {
-      console.error("Webhook processing error:", error);
+      console.error("[Bunny Webhook] Error:", error);
       return new Response(
         JSON.stringify({
           error: error instanceof Error ? error.message : "Unknown error",
         }),
-        {
-          status: error instanceof Error && error.message.includes("signature")
-            ? 401
-            : 500,
-          headers: { "Content-Type": "application/json" },
-        },
+        { status: 500, headers: { "Content-Type": "application/json" } }
       );
     }
   }),

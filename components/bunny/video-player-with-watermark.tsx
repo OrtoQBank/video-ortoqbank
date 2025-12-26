@@ -1,113 +1,87 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface VideoPlayerWithWatermarkProps {
-  videoId: string;
-  libraryId: string;
+  embedUrl: string;
   userName: string;
   userCpf: string;
+  speed?: number; // Movement speed (pixels per frame), default 0.5
 }
 
 export function VideoPlayerWithWatermark({
-  videoId,
-  libraryId,
+  embedUrl,
   userName,
   userCpf,
+  speed = 0.5,
 }: VideoPlayerWithWatermarkProps) {
-  const [embedUrl, setEmbedUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Generate random position once (10% to 80% to avoid edges)
-  const randomPosition = useMemo(() => {
-    const top = Math.floor(Math.random() * 70) + 10; // 10-80%
-    const left = Math.floor(Math.random() * 70) + 10; // 10-80%
-    return { top: `${top}%`, left: `${left}%` };
-  }, []); // Generate once per component mount
+  const [mounted, setMounted] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const watermarkRef = useRef<HTMLDivElement>(null);
+  const positionRef = useRef({ x: 0, y: 0 });
+  const velocityRef = useRef({ x: speed, y: speed * 0.7 }); // Slightly different speeds for natural movement
 
   useEffect(() => {
-    async function fetchSignedUrl() {
-      try {
-        const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL?.replace(
-          ".convex.cloud",
-          ".convex.site",
-        );
-
-        if (!convexUrl) {
-          setError("NEXT_PUBLIC_CONVEX_URL não configurada");
-          console.error("NEXT_PUBLIC_CONVEX_URL não está configurada");
-          return;
-        }
-
-        console.log("Buscando token para vídeo:", {
-          videoId,
-          libraryId,
-          url: `${convexUrl}/bunny/embed-token?videoId=${videoId}&libraryId=${libraryId}`,
-        });
-
-        const response = await fetch(
-          `${convexUrl}/bunny/embed-token?videoId=${videoId}&libraryId=${libraryId}`,
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log("Token recebido com sucesso:", data);
-          setEmbedUrl(data.embedUrl);
-        } else {
-          const errorData = await response.json().catch(() => ({ error: "Erro desconhecido" }));
-          console.error("Erro ao buscar token:", {
-            status: response.status,
-            statusText: response.statusText,
-            error: errorData,
-          });
-          setError(errorData.error || `Erro ${response.status}: ${response.statusText}`);
-        }
-      } catch (err) {
-        console.error("Erro ao buscar signed URL:", err);
-        setError(err instanceof Error ? err.message : "Erro desconhecido");
-      } finally {
-        setLoading(false);
+    // Initialize position randomly
+    const initPosition = () => {
+      if (containerRef.current && watermarkRef.current) {
+        const container = containerRef.current.getBoundingClientRect();
+        const watermark = watermarkRef.current.getBoundingClientRect();
+        positionRef.current = {
+          x: Math.random() * (container.width - watermark.width),
+          y: Math.random() * (container.height - watermark.height),
+        };
       }
-    }
+    };
 
-    fetchSignedUrl();
-  }, [videoId, libraryId]);
+    // Animation loop
+    let animationId: number;
+    const animate = () => {
+      if (containerRef.current && watermarkRef.current) {
+        const container = containerRef.current.getBoundingClientRect();
+        const watermark = watermarkRef.current.getBoundingClientRect();
 
-  if (loading) {
-    return (
-      <div className="bg-gray-100 rounded-lg aspect-video flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando vídeo...</p>
-        </div>
-      </div>
-    );
-  }
+        const maxX = container.width - watermark.width;
+        const maxY = container.height - watermark.height;
 
-  if (error || !embedUrl) {
-    return (
-      <div className="bg-red-50 rounded-lg aspect-video flex items-center justify-center p-6">
-        <div className="text-center max-w-md">
-          <div className="text-red-600 text-4xl mb-4">⚠️</div>
-          <p className="text-red-900 font-semibold mb-2">Erro ao carregar vídeo</p>
-          <p className="text-red-700 text-sm mb-4">{error || "Token não recebido"}</p>
-          <details className="text-left bg-white p-3 rounded border border-red-200">
-            <summary className="cursor-pointer text-xs text-red-600 font-medium">
-              Detalhes técnicos
-            </summary>
-            <pre className="text-xs mt-2 text-gray-600">
-              {JSON.stringify({ videoId, libraryId, error }, null, 2)}
-            </pre>
-          </details>
-        </div>
-      </div>
-    );
-  }
+        // Update position
+        positionRef.current.x += velocityRef.current.x;
+        positionRef.current.y += velocityRef.current.y;
+
+        // Bounce off edges
+        if (positionRef.current.x <= 0 || positionRef.current.x >= maxX) {
+          velocityRef.current.x *= -1;
+          positionRef.current.x = Math.max(0, Math.min(maxX, positionRef.current.x));
+        }
+        if (positionRef.current.y <= 0 || positionRef.current.y >= maxY) {
+          velocityRef.current.y *= -1;
+          positionRef.current.y = Math.max(0, Math.min(maxY, positionRef.current.y));
+        }
+
+        // Apply position
+        watermarkRef.current.style.transform =
+          `translate(${positionRef.current.x}px, ${positionRef.current.y}px)`;
+      }
+      animationId = requestAnimationFrame(animate);
+    };
+
+    // Start after a short delay to ensure refs are ready
+    const timeout = setTimeout(() => {
+      setMounted(true);
+      initPosition();
+      animationId = requestAnimationFrame(animate);
+    }, 100);
+
+    return () => {
+      clearTimeout(timeout);
+      cancelAnimationFrame(animationId);
+    };
+  }, [speed]);
 
   return (
     <div
-      className="relative w-full"
+      ref={containerRef}
+      className="relative w-full overflow-hidden"
       style={{ position: "relative", paddingTop: "56.25%" }}
     >
       {/* Video iframe */}
@@ -123,25 +97,31 @@ export function VideoPlayerWithWatermark({
         }}
         allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
         allowFullScreen
+        referrerPolicy="no-referrer"
       />
 
-      {/* Watermark overlay - Random position */}
-      <div
-        className="absolute pointer-events-none z-10"
-        style={{
-          top: randomPosition.top,
-          left: randomPosition.left,
-          padding: "8px 12px",
-          borderRadius: "4px",
-          fontSize: "12px",
-          color: "white",
-          fontFamily: "monospace",
-          userSelect: "none",
-        }}
-      >
-        <div>{userName}</div>
-        <div style={{ opacity: 0.8 }}>CPF: {userCpf}</div>
-      </div>
+      {/* Watermark overlay - Continuous slow movement */}
+      {mounted && (
+        <div
+          ref={watermarkRef}
+          className="absolute pointer-events-none z-10"
+          style={{
+            top: 0,
+            left: 0,
+            padding: "8px 12px",
+            borderRadius: "4px",
+            fontSize: "12px",
+            color: "white",
+            fontFamily: "monospace",
+            userSelect: "none",
+            textShadow: "1px 1px 2px rgba(0,0,0,0.5)",
+            willChange: "transform",
+          }}
+        >
+          <div>{userName}</div>
+          <div style={{ opacity: 0.8 }}>CPF: {userCpf}</div>
+        </div>
+      )}
     </div>
   );
 }

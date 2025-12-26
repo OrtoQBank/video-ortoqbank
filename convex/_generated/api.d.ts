@@ -9,9 +9,9 @@
  */
 
 import type * as aggregate from "../aggregate.js";
-import type * as bunny_webhookHandler from "../bunny/webhookHandler.js";
+import type * as bunny_utils from "../bunny/utils.js";
+import type * as bunny_videos from "../bunny/videos.js";
 import type * as categories from "../categories.js";
-import type * as crons from "../crons.js";
 import type * as favorites from "../favorites.js";
 import type * as feedback from "../feedback.js";
 import type * as http from "../http.js";
@@ -39,9 +39,9 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   aggregate: typeof aggregate;
-  "bunny/webhookHandler": typeof bunny_webhookHandler;
+  "bunny/utils": typeof bunny_utils;
+  "bunny/videos": typeof bunny_videos;
   categories: typeof categories;
-  crons: typeof crons;
   favorites: typeof favorites;
   feedback: typeof feedback;
   http: typeof http;

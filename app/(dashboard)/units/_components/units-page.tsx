@@ -28,6 +28,7 @@ import { LessonInfoSection } from "./lesson-info-section";
 import { Feedback } from "./feedback";
 import { Rating } from "./rating";
 import { cn } from "@/lib/utils";
+import { getSignedEmbedUrl } from "@/app/actions/bunny";
 
 
 interface UnitsPageProps {
@@ -79,6 +80,10 @@ export function UnitsPage({
   );
   const [nextUnitId, setNextUnitId] = useState<Id<"units"> | null>(null);
 
+  // Video embed URL state
+  const [embedUrl, setEmbedUrl] = useState<string | null>(null);
+  const [embedLoading, setEmbedLoading] = useState(false);
+
   // Load lessons for current unit (only published)
   const currentUnitLessons = useQuery(
     api.lessons.listPublishedByUnit,
@@ -128,6 +133,30 @@ export function UnitsPage({
       });
     }
   }, [initialValues, currentLessonId]);
+
+  // Fetch signed embed URL when lesson changes
+  useEffect(() => {
+    if (!currentLesson?.videoId) {
+      setEmbedUrl(null);
+      return;
+    }
+
+    const fetchEmbedUrl = async () => {
+      setEmbedLoading(true);
+      try {
+        const libraryId = process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID || "566190";
+        const result = await getSignedEmbedUrl(currentLesson.videoId!, libraryId);
+        setEmbedUrl(result.embedUrl);
+      } catch (error) {
+        console.error("Error fetching embed URL:", error);
+        setEmbedUrl(null);
+      } finally {
+        setEmbedLoading(false);
+      }
+    };
+
+    fetchEmbedUrl();
+  }, [currentLesson?.videoId]);
 
   const handleBackClick = () => {
     router.push("/categories");
@@ -367,16 +396,26 @@ export function UnitsPage({
                 {/* Video Player with Watermark */}
                 {currentLesson.videoId ? (
                   <div className="mb-6">
-                    <VideoPlayerWithWatermark
-                      videoId={currentLesson.videoId}
-                      libraryId={
-                        process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID || "566190"
-                      }
-                      userName={user?.fullName || user?.firstName || "Usuário"}
-                      userCpf={
-                        (user?.publicMetadata?.cpf as string) || "000.000.000-00"
-                      }
-                    />
+                    {embedLoading ? (
+                      <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900 mx-auto mb-3" />
+                          <p className="text-gray-600 text-sm">Carregando vídeo...</p>
+                        </div>
+                      </div>
+                    ) : embedUrl ? (
+                      <VideoPlayerWithWatermark
+                        embedUrl={embedUrl}
+                        userName={user?.fullName || user?.firstName || "Usuário"}
+                        userCpf={
+                          (user?.publicMetadata?.cpf as string) || "000.000.000-00"
+                        }
+                      />
+                    ) : (
+                      <div className="aspect-video bg-red-50 rounded-lg flex items-center justify-center">
+                        <p className="text-red-600 text-sm">Erro ao carregar vídeo</p>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="bg-black rounded-lg aspect-video flex items-center justify-center mb-6">

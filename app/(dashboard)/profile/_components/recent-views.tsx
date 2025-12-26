@@ -5,9 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { PlayCircle, CheckCircle2 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { formatDuration, formatTimeAgo } from "./profile-inner";
 import { Badge } from "@/components/ui/badge";
-import { Clock } from "lucide-react";
 import { Preloaded, usePreloadedQuery, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -104,25 +102,19 @@ function RecentViewsContent({ recentViews, router }: { recentViews: RecentViewsD
                       <p className="text-sm text-muted-foreground">{view.category.title}</p>
                       <div className="flex items-center gap-3 mt-1 flex-wrap">
                         <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">
-                            {formatDuration(view.lesson.durationSeconds)}
-                          </span>
+
+                          {isCompleted ? (
+                            <Badge variant="secondary" className={`text-xs border-green-500 bg-green-50 ${textColor}`}>
+                              <CheckCircle2 className={`h-3 w-3 mr-1 ${iconColor}`} />
+                              Concluída
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className={`text-xs border-blue-500 bg-blue-50 ${textColor}`}>
+                              <PlayCircle className={`h-3 w-3 mr-1 ${iconColor}`} />
+                              Iniciada
+                            </Badge>
+                          )}
                         </div>
-                        <span className="text-xs text-muted-foreground">
-                          {formatTimeAgo(view.viewedAt)}
-                        </span>
-                        {isCompleted ? (
-                          <Badge variant="secondary" className={`text-xs border-green-500 bg-green-50 ${textColor}`}>
-                            <CheckCircle2 className={`h-3 w-3 mr-1 ${iconColor}`} />
-                            Concluída
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className={`text-xs border-blue-500 bg-blue-50 ${textColor}`}>
-                            <PlayCircle className={`h-3 w-3 mr-1 ${iconColor}`} />
-                            Iniciada
-                          </Badge>
-                        )}
                       </div>
                     </div>
                   </div>

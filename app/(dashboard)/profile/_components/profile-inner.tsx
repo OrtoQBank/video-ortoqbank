@@ -14,21 +14,6 @@ interface ProfileInnerProps {
   preloadedRecentViews: Preloaded<typeof api.recentViews.getRecentViewsWithDetails> | null;
 }
 
-export function formatTimeAgo(timestamp: number): string {
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
-
-  if (seconds < 60) return "agora mesmo";
-  if (seconds < 3600) return `${Math.floor(seconds / 60)} min atrás`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)} horas atrás`;
-  return `${Math.floor(seconds / 86400)} dias atrás`;
-}
-
-export function formatDuration(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
-}
-
 export default function ProfileInner({
   preloadedRecentViews,
 }: ProfileInnerProps) {

@@ -28,11 +28,6 @@ function SearchUsersContent() {
     }
   };
 
-  const resetSearch = () => {
-    setSearchTerm('');
-    router.push(pathname);
-  };
-
   return (
     <div className="w-full space-y-2">
       <form onSubmit={handleSubmit} className="flex items-center gap-2">

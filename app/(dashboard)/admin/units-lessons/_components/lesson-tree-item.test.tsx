@@ -1,9 +1,4 @@
 import { render, screen } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
-import { LessonTreeItem } from "./lesson-tree-item";
-import { Doc } from "@/convex/_generated/dataModel";
-
-import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { LessonTreeItem } from "./lesson-tree-item";
 import { Doc } from "@/convex/_generated/dataModel";

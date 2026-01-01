@@ -9,7 +9,7 @@ import { api, internal } from "./_generated/api";
 export const seedVideos = mutation({
   args: {},
   returns: v.null(),
-  handler: async (ctx) => {
+  handler: async () => {
     console.log("⚠️  Esta função está depreciada. Use seedLessons() ou seedAll() em vez disso.");
     console.log("A estrutura agora é: Categories -> Units -> Lessons");
     return null;
@@ -23,7 +23,7 @@ export const seedVideos = mutation({
 export const clearUserData = mutation({
   args: {},
   returns: v.null(),
-  handler: async (ctx) => {
+  handler: async () => {
     console.log("⚠️  Esta função está depreciada. A tabela 'progress' foi removida.");
     return null;
   },
@@ -36,7 +36,7 @@ export const clearUserData = mutation({
 export const clearVideos = mutation({
   args: {},
   returns: v.null(),
-  handler: async (ctx) => {
+  handler: async () => {
     console.log("⚠️  Esta função está depreciada. Use clearLessons() ou clearAll() em vez disso.");
     console.log("A estrutura agora é: Categories -> Units -> Lessons");
     return null;

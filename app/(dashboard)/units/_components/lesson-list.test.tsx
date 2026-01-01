@@ -9,39 +9,7 @@ vi.mock("convex/react", () => ({
 }));
 
 describe("LessonList", () => {
-    it("should render", () => {
-        render(
-            <LessonList
-                unitId={"" as Id<"units">}
-                unitTitle="Test Unit"
-                totalLessons={10}
-                isExpanded={false}
-                currentLessonId={null}
-                userProgress={[]}
-                onToggle={() => {}}
-                onLessonClick={() => {}}
-            />
-        );
-        expect(screen.getByText("Test Unit")).toBeInTheDocument();
-    });
-    
-    it("should render with default props", () => {
-        render(
-            <LessonList
-                unitId={"" as Id<"units">}
-                unitTitle="Test Unit"
-                totalLessons={10}
-                isExpanded={false}
-                currentLessonId={null}
-                userProgress={[]}
-                onToggle={() => {}}
-                onLessonClick={() => {}}
-            />
-        );
-        expect(screen.getByText("Test Unit")).toBeInTheDocument();
-    });
-    
-    it("should render with custom props", () => {
+    it("should render unit title", () => {
         render(
             <LessonList
                 unitId={"" as Id<"units">}

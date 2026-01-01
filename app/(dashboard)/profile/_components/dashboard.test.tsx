@@ -5,13 +5,13 @@ import Dashboard from "./dashboard";
 // Mock useCurrentUser hook
 const mockUseCurrentUser = vi.fn();
 vi.mock("@/hooks/useCurrentUser", () => ({
-  useCurrentUser: () => mockUseCurrentUser(),
+    useCurrentUser: () => mockUseCurrentUser(),
 }));
 
 // Mock Convex useQuery hook
 const mockUseQuery = vi.fn();
 vi.mock("convex/react", () => ({
-  useQuery: (query: any, args?: any) => mockUseQuery(query, args),
+    useQuery: (query: unknown, args?: unknown) => mockUseQuery(query, args),
 }));
 
 describe("Dashboard", () => {
@@ -19,7 +19,7 @@ describe("Dashboard", () => {
         vi.clearAllMocks();
     });
 
-    it("should render", () => {
+    it("should render with default data", () => {
         mockUseCurrentUser.mockReturnValue({
             user: { clerkUserId: "test-user" },
             isLoading: false,
@@ -36,22 +36,6 @@ describe("Dashboard", () => {
         expect(screen.getByText("Aulas Visualizadas")).toBeInTheDocument();
     });
 
-    it("should render with default props", () => {
-        mockUseCurrentUser.mockReturnValue({
-            user: { clerkUserId: "test-user" },
-            isLoading: false,
-            isAuthenticated: true,
-        });
-        mockUseQuery
-            .mockReturnValueOnce({ totalLessons: 10 })
-            .mockReturnValueOnce(5)
-            .mockReturnValueOnce(3);
-
-        render(<Dashboard />);
-        expect(screen.getByText("Aulas Concluídas")).toBeInTheDocument();
-        expect(screen.getByText("Progresso Geral")).toBeInTheDocument();
-    });
-
     it("should render with custom props", () => {
         mockUseCurrentUser.mockReturnValue({
             user: { clerkUserId: "test-user" },
@@ -66,7 +50,7 @@ describe("Dashboard", () => {
         render(<Dashboard />);
         expect(screen.getByText("50%")).toBeInTheDocument();
     });
-    
+
     it("should render with loading state", () => {
         mockUseCurrentUser.mockReturnValue({
             user: null,

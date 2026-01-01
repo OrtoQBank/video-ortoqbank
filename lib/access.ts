@@ -31,7 +31,7 @@ export async function requireVideoAccess(redirectTo = "/purchase"): Promise<true
   const hasAccess = await fetchQuery(
     api.userAccess.checkUserHasVideoAccessByClerkId,
     { clerkUserId: userId },
-    token ? { token } : undefined
+    token ? { token } : {}
   );
 
   if (!hasAccess) {
@@ -68,7 +68,7 @@ export async function checkVideoAccess(): Promise<{
   const hasAccess = await fetchQuery(
     api.userAccess.checkUserHasVideoAccessByClerkId,
     { clerkUserId: userId },
-    token ? { token } : undefined
+    token ? { token } : {}
   );
 
   return { hasAccess, userId };

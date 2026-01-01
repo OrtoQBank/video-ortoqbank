@@ -19,8 +19,8 @@ describe("UnitsTreeSidebar", () => {
                 onTogglePublishLesson={() => {}}
                 onDragEndUnits={async () => {}}
                 onDragEndLessons={() => async () => {}}
-                onDragStartUnit={() => async () => {}}
-                onDragStartLesson={() => async () => {}}
+                onDragStartUnit={() => {}}
+                onDragStartLesson={() => {}}
             />
         );
         expect(screen.getByText("Visualização")).toBeInTheDocument();

@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { query, internalMutation, internalQuery, type QueryCtx, type MutationCtx } from "./_generated/server";
+import { query, internalMutation, type QueryCtx, type MutationCtx } from "./_generated/server";
 import { DirectAggregate } from "@convex-dev/aggregate";
 import { components, internal } from "./_generated/api";
 

@@ -1,7 +1,7 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { UnitsLessonsPage } from "./units-lessons-page";
-import { Preloaded } from "convex/react";
+import { Preloaded, FunctionReference } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { renderWithProviders } from "@/__tests__/utils/test-utils";
 
@@ -11,10 +11,10 @@ const mockUseQuery = vi.fn(() => null);
 const mockUseMutation = vi.fn(() => vi.fn(() => Promise.resolve()));
 
 vi.mock("convex/react", () => ({
-  usePreloadedQuery: (preloaded: any) => mockUsePreloadedQuery(preloaded),
-  useQuery: (query: any, args?: any) => mockUseQuery(query, args),
-  useMutation: (mutation: any) => mockUseMutation(mutation),
-  Preloaded: {} as any,
+  usePreloadedQuery: <Query extends FunctionReference<"query">>(preloaded: Preloaded<Query>) => mockUsePreloadedQuery(preloaded),
+  useQuery: <Query extends FunctionReference<"query">>(query: Query, args?: Record<string, unknown>) => mockUseQuery(query, args),
+  useMutation: <Mutation extends FunctionReference<"mutation">>(mutation: Mutation) => mockUseMutation(mutation),
+  Preloaded: {} as unknown,
 }));
 
 // Mock useToast hook

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { MobileBottomNav } from "./mobile-bottom-nav";
 import { renderWithProviders } from "@/__tests__/utils/test-utils";

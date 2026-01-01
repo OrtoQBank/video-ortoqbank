@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { UnitsPage } from "./units-page";
 import { api } from "@/convex/_generated/api";
@@ -38,9 +38,9 @@ const mockUseQuery = vi.fn(() => null);
 const mockUseMutation = vi.fn(() => vi.fn(() => Promise.resolve()));
 
 vi.mock("convex/react", () => ({
-  usePreloadedQuery: (preloaded: any) => mockUsePreloadedQuery(preloaded),
-  useQuery: (query: any, args?: any) => mockUseQuery(query, args),
-  useMutation: (mutation: any) => mockUseMutation(mutation),
+  usePreloadedQuery: (preloaded: unknown) => mockUsePreloadedQuery(preloaded),
+  useQuery: (query: unknown, args?: unknown) => mockUseQuery(query, args),
+  useMutation: (mutation: unknown) => mockUseMutation(mutation),
 }));
 
 // Mock getSignedEmbedUrl
@@ -49,14 +49,14 @@ vi.mock("@/app/actions/bunny", () => ({
 }));
 
 describe("UnitsPage", () => {
-    it("should render", () => {
-        renderWithProviders(
-            <UnitsPage
-                preloadedUnits={api.units.listPublishedByCategory as unknown as Preloaded<typeof api.units.listPublishedByCategory>}
-                categoryTitle="Test Category"
-            />
-        );
-        // The component shows categoryTitle in the header
-        expect(screen.getByText(/Test Category/)).toBeInTheDocument();
-    });
+  it("should render", () => {
+    renderWithProviders(
+      <UnitsPage
+        preloadedUnits={api.units.listPublishedByCategory as unknown as Preloaded<typeof api.units.listPublishedByCategory>}
+        categoryTitle="Test Category"
+      />
+    );
+    // The component shows categoryTitle in the header
+    expect(screen.getByText(/Test Category/)).toBeInTheDocument();
+  });
 });         

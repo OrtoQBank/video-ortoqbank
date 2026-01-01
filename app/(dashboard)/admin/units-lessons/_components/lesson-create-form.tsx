@@ -35,6 +35,15 @@ export function LessonForm({ units, onSuccess }: LessonFormProps) {
     setIsSubmitting(true);
 
     try {
+      if (!unitId) {
+        showError(
+          "Selecione uma unidade antes de criar a aula",
+          "Unidade não selecionada"
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
       const tagsArray = tags
         ? tags
           .split(",")
@@ -145,7 +154,7 @@ export function LessonForm({ units, onSuccess }: LessonFormProps) {
         </div>
 
         <div className="flex gap-2 justify-end pt-4">
-          <Button type="submit" disabled={isSubmitting}>
+          <Button type="submit" disabled={isSubmitting || !unitId}>
             {isSubmitting ? "Criando..." : "Criar Aula"}
           </Button>
         </div>

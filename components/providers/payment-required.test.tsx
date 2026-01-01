@@ -23,18 +23,13 @@ vi.mock("convex/react", () => ({
 }));
 
 describe("PaymentRequired", () => {
-    it("should render", () => {
-        render(<PaymentRequired><div>Test Children</div></PaymentRequired>);
-        expect(screen.getByText("Test Children")).toBeInTheDocument();
-    });
-    
-    it("should render with default props", () => {
-        render(<PaymentRequired><div>Test Children</div></PaymentRequired>);
-        expect(screen.getByText("Test Children")).toBeInTheDocument();
-    });
-    
-    it("should render with custom props", () => {
-        render(<PaymentRequired redirectTo="/custom"><div>Test Children</div></PaymentRequired>);
-        expect(screen.getByText("Test Children")).toBeInTheDocument();
-    });
+  it("should render with default props", () => {
+    render(<PaymentRequired><div>Test Children</div></PaymentRequired>);
+    expect(screen.getByText("Test Children")).toBeInTheDocument();
+  });
+
+  it("should render with custom props", () => {
+    render(<PaymentRequired redirectTo="/custom"><div>Test Children</div></PaymentRequired>);
+    expect(screen.getByText("Test Children")).toBeInTheDocument();
+  });
 });     

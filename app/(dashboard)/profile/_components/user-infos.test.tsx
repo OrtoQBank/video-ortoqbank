@@ -6,7 +6,7 @@ import UserInfos from "./user-infos";
 const mockUseQuery = vi.fn();
 
 vi.mock("convex/react", () => ({
-  useQuery: (query: any, args?: any) => mockUseQuery(query, args),
+    useQuery: (query: unknown, args?: unknown) => mockUseQuery(query, args),
 }));
 
 describe("UserInfos", () => {
@@ -26,14 +26,14 @@ describe("UserInfos", () => {
         expect(screen.getByText("Test User")).toBeInTheDocument();
         expect(screen.getByText("test@example.com")).toBeInTheDocument();
     });
-    
+
     it("should render with loading state", () => {
         // Mock useQuery to return undefined (loading state)
         mockUseQuery.mockReturnValue(undefined);
         render(<UserInfos />);
         expect(screen.getByText("Usuário")).toBeInTheDocument();
     });
-    
+
     it("should render with custom props", () => {
         mockUseQuery.mockReturnValue({
             _id: "user-456",

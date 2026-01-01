@@ -298,5 +298,67 @@ waitlist: defineTable({
     v.literal("Pé e Tornozelo")
   ),
 })
+  .index("by_email", ["email"]),
+
+ // Pending orders - tracks checkout sessions and payment lifecycle
+ pendingOrders: defineTable({
+  // Contact info (from checkout)
+  email: v.string(), // Contact email from checkout
+  cpf: v.string(),
+  name: v.string(),
+  productId: v.string(), // Product identifier (e.g., "ortoqbank_2025")
+
+  // Address info (required for invoice generation - optional for migration)
+  phone: v.optional(v.string()),
+  mobilePhone: v.optional(v.string()),
+  postalCode: v.optional(v.string()), // CEP
+  address: v.optional(v.string()), // Street address
+  addressNumber: v.optional(v.string()), // Address number (defaults to "SN" if not provided)
+
+  // Account info (from Clerk after signup)
+  userId: v.optional(v.string()), // Clerk user ID (set when claimed)
+  accountEmail: v.optional(v.string()), // Account email from Clerk (may differ from contact email)
+
+  // Payment info
+  paymentMethod: v.string(), // 'PIX' or 'CREDIT_CARD'
+  installmentCount: v.optional(v.number()), // Number of credit card installments (only for CREDIT_CARD)
+  asaasPaymentId: v.optional(v.string()), // AsaaS payment ID
+  externalReference: v.optional(v.string()), // Order ID for external reference
+  originalPrice: v.number(),
+  finalPrice: v.number(),
+
+  // PIX payment data (for displaying QR code)
+  pixData: v.optional(v.object({
+    qrPayload: v.optional(v.string()), // PIX copy-paste code
+    qrCodeBase64: v.optional(v.string()), // QR code image as base64
+    expirationDate: v.optional(v.string()), // When the PIX QR code expires
+  })),
+
+  // Coupon info
+  couponCode: v.optional(v.string()), // Coupon code used (if any)
+  couponDiscount: v.optional(v.number()), // Discount amount from coupon
+  pixDiscount: v.optional(v.number()), // Additional PIX discount
+
+  // State management
+  status: v.union(
+    v.literal("pending"), // Order created, waiting for payment
+    v.literal("paid"), // Payment confirmed
+    v.literal("provisioned"), // Access granted
+    v.literal("completed"), // Fully processed
+    v.literal("failed") // Payment failed or expired
+  ),
+
+  // Timestamps
+  createdAt: v.number(), // When order was created
+  paidAt: v.optional(v.number()), // When payment was confirmed
+  provisionedAt: v.optional(v.number()), // When access was granted
+  expiresAt: v.number(), // When this order expires (7 days)
+})
   .index("by_email", ["email"])
-});
+  .index("by_user_id", ["userId"])
+  .index("by_status", ["status"])
+  .index("by_asaas_payment", ["asaasPaymentId"])
+  .index("by_external_reference", ["externalReference"]),
+
+  
+  });

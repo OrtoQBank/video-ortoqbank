@@ -229,6 +229,7 @@ coupons: defineTable({
   validUntil: v.optional(v.number()), // epoch ms
   // Usage limits
   currentUses: v.optional(v.number()), // Current total usage count
+  maxUses: v.optional(v.number()), // Maximum total uses allowed
 }).index('by_code', ['code']),
 
 // Coupon usage tracking

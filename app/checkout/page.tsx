@@ -121,11 +121,6 @@ const validateCPF = (cpf: string): boolean => {
   return true;
 };
 
-const handleCPFChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const formatted = formatCPF(e.target.value);
-  e.target.value = formatted;
-};
-
 // Form validation schema with conditional credit card validation
 const checkoutSchema = z
   .object({
@@ -302,9 +297,17 @@ function CheckoutPageContent() {
       const cpfValue = watch('cpf');
       const cleanCpf = cpfValue ? cpfValue.replaceAll(/\D/g, '') : undefined;
 
+      // Validate environment variable
+      const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+      if (!convexUrl) {
+        setCouponError('Erro de configuração do sistema');
+        setIsValidatingCoupon(false);
+        return;
+      }
+
       // Import convex client to make the query
       const { ConvexHttpClient } = await import('convex/browser');
-      const client = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+      const client = new ConvexHttpClient(convexUrl);
 
       const validateResult = (await client.query(
         api.promoCoupons.validateAndApplyCoupon,
@@ -364,7 +367,7 @@ function CheckoutPageContent() {
       const addressNumber = data.addressNumber?.trim() || 'SN';
 
       // Step 1: Create pending order first (robust pattern)
-      const { pendingOrderId, priceBreakdown } = await createPendingOrder({
+      const { pendingOrderId } = await createPendingOrder({
         email: data.email,
         cpf: data.cpf.replaceAll(/\D/g, ''),
         name: data.name,
@@ -430,21 +433,24 @@ function CheckoutPageContent() {
         const installmentsToSend =
           selectedInstallments > 1 ? selectedInstallments : undefined;
 
-        console.log(
-          '💳 Frontend: Creating credit card payment with installments:',
-          {
-            selectedInstallments,
-            installmentsToSend,
-            willBeInstallmentPayment: !!installmentsToSend,
-          },
-        );
-
-        if (installmentsToSend) {
+        // Only log in development
+        if (process.env.NODE_ENV !== 'production') {
           console.log(
-            `✅ Frontend: Installment payment confirmed - ${installmentsToSend}x parcelas`,
+            '💳 Frontend: Creating credit card payment with installments:',
+            {
+              selectedInstallments,
+              installmentsToSend,
+              willBeInstallmentPayment: !!installmentsToSend,
+            },
           );
-        } else {
-          console.log(`✅ Frontend: Single payment (à vista)`);
+
+          if (installmentsToSend) {
+            console.log(
+              `✅ Frontend: Installment payment confirmed - ${installmentsToSend}x parcelas`,
+            );
+          } else {
+            console.log(`✅ Frontend: Single payment (à vista)`);
+          }
         }
 
         payment = await createCreditCardPayment({
@@ -533,7 +539,10 @@ function CheckoutPageContent() {
                         {...register('cpf')}
                         disabled={isLoading}
                         maxLength={14}
-                        onChange={handleCPFChange}
+                        onChange={e => {
+                          const formatted = formatCPF(e.target.value);
+                          setValue('cpf', formatted);
+                        }}
                         aria-invalid={errors.cpf ? 'true' : 'false'}
                         className={errors.cpf ? 'border-red-500' : ''}
                       />

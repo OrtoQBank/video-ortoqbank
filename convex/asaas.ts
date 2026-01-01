@@ -1,3 +1,5 @@
+"use node";
+
 import { v } from "convex/values";
 
 import { api } from "./_generated/api";
@@ -33,63 +35,6 @@ interface AsaasPayment {
   remoteIp?: string; // Remote IP address for fraud prevention
   creditCardToken?: string; // Token for credit card payment
   creditCardHolderInfo?: AsaasCreditCardHolderInfo;
-}
-
-interface PricingPlan {
-  _id: Id<"pricingPlans">;
-  _creationTime: number;
-  name: string;
-  productId: string;
-  isActive?: boolean;
-  regularPriceNum?: number;
-  pixPriceNum?: number;
-  badge?: string;
-  originalPrice?: string;
-  price?: string;
-  installments?: string;
-  installmentDetails?: string;
-  description?: string;
-  features?: string[];
-  buttonText?: string;
-  category?: "year_access" | "premium_pack" | "addon";
-  year?: number;
-  accessYears?: number[];
-  displayOrder?: number;
-}
-
-interface PendingOrder {
-  _id: Id<"pendingOrders">;
-  _creationTime: number;
-  email: string;
-  cpf: string;
-  name: string;
-  productId: string;
-  finalPrice: number;
-  originalPrice: number;
-  couponCode?: string;
-  couponDiscount?: number;
-  pixDiscount?: number;
-  paymentMethod: string;
-  status: string;
-  installmentCount?: number;
-  phone?: string;
-  mobilePhone?: string;
-  postalCode?: string;
-  address?: string;
-  addressNumber?: string;
-  createdAt: number;
-  expiresAt: number;
-  asaasPaymentId?: string;
-  pixData?: {
-    qrPayload?: string;
-    qrCodeBase64?: string;
-    expirationDate?: string;
-  };
-  userId?: string;
-  provisionedAt?: number;
-  paidAt?: number;
-  accountEmail?: string;
-  externalReference?: string;
 }
 
 interface AsaasCreditCardData {
@@ -141,16 +86,22 @@ class AsaasClient {
   private apiKey: string;
 
   constructor() {
+    // Validate required environment variables
+    const apiKey = process.env.ASAAS_API_KEY;
+    if (!apiKey) {
+      throw new Error('Missing ASAAS_API_KEY environment variable');
+    }
+    this.apiKey = apiKey;
+
     // Use ASAAS_ENVIRONMENT to determine sandbox vs production
     const isProduction = process.env.ASAAS_ENVIRONMENT === 'production';
     this.baseUrl = isProduction
       ? 'https://api.asaas.com/v3'
       : 'https://api-sandbox.asaas.com/v3';
-    this.apiKey = process.env.ASAAS_API_KEY!;
 
     console.log('AsaaS Environment:', isProduction ? 'production' : 'sandbox');
     console.log('AsaaS Base URL:', this.baseUrl);
-    console.log('AsaaS API Key prefix:', this.apiKey?.slice(0, 10) + '...');
+    console.log('AsaaS API Key: configured');
   }
 
   async makeRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -332,6 +283,7 @@ export const createPixPayment = action({
     qrPayload: v.optional(v.string()),
     qrCodeBase64: v.optional(v.string()),
     expirationDate: v.optional(v.string()),
+    qrCodeError: v.optional(v.string()),
   }),
   handler: async (ctx, args): Promise<{
     paymentId: string;
@@ -339,10 +291,11 @@ export const createPixPayment = action({
     qrPayload?: string | undefined;
     qrCodeBase64?: string | undefined;
     expirationDate?: string | undefined;
+    qrCodeError?: string | undefined;
   }> => {
     // Get the pending order to get the final price (with coupons already applied)
     const pendingOrder = await ctx.runQuery(api.payments.getPendingOrderById, {
-      orderId: args.pendingOrderId,
+      orderId: args.pendingOrderId as Id<'pendingOrders'>,
     });
 
     if (!pendingOrder) {
@@ -385,6 +338,7 @@ export const createPixPayment = action({
 
     // Get PIX QR Code
     let pixData: AsaasPixQrCode | null = null;
+    let qrCodeError: string | undefined;
     try {
       pixData = await asaas.getPixQrCode(payment.id);
     } catch (error) {
@@ -397,6 +351,7 @@ export const createPixPayment = action({
         pixData = await asaas.getPixQrCode(payment.id);
       } catch (retryError) {
         console.error('Failed to get PIX QR code after retry:', retryError);
+        qrCodeError = 'Failed to generate PIX QR code. Please try again or contact support.';
       }
     }
 
@@ -406,6 +361,7 @@ export const createPixPayment = action({
       qrPayload: pixData?.payload,
       qrCodeBase64: pixData?.encodedImage,
       expirationDate: pixData?.expirationDate,
+      qrCodeError,
     };
   },
 });
@@ -454,7 +410,7 @@ export const createCreditCardPayment = action({
   }> => {
     // Get the pending order to get the final price (with coupons already applied)
     const pendingOrder = await ctx.runQuery(api.payments.getPendingOrderById, {
-      orderId: args.pendingOrderId,
+      orderId: args.pendingOrderId as Id<'pendingOrders'>,
     });
 
     if (!pendingOrder) {
@@ -490,12 +446,12 @@ export const createCreditCardPayment = action({
     let installmentCount: number | undefined;
     let isInstallmentPayment = false;
 
-    if (args.installments && args.installments > 1) {
-      // Validate installment count
-      if (args.installments < 1 || args.installments > 21) {
-        throw new Error(`Invalid installment count: ${args.installments}. Must be between 1 and 21.`);
-      }
+    // Validate installment count if provided
+    if (args.installments !== undefined && (args.installments < 1 || args.installments > 21)) {
+      throw new Error(`Invalid installment count: ${args.installments}. Must be between 1 and 21.`);
+    }
 
+    if (args.installments && args.installments > 1) {
       installmentCount = args.installments;
       isInstallmentPayment = true;
 
@@ -572,6 +528,7 @@ export const createCreditCardPayment = action({
     console.log(`📤 Asaas payment request:`, {
       ...paymentRequest,
       creditCard: '***MASKED***',
+      creditCardHolderInfo: '***MASKED***',
     });
 
     // Create Credit Card payment with immediate processing
@@ -736,7 +693,7 @@ export const scheduleInvoice = action({
     municipalServiceName: v.string(), // Service name/description
     observations: v.optional(v.string()),
     taxes: v.optional(v.object({
-      retainIss: v.boolean(),
+      retainIss: v.optional(v.boolean()),
       iss: v.optional(v.number()),
       cofins: v.optional(v.number()),
       csll: v.optional(v.number()),

@@ -2,7 +2,7 @@
 
 import { CheckCircle, Clock, RefreshCw, XCircle } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -14,46 +14,88 @@ function CheckoutStatusContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const paymentId = searchParams.get('payment');
-  
+
   const [status, setStatus] = useState<PaymentStatus>('pending');
   const [isLoading, setIsLoading] = useState(true);
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
 
-  const checkPaymentStatus = async () => {
+  const checkPaymentStatus = useCallback(async () => {
     if (!paymentId) return;
-    
+
     setIsLoading(true);
+
+    // Set up timeout to prevent indefinite hanging
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
     try {
-      // TODO: Implement actual payment status check with AsaaS API
-      // For now, simulate different statuses
-      const response = await fetch(`/api/asaas/payments/status?id=${paymentId}`);
-      
+      const response = await fetch(`/api/asaas/payments/status?id=${paymentId}`, {
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
       if (response.ok) {
         const data = await response.json();
-        setStatus(data.status);
+
+        // Validate API response structure and status value
+        const validStatuses: PaymentStatus[] = ['pending', 'confirmed', 'failed', 'expired', 'error'];
+        if (data.status && validStatuses.includes(data.status)) {
+          setStatus(data.status);
+        } else {
+          // Only log sensitive data in non-production environments
+          if (process.env.NODE_ENV !== 'production') {
+            console.error('Invalid status received from API:', {
+              receivedStatus: data.status,
+              paymentIdPresent: !!paymentId,
+            });
+          } else {
+            console.error('Invalid status received from API');
+          }
+          setStatus('error');
+        }
         setLastChecked(new Date());
       } else {
-        // Handle non-OK responses deterministically
-        console.error('Payment status check failed:', {
-          status: response.status,
-          statusText: response.statusText,
-          paymentId,
-        });
+        // Log only non-PII fields; remove paymentId from production logs
+        if (process.env.NODE_ENV !== 'production') {
+          console.error('Payment status check failed:', {
+            status: response.status,
+            statusText: response.statusText,
+            paymentIdPresent: !!paymentId,
+          });
+        } else {
+          console.error('Payment status check failed:', {
+            status: response.status,
+            statusText: response.statusText,
+          });
+        }
         setStatus('error');
         setLastChecked(new Date());
       }
     } catch (error) {
-      console.error('Error checking payment status:', error);
+      clearTimeout(timeoutId);
+
+      // Handle timeout/abort errors appropriately
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.error('Payment status check timed out after 30 seconds');
+      } else {
+        // Only include detailed error info in non-production
+        if (process.env.NODE_ENV !== 'production') {
+          console.error('Error checking payment status:', error);
+        } else {
+          console.error('Error checking payment status');
+        }
+      }
       setStatus('error');
       setLastChecked(new Date());
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [paymentId]);
 
   useEffect(() => {
     checkPaymentStatus();
-    
+
     // Auto-refresh every 10 seconds if payment is pending
     const interval = setInterval(() => {
       if (status === 'pending') {
@@ -62,7 +104,7 @@ function CheckoutStatusContent() {
     }, 10_000);
 
     return () => clearInterval(interval);
-  }, [paymentId, status]);
+  }, [paymentId, status, checkPaymentStatus]);
 
   const getStatusIcon = () => {
     switch (status) {
@@ -209,7 +251,7 @@ function CheckoutStatusContent() {
               <Alert className="border-yellow-200 bg-yellow-50">
                 <Clock className="h-4 w-4 text-yellow-600" />
                 <AlertDescription className="text-yellow-800">
-                  <strong>Aguardando...</strong> Seu pagamento PIX ainda está sendo processado. 
+                  <strong>Aguardando...</strong> Seu pagamento PIX ainda está sendo processado.
                   Isso pode levar alguns minutos.
                 </AlertDescription>
               </Alert>
@@ -219,7 +261,7 @@ function CheckoutStatusContent() {
               <Alert variant="destructive">
                 <XCircle className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>Erro:</strong> Houve um problema com seu pagamento. 
+                  <strong>Erro:</strong> Houve um problema com seu pagamento.
                   Verifique se o pagamento foi realizado ou tente novamente.
                 </AlertDescription>
               </Alert>
@@ -229,7 +271,7 @@ function CheckoutStatusContent() {
               <Alert className="border-gray-200 bg-gray-50">
                 <XCircle className="h-4 w-4 text-gray-600" />
                 <AlertDescription className="text-gray-800">
-                  <strong>Expirado:</strong> O prazo para pagamento expirou. 
+                  <strong>Expirado:</strong> O prazo para pagamento expirou.
                   Você precisará gerar um novo PIX.
                 </AlertDescription>
               </Alert>
@@ -239,7 +281,7 @@ function CheckoutStatusContent() {
               <Alert variant="destructive">
                 <XCircle className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>Erro:</strong> Não foi possível verificar o status do pagamento. 
+                  <strong>Erro:</strong> Não foi possível verificar o status do pagamento.
                   Tente verificar novamente ou entre em contato com o suporte.
                 </AlertDescription>
               </Alert>
@@ -259,7 +301,7 @@ function CheckoutStatusContent() {
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               {status === 'pending' && (
-                <Button 
+                <Button
                   onClick={checkPaymentStatus}
                   disabled={isLoading}
                   variant="outline"
@@ -275,7 +317,7 @@ function CheckoutStatusContent() {
               )}
 
               {status === 'confirmed' && (
-                <Button 
+                <Button
                   onClick={() => router.push('/checkout/success?paymentId=' + paymentId)}
                   className="flex items-center"
                 >
@@ -284,7 +326,7 @@ function CheckoutStatusContent() {
               )}
 
               {(status === 'failed' || status === 'expired') && (
-                <Button 
+                <Button
                   onClick={() => router.push('/checkout')}
                   className="flex items-center"
                 >
@@ -293,7 +335,7 @@ function CheckoutStatusContent() {
               )}
 
               {status === 'error' && (
-                <Button 
+                <Button
                   onClick={checkPaymentStatus}
                   disabled={isLoading}
                   variant="outline"
@@ -308,8 +350,8 @@ function CheckoutStatusContent() {
                 </Button>
               )}
 
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => router.push('/')}
               >
                 Voltar ao Início

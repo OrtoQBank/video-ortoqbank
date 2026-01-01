@@ -3,13 +3,14 @@
 import { useQuery } from 'convex/react';
 import { CheckCircle, Home, Loader2, Mail } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef } from 'react';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 
 declare global {
   interface Window {
@@ -22,41 +23,41 @@ function CheckoutSuccessContent() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('order');
 
-  const [gtmEventSent, setGtmEventSent] = useState(false);
+  const gtmEventSentRef = useRef(false);
 
   // Get order details
   const orderDetails = useQuery(
     api.payments.getPendingOrderById,
-    orderId ? { orderId } : 'skip'
+    orderId ? { orderId: orderId as Id<"pendingOrders"> } : 'skip'
   );
 
   // Send GTM purchase event
   useEffect(() => {
-    if (orderDetails && !gtmEventSent && typeof globalThis !== 'undefined') {
-      const dataLayer = (globalThis as typeof globalThis & { dataLayer?: object[] }).dataLayer;
-      if (dataLayer) {
-        dataLayer.push({
-          event: 'purchase',
-          transaction_id: orderId,
-          value: orderDetails.finalPrice,
-          currency: 'BRL',
-          items: [{
-            item_id: orderDetails.productId,
-            item_name: orderDetails.productId,
-            price: orderDetails.finalPrice,
-            quantity: 1,
-          }],
-        });
-        console.log('GTM purchase event sent:', {
-          transaction_id: orderId,
-          value: orderDetails.finalPrice,
-        });
-        setTimeout(() => {
-          setGtmEventSent(true);
-        }, 0);
-      }
-    }
-  }, [orderDetails, orderId, gtmEventSent]);
+    if (!orderDetails || gtmEventSentRef.current) return;
+
+    const dataLayer = (globalThis as typeof globalThis & { dataLayer?: object[] }).dataLayer;
+    if (!dataLayer) return;
+
+    dataLayer.push({
+      event: 'purchase',
+      transaction_id: orderId,
+      value: orderDetails.finalPrice,
+      currency: 'BRL',
+      items: [{
+        item_id: orderDetails.productId,
+        item_name: orderDetails.productId,
+        price: orderDetails.finalPrice,
+        quantity: 1,
+      }],
+    });
+    console.log('GTM purchase event sent:', {
+      transaction_id: orderId,
+      value: orderDetails.finalPrice,
+    });
+
+    // Mark event as sent to prevent duplicate tracking
+    gtmEventSentRef.current = true;
+  }, [orderDetails, orderId]);
 
   if (!orderId) {
     return (
@@ -79,7 +80,8 @@ function CheckoutSuccessContent() {
     );
   }
 
-  if (!orderDetails) {
+  // Loading state - query is still fetching
+  if (orderDetails === undefined) {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="container mx-auto px-4 max-w-2xl">
@@ -88,6 +90,31 @@ function CheckoutSuccessContent() {
               <div className="text-center">
                 <Loader2 className="w-8 h-8 animate-spin text-brand-blue mx-auto mb-4" />
                 <p className="text-lg">Carregando detalhes do pedido...</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Not found state - order doesn't exist
+  if (orderDetails === null) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="container mx-auto px-4 max-w-2xl">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <AlertDescription className="text-red-600 font-medium mb-4">
+                  Pedido não encontrado
+                </AlertDescription>
+                <p className="text-gray-600 mb-4">
+                  Não foi possível encontrar o pedido com o ID fornecido.
+                </p>
+                <Button onClick={() => router.push('/')} className="mt-4">
+                  Voltar ao Início
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -129,19 +156,19 @@ function CheckoutSuccessContent() {
               </h3>
               <div className="space-y-3 text-brand-blue/90">
                 <div className="flex items-start">
-                  <div className="bg-brand-blue/20 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 mt-0.5 `flex-shrink-0`">
+                  <div className="bg-brand-blue/20 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 mt-0.5 ``flex-shrink-0`">
                     1
                   </div>
                   <p>Verifique seu email <strong>({orderDetails.email})</strong> nos próximos minutos</p>
                 </div>
                 <div className="flex items-start">
-                  <div className="bg-brand-blue/20 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 mt-0.5 `flex-shrink-0`">
+                  <div className="bg-brand-blue/20 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 mt-0.5 ``flex-shrink-0`">
                     2
                   </div>
                   <p>O email conterá um link para criar sua conta na plataforma OrtoQBank</p>
                 </div>
                 <div className="flex items-start">
-                  <div className="bg-brand-blue/20 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 mt-0.5 `flex-shrink-0`">
+                  <div className="bg-brand-blue/20 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 mt-0.5 ``flex-shrink-0`">
                     3
                   </div>
                   <p>Após criar sua conta, você terá acesso completo ao conteúdo</p>
@@ -158,7 +185,10 @@ function CheckoutSuccessContent() {
                 <Button
                   variant="outline"
                   className="w-full"
-                  onClick={() => window.open('https://mail.google.com', '_blank')}
+                  onClick={() => {
+                    const win = window.open('https://mail.google.com', '_blank', 'noopener,noreferrer');
+                    if (win) win.opener = null;
+                  }}
                 >
                   <Mail className="w-4 h-4 mr-2" />
                   Abrir Gmail
@@ -166,7 +196,10 @@ function CheckoutSuccessContent() {
                 <Button
                   variant="outline"
                   className="w-full"
-                  onClick={() => window.open('https://outlook.live.com', '_blank')}
+                  onClick={() => {
+                    const win = window.open('https://outlook.live.com', '_blank', 'noopener,noreferrer');
+                    if (win) win.opener = null;
+                  }}
                 >
                   <Mail className="w-4 h-4 mr-2" />
                   Abrir Outlook
@@ -196,7 +229,9 @@ function CheckoutSuccessContent() {
                 </div>
                 <div className="flex justify-between">
                   <span className="font-medium">Data:</span>
-                  <span>{new Date().toLocaleString('pt-BR')}</span>
+                  <span>
+                    {new Date(orderDetails._creationTime).toLocaleString('pt-BR')}
+                  </span>
                 </div>
               </div>
             </div>

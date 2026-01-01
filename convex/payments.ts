@@ -86,7 +86,7 @@ export const createPendingOrder = mutation({
     });
 
     if (!pricingPlan || !pricingPlan.isActive) {
-      console.error(args);
+      console.error(`Product not found or inactive: productId=${args.productId}`);
       throw new Error('Product not found or inactive');
     }
 
@@ -240,7 +240,7 @@ export const processAsaasWebhook = internalAction({
 
         // SECURITY: Verify payment amount matches order amount
         const pendingOrder = await ctx.runQuery(api.payments.getPendingOrderById, {
-          orderId: pendingOrderId,
+          orderId: pendingOrderId as Id<'pendingOrders'>,
         }) as PendingOrderWithInstallments | null;
 
         if (!pendingOrder) {
@@ -328,7 +328,7 @@ export const processAsaasWebhook = internalAction({
         }
 
         const order = await ctx.runMutation(internal.payments.confirmPayment, {
-          pendingOrderId,
+          pendingOrderId: pendingOrderId as Id<'pendingOrders'>,
           asaasPaymentId: payment.id,
         });
 
@@ -337,7 +337,7 @@ export const processAsaasWebhook = internalAction({
           try {
             await ctx.runAction(internal.payments.sendClerkInvitation, {
               email: order.email,
-              orderId: pendingOrderId,
+              orderId: pendingOrderId as Id<'pendingOrders'>,
               customerName: order.name,
             });
             console.log(`📧 Sent Clerk invitation to ${order.email}`);
@@ -357,7 +357,7 @@ export const processAsaasWebhook = internalAction({
  */
 export const confirmPayment = internalMutation({
   args: {
-    pendingOrderId: v.string(),
+    pendingOrderId: v.id('pendingOrders'),
     asaasPaymentId: v.string(),
   },
   returns: v.union(
@@ -369,7 +369,7 @@ export const confirmPayment = internalMutation({
   ),
   handler: async (ctx, args) => {
     // Find the pending order
-    const order = await ctx.db.get(args.pendingOrderId as Id<'pendingOrders'>);
+    const order = await ctx.db.get(args.pendingOrderId);
 
     if (!order) {
       console.error(`No pending order found: ${args.pendingOrderId}`);
@@ -500,28 +500,23 @@ export const maybeProvisionAccess = internalMutation({
     try {
       console.log(`🚀 Provisioning access for order ${args.orderId}`);
 
-      // Update order status
-      await ctx.db.patch(args.orderId, {
-        status: 'provisioned',
-        provisionedAt: Date.now(),
-      });
-
       // TODO: Add actual access provisioning logic here
       // - Create user in users table if needed
       // - Grant product access
       // - Send welcome email
       // - etc.
 
-      // Mark as completed
+      // Mark as completed after successful provisioning
       await ctx.db.patch(args.orderId, {
         status: 'completed',
+        provisionedAt: Date.now(),
       });
 
       console.log(`✅ Successfully provisioned access for order ${args.orderId}`);
 
     } catch (error) {
       console.error(`Error provisioning access for order ${args.orderId}:`, error);
-      // Don't throw - let it retry later
+      throw error; // Rethrow to allow retry mechanisms to work
     }
 
     return null;
@@ -532,7 +527,7 @@ export const maybeProvisionAccess = internalMutation({
 /**
  * Claim order by email (called from Clerk webhook)
  */
-export const claimOrderByEmail = mutation({
+export const claimOrderByEmail = internalMutation({
   args: {
     email: v.string(),
     clerkUserId: v.string(),
@@ -582,14 +577,14 @@ export const claimOrderByEmail = mutation({
 export const sendClerkInvitation = internalAction({
   args: {
     email: v.string(),
-    orderId: v.string(),
+    orderId: v.id('pendingOrders'),
     customerName: v.string(),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     // Create pending invitation record
     const invitationId = await ctx.runMutation(internal.payments.createEmailInvitation, {
-      orderId: args.orderId as Id<'pendingOrders'>,
+      orderId: args.orderId,
       email: args.email,
       customerName: args.customerName,
     });
@@ -637,7 +632,7 @@ export const sendClerkInvitation = internalAction({
 export const sendClerkInvitationAttempt = internalAction({
   args: {
     email: v.string(),
-    orderId: v.string(),
+    orderId: v.id('pendingOrders'),
     customerName: v.string(),
     invitationId: v.id('emailInvitations'),
     attemptNumber: v.number(),
@@ -692,7 +687,7 @@ export const sendClerkInvitationAttempt = internalAction({
  */
 export const checkPaymentStatus = query({
   args: {
-    pendingOrderId: v.string(),
+    pendingOrderId: v.id('pendingOrders'),
   },
   returns: v.object({
     status: v.union(v.literal('pending'), v.literal('confirmed'), v.literal('failed')),
@@ -708,28 +703,16 @@ export const checkPaymentStatus = query({
     })),
   }),
   handler: async (ctx, args) => {
-    try {
-      // Find the order by ID
-      const order = await ctx.db.get(args.pendingOrderId as Id<'pendingOrders'>);
+    // Find the order by ID
+    const order = await ctx.db.get(args.pendingOrderId);
 
-      if (!order) {
-        return { status: 'failed' as const };
-      }
+    if (!order) {
+      return { status: 'failed' as const };
+    }
 
-      if (order.status === 'paid' || order.status === 'provisioned' || order.status === 'completed') {
-        return {
-          status: 'confirmed' as const,
-          orderDetails: {
-            email: order.email,
-            productId: order.productId,
-            finalPrice: order.finalPrice,
-          },
-          pixData: order.pixData,
-        };
-      }
-
+    if (order.status === 'paid' || order.status === 'provisioned' || order.status === 'completed') {
       return {
-        status: 'pending' as const,
+        status: 'confirmed' as const,
         orderDetails: {
           email: order.email,
           productId: order.productId,
@@ -737,10 +720,17 @@ export const checkPaymentStatus = query({
         },
         pixData: order.pixData,
       };
-    } catch (error) {
-      console.error('Error checking payment status:', error);
-      return { status: 'failed' as const };
     }
+
+    return {
+      status: 'pending' as const,
+      orderDetails: {
+        email: order.email,
+        productId: order.productId,
+        finalPrice: order.finalPrice,
+      },
+      pixData: order.pixData,
+    };
   },
 });
 
@@ -749,11 +739,12 @@ export const checkPaymentStatus = query({
  */
 export const getPendingOrderById = query({
   args: {
-    orderId: v.string(),
+    orderId: v.id('pendingOrders'),
   },
   returns: v.union(
     v.object({
       _id: v.id('pendingOrders'),
+      _creationTime: v.number(),
       email: v.string(),
       cpf: v.string(),
       name: v.string(),
@@ -770,30 +761,26 @@ export const getPendingOrderById = query({
     v.null(),
   ),
   handler: async (ctx, args) => {
-    try {
-      const order = await ctx.db.get(args.orderId as Id<'pendingOrders'>);
-      if (!order) {
-        return null;
-      }
-      return {
-        _id: order._id,
-        email: order.email,
-        cpf: order.cpf,
-        name: order.name,
-        productId: order.productId,
-        finalPrice: order.finalPrice,
-        originalPrice: order.originalPrice,
-        couponCode: order.couponCode,
-        couponDiscount: order.couponDiscount,
-        pixDiscount: order.pixDiscount,
-        paymentMethod: order.paymentMethod,
-        status: order.status,
-        installmentCount: order.installmentCount,
-      };
-    } catch (error) {
-      console.error('Error getting pending order:', error);
+    const order = await ctx.db.get(args.orderId);
+    if (!order) {
       return null;
     }
+    return {
+      _id: order._id,
+      _creationTime: order._creationTime,
+      email: order.email,
+      cpf: order.cpf,
+      name: order.name,
+      productId: order.productId,
+      finalPrice: order.finalPrice,
+      originalPrice: order.originalPrice,
+      couponCode: order.couponCode,
+      couponDiscount: order.couponDiscount,
+      pixDiscount: order.pixDiscount,
+      paymentMethod: order.paymentMethod,
+      status: order.status,
+      installmentCount: order.installmentCount,
+    };
   },
 });
 

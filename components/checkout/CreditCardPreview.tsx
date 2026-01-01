@@ -18,7 +18,13 @@ export function CreditCardPreview({
     cardCvv,
 }: CreditCardPreviewProps) {
     // Format card number with spaces
-    const formattedNumber = cardNumber || '•••• •••• •••• ••••';
+    const formattedNumber = cardNumber
+        ? cardNumber
+            .replace(/\D/g, '') // Strip non-digit characters
+            .match(/.{1,4}/g) // Group digits in sets of four
+            ?.join(' ') // Join with spaces
+            .trim() || '•••• •••• •••• ••••' // Trim trailing space and fallback
+        : '•••• •••• •••• ••••';
 
     // Format expiry date
     const formattedExpiry =

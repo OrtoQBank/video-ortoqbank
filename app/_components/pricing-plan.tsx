@@ -59,7 +59,7 @@ function PricingPlanContent({ plans }: PricingPlanContentProps) {
                             </div>
 
                             <div className="px-6 pb-4 text-center">
-                                <div className="mb-2 `min-h-[2rem]` text-xl text-red-500 line-through transition-all duration-300 group-hover:text-white/70">
+                                <div className="mb-2 min-h-[2rem] text-xl text-red-500 line-through transition-all duration-300 group-hover:text-white/70">
                                     {plan.originalPrice ? (
                                         <span>
                                             <span className="font-medium">De: </span>

@@ -1,0 +1,6 @@
+echo "formatando"
+npm run format
+echo "lintando"
+npm run lint
+echo "testando"
+npm run test

@@ -5,7 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useToast } from "@/hooks/use-toast";
@@ -35,11 +41,20 @@ export function LessonForm({ units, onSuccess }: LessonFormProps) {
     setIsSubmitting(true);
 
     try {
+      if (!unitId) {
+        showError(
+          "Selecione uma unidade antes de criar a aula",
+          "Unidade não selecionada",
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
       const tagsArray = tags
         ? tags
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter(Boolean)
+            .split(",")
+            .map((tag) => tag.trim())
+            .filter(Boolean)
         : [];
 
       await createLesson({
@@ -69,7 +84,7 @@ export function LessonForm({ units, onSuccess }: LessonFormProps) {
     } catch (error) {
       showError(
         error instanceof Error ? error.message : "Erro desconhecido",
-        "Erro ao criar aula"
+        "Erro ao criar aula",
       );
     } finally {
       setIsSubmitting(false);
@@ -81,7 +96,11 @@ export function LessonForm({ units, onSuccess }: LessonFormProps) {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="create-lesson-unit">Unidade *</Label>
-          <Select value={unitId} onValueChange={setUnitId} disabled={isSubmitting}>
+          <Select
+            value={unitId}
+            onValueChange={setUnitId}
+            disabled={isSubmitting}
+          >
             <SelectTrigger id="create-lesson-unit">
               <SelectValue placeholder="Selecione uma unidade" />
             </SelectTrigger>
@@ -134,7 +153,9 @@ export function LessonForm({ units, onSuccess }: LessonFormProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="create-lesson-tags">Tags (separadas por vírgula)</Label>
+          <Label htmlFor="create-lesson-tags">
+            Tags (separadas por vírgula)
+          </Label>
           <Input
             id="create-lesson-tags"
             value={tags}
@@ -145,7 +166,7 @@ export function LessonForm({ units, onSuccess }: LessonFormProps) {
         </div>
 
         <div className="flex gap-2 justify-end pt-4">
-          <Button type="submit" disabled={isSubmitting}>
+          <Button type="submit" disabled={isSubmitting || !unitId}>
             {isSubmitting ? "Criando..." : "Criar Aula"}
           </Button>
         </div>

@@ -21,10 +21,11 @@ export function CategoriesPage({ preloadedCategories }: CategoriesPageProps) {
     <div className="min-h-screen bg-white relative">
       {/* Sidebar trigger - follows sidebar position */}
       <SidebarTrigger
-        className={`hidden md:inline-flex fixed top-2 h-6 w-6 text-blue-brand hover:text-blue-brand-dark hover:bg-blue-brand-light transition-[left] duration-200 ease-linear z-10 ${state === "collapsed"
+        className={`hidden md:inline-flex fixed top-2 h-6 w-6 text-blue-brand hover:text-blue-brand-dark hover:bg-blue-brand-light transition-[left] duration-200 ease-linear z-10 ${
+          state === "collapsed"
             ? "left-[calc(var(--sidebar-width-icon)+0.25rem)]"
             : "left-[calc(var(--sidebar-width)+0.25rem)]"
-          }`}
+        }`}
       />
 
       {/* Header */}
@@ -35,10 +36,7 @@ export function CategoriesPage({ preloadedCategories }: CategoriesPageProps) {
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold">Gerenciar Categorias</h1>
-          <p className="text-sm text-muted-foreground">
-            Crie e organize as categorias do sistema
-          </p>
+          <h1 className="text-2xl font-semibold">Gerenciar Categorias</h1>
         </div>
       </div>
 

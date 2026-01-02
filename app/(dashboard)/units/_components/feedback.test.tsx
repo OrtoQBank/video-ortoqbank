@@ -28,14 +28,15 @@ describe("Feedback", () => {
         userId={mockUserId}
         lessonId={mockLessonId}
         unitId={mockUnitId}
-      />
+      />,
     );
-
-    const label = screen.getByText("Deixe seu feedback ou tire uma dúvida");
-    expect(label).toBeDefined();
 
     const textarea = screen.getByLabelText("Campo de feedback");
     expect(textarea).toBeDefined();
+    expect(textarea).toHaveAttribute(
+      "placeholder",
+      "Digite seu feedback ou dúvida aqui...",
+    );
 
     const sendButton = screen.getByLabelText("Enviar feedback");
     expect(sendButton).toBeDefined();
@@ -47,7 +48,7 @@ describe("Feedback", () => {
         userId={mockUserId}
         lessonId={mockLessonId}
         unitId={mockUnitId}
-      />
+      />,
     );
 
     const sendButton = screen.getByLabelText("Enviar feedback");
@@ -61,7 +62,7 @@ describe("Feedback", () => {
         userId={mockUserId}
         lessonId={mockLessonId}
         unitId={mockUnitId}
-      />
+      />,
     );
 
     const textarea = screen.getByLabelText("Campo de feedback");
@@ -78,7 +79,7 @@ describe("Feedback", () => {
         userId={mockUserId}
         lessonId={mockLessonId}
         unitId={mockUnitId}
-      />
+      />,
     );
 
     const textarea = screen.getByLabelText("Campo de feedback");
@@ -104,10 +105,12 @@ describe("Feedback", () => {
         userId={mockUserId}
         lessonId={mockLessonId}
         unitId={mockUnitId}
-      />
+      />,
     );
 
-    const textarea = screen.getByLabelText("Campo de feedback") as HTMLTextAreaElement;
+    const textarea = screen.getByLabelText(
+      "Campo de feedback",
+    ) as HTMLTextAreaElement;
     await user.type(textarea, "This is my feedback");
 
     const sendButton = screen.getByLabelText("Enviar feedback");
@@ -126,7 +129,7 @@ describe("Feedback", () => {
         lessonId={mockLessonId}
         unitId={mockUnitId}
         onFeedbackSubmitted={mockOnFeedbackSubmitted}
-      />
+      />,
     );
 
     const textarea = screen.getByLabelText("Campo de feedback");
@@ -147,7 +150,7 @@ describe("Feedback", () => {
         userId={mockUserId}
         lessonId={mockLessonId}
         unitId={mockUnitId}
-      />
+      />,
     );
 
     const textarea = screen.getByLabelText("Campo de feedback");
@@ -161,4 +164,3 @@ describe("Feedback", () => {
     expect(mockSubmitFeedback).not.toHaveBeenCalled();
   });
 });
-

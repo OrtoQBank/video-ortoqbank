@@ -98,9 +98,7 @@ export const getVideoAccessDetails = query({
     ),
     daysUntilExpiration: v.optional(v.number()),
   }),
-  async handler(
-    ctx,
-  ): Promise<{
+  async handler(ctx): Promise<{
     hasAccess: boolean;
     paid: boolean;
     hasActiveYearAccess: boolean;

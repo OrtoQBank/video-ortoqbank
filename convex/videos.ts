@@ -120,7 +120,7 @@ export const listByUser = query({
       videoId: v.string(),
       libraryId: v.string(),
       title: v.string(),
-      description: v.string(),  
+      description: v.string(),
       hlsUrl: v.optional(v.string()),
       mp4Urls: v.optional(
         v.array(v.object({ quality: v.string(), url: v.string() })),
@@ -233,7 +233,7 @@ export const update = mutation({
   args: {
     videoId: v.string(),
     title: v.optional(v.string()),
-    description: v.optional(v.string()),  
+    description: v.optional(v.string()),
     hlsUrl: v.optional(v.string()),
     mp4Urls: v.optional(
       v.array(v.object({ quality: v.string(), url: v.string() })),
@@ -466,7 +466,7 @@ export const listAll = query({
       videoId: v.string(),
       libraryId: v.string(),
       title: v.string(),
-      description: v.string(),    
+      description: v.string(),
       hlsUrl: v.optional(v.string()),
       mp4Urls: v.optional(
         v.array(v.object({ quality: v.string(), url: v.string() })),

@@ -153,7 +153,11 @@ export function LessonEditPanel({
 
     try {
       // Upload para o Bunny
-      const { videoId } = await uploadVideo(uploadFile, title || lesson.title, user.id);
+      const { videoId } = await uploadVideo(
+        uploadFile,
+        title || lesson.title,
+        user.id,
+      );
 
       // Atualiza o videoId local (o usuário salvará a edição depois)
       setCurrentVideoId(videoId);
@@ -162,7 +166,8 @@ export function LessonEditPanel({
 
       toast({
         title: "✅ Vídeo enviado!",
-        description: "Vídeo pronto! Clique em 'Salvar Alterações' para confirmar.",
+        description:
+          "Vídeo pronto! Clique em 'Salvar Alterações' para confirmar.",
       });
     } catch (error) {
       showError(

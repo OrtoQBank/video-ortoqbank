@@ -152,7 +152,13 @@ export function UnitsPage({ preloadedUnits, categoryTitle }: UnitsPageProps) {
         setLessonIdParam(initialValues.lessonId);
       });
     }
-  }, [initialValues, currentLessonId, lessonFromUrl, lessonIdParam, setLessonIdParam]);
+  }, [
+    initialValues,
+    currentLessonId,
+    lessonFromUrl,
+    lessonIdParam,
+    setLessonIdParam,
+  ]);
 
   // Fetch signed embed URL when lesson changes
   useEffect(() => {
@@ -207,7 +213,7 @@ export function UnitsPage({ preloadedUnits, categoryTitle }: UnitsPageProps) {
     async (lessonId: Id<"lessons">, unitId: Id<"units">) => {
       setCurrentLessonId(lessonId);
       setCurrentUnitId(unitId);
-      
+
       // Update URL with lesson ID (nuqs)
       setLessonIdParam(lessonId);
 

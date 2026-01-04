@@ -226,7 +226,7 @@ export const getBySlug = query({
       order_index: v.number(),
       lessonNumber: v.number(),
       isPublished: v.boolean(),
-      }),
+    }),
     v.null(),
   ),
   handler: async (ctx, args) => {

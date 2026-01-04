@@ -11,11 +11,11 @@ import { Preloaded, usePreloadedQuery, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 
-interface CategoriesInnerProps {
+interface CategoriesPageProps {
   preloadedCategories: Preloaded<typeof api.categories.listPublished>;
 }
 
-export function CategoriesInner({ preloadedCategories }: CategoriesInnerProps) {
+export function CategoriesPage({ preloadedCategories }: CategoriesPageProps) {
   const categories = usePreloadedQuery(preloadedCategories);
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
@@ -57,9 +57,9 @@ export function CategoriesInner({ preloadedCategories }: CategoriesInnerProps) {
         className={`hidden md:inline-flex fixed top-2 h-6 w-6 text-blue-brand hover:text-blue-brand-dark hover:bg-blue-brand-light transition-[left] duration-200 ease-linear z-10 ${state === "collapsed" ? "left-[calc(var(--sidebar-width-icon)+0.25rem)]" : "left-[calc(var(--sidebar-width)+0.25rem)]"}`}
       />
 
-      <div className="px-12 sm:px-16 md:px-24 lg:px-24 xl:px-42 pb-24 md:pb-3 pt-8 md:pt-2">
+      <div className="px-12 sm:px-16 md:px-24 lg:px-24 xl:px-42 pb-24 md:pb-3 pt-8 md:pt-8">
         {/* Barra de pesquisa com progresso total - alinhado com o grid */}
-        <div className="mb-4 md:mb-2 grid grid-cols-1 lg:grid-cols-3 gap-3">
+        <div className="mb-4 md:mb-8 grid grid-cols-1 lg:grid-cols-3 gap-3">
           <div className="col-span-1 flex items-center gap-2">
             <SearchBar onSearch={handleSearch} />
             {searchQuery && (

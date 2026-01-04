@@ -65,11 +65,10 @@ export function AdminHub() {
     <div className="min-h-screen bg-white relative">
       {/* Sidebar trigger - follows sidebar position */}
       <SidebarTrigger
-        className={`hidden md:inline-flex fixed top-2 h-6 w-6 text-blue-brand hover:text-blue-brand-dark hover:bg-blue-brand-light transition-[left] duration-200 ease-linear z-10 ${
-          state === "collapsed"
-            ? "left-[calc(var(--sidebar-width-icon)+0.25rem)]"
-            : "left-[calc(var(--sidebar-width)+0.25rem)]"
-        }`}
+        className={`hidden md:inline-flex fixed top-2 h-6 w-6 text-blue-brand hover:text-blue-brand-dark hover:bg-blue-brand-light transition-[left] duration-200 ease-linear z-10 ${state === "collapsed"
+          ? "left-[calc(var(--sidebar-width-icon)+0.25rem)]"
+          : "left-[calc(var(--sidebar-width)+0.25rem)]"
+          }`}
       />
 
       {/* Header */}
@@ -78,7 +77,7 @@ export function AdminHub() {
       </div>
 
       {/* Content */}
-      <div className="p-8 pb-24 md:pb-8">
+      <div className="p-12 pb-24 md:p-12">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {adminPages.map((page) => {

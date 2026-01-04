@@ -186,7 +186,7 @@ export function PricingPlanFormFields({
       {/* Display Fields Section */}
       <div className="space-y-3">
         <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">
-          👁️ Campos de Exibição{" "}
+          Campos de Exibição{" "}
           {mode === "create" && "(visíveis na landing page)"}
         </h3>
 
@@ -284,15 +284,7 @@ export function PricingPlanFormFields({
             />
           </div>
 
-          <div className="space-y-1">
-            <Label className="text-xs font-medium">Texto do Botão</Label>
-            <Input
-              value={form.buttonText || ""}
-              onChange={(e) => updateForm({ buttonText: e.target.value })}
-              placeholder="Ex: Começar Agora"
-              className="text-xs"
-            />
-          </div>
+
         </div>
       </div>
     </>

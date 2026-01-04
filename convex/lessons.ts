@@ -287,7 +287,6 @@ export const create = mutation({
     publicUrl: v.optional(v.string()),
     thumbnailUrl: v.optional(v.string()),
     durationSeconds: v.optional(v.number()),
-    lessonNumber: v.number(),
     isPublished: v.boolean(),
     tags: v.optional(v.array(v.string())),
     videoId: v.optional(v.string()),
@@ -318,6 +317,13 @@ export const create = mutation({
     const currentCounter = unit.lessonCounter ?? 0;
     const nextOrderIndex = currentCounter;
 
+    // Calculate lessonNumber automatically based on existing lessons in this unit
+    const existingLessons = await ctx.db
+      .query("lessons")
+      .withIndex("by_unitId", (q) => q.eq("unitId", args.unitId))
+      .collect();
+    const nextLessonNumber = existingLessons.length + 1;
+
     // Atomically increment both the counter and totalLessonVideos
     await ctx.db.patch(args.unitId, {
       lessonCounter: currentCounter + 1,
@@ -335,7 +341,7 @@ export const create = mutation({
       thumbnailUrl: args.thumbnailUrl,
       durationSeconds: args.durationSeconds || 0,
       order_index: nextOrderIndex,
-      lessonNumber: args.lessonNumber,
+      lessonNumber: nextLessonNumber,
       isPublished: args.isPublished,
       tags: args.tags,
       videoId: args.videoId,
@@ -364,7 +370,6 @@ export const update = mutation({
     thumbnailUrl: v.optional(v.string()),
     durationSeconds: v.optional(v.number()),
     order_index: v.number(),
-    lessonNumber: v.number(),
     isPublished: v.boolean(),
     tags: v.optional(v.array(v.string())),
     videoId: v.optional(v.string()),
@@ -406,7 +411,7 @@ export const update = mutation({
       thumbnailUrl: args.thumbnailUrl,
       durationSeconds: args.durationSeconds || 0,
       order_index: args.order_index,
-      lessonNumber: args.lessonNumber,
+      // lessonNumber is NOT updated - it remains the original value
       isPublished: args.isPublished,
       tags: args.tags,
       videoId: args.videoId,

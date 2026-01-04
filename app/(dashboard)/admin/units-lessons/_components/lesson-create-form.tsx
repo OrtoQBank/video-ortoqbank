@@ -33,8 +33,6 @@ export function LessonForm({ units, onSuccess }: LessonFormProps) {
   const [unitId, setUnitId] = useState<string>(units[0]?._id || "");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [lessonNumber, setLessonNumber] = useState(1);
-  const [tags, setTags] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -50,21 +48,12 @@ export function LessonForm({ units, onSuccess }: LessonFormProps) {
         return;
       }
 
-      const tagsArray = tags
-        ? tags
-            .split(",")
-            .map((tag) => tag.trim())
-            .filter(Boolean)
-        : [];
-
       await createLesson({
         unitId: unitId as Id<"units">,
         title,
         description,
-        lessonNumber,
         durationSeconds: 0,
         isPublished: false,
-        tags: tagsArray.length > 0 ? tagsArray : undefined,
       });
 
       toast({
@@ -74,8 +63,6 @@ export function LessonForm({ units, onSuccess }: LessonFormProps) {
 
       setTitle("");
       setDescription("");
-      setLessonNumber(1);
-      setTags("");
       setUnitId(units[0]?._id || "");
 
       if (onSuccess) {
@@ -136,32 +123,6 @@ export function LessonForm({ units, onSuccess }: LessonFormProps) {
             required
             rows={4}
             placeholder="Descrição da aula"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="create-lesson-number">Número da Aula *</Label>
-          <Input
-            id="create-lesson-number"
-            type="number"
-            value={lessonNumber}
-            onChange={(e) => setLessonNumber(parseInt(e.target.value) || 1)}
-            disabled={isSubmitting}
-            required
-            min={1}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="create-lesson-tags">
-            Tags (separadas por vírgula)
-          </Label>
-          <Input
-            id="create-lesson-tags"
-            value={tags}
-            onChange={(e) => setTags(e.target.value)}
-            disabled={isSubmitting}
-            placeholder="ortopedia, medicina, traumatologia"
           />
         </div>
 

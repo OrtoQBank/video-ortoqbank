@@ -48,8 +48,6 @@ export function LessonEditPanel({
   const [unitId, setUnitId] = useState<string>(lesson.unitId);
   const [title, setTitle] = useState(lesson.title);
   const [description, setDescription] = useState(lesson.description);
-  const [lessonNumber, setLessonNumber] = useState(lesson.lessonNumber);
-  const [tags, setTags] = useState(lesson.tags?.join(", ") || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Video upload states
@@ -67,8 +65,6 @@ export function LessonEditPanel({
     setUnitId(lesson.unitId);
     setTitle(lesson.title);
     setDescription(lesson.description);
-    setLessonNumber(lesson.lessonNumber);
-    setTags(lesson.tags?.join(", ") || "");
     setCurrentVideoId(lesson.videoId);
   }, [lesson]);
 
@@ -76,19 +72,10 @@ export function LessonEditPanel({
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const tagsArray = tags
-        ? tags
-            .split(",")
-            .map((tag) => tag.trim())
-            .filter(Boolean)
-        : [];
-
       await onSave({
         unitId: unitId as Id<"units">,
         title,
         description,
-        lessonNumber,
-        tags: tagsArray.length > 0 ? tagsArray : undefined,
         videoId: currentVideoId,
       });
     } finally {
@@ -101,13 +88,6 @@ export function LessonEditPanel({
       "Tem certeza que deseja remover o vídeo desta aula?",
       async () => {
         try {
-          const tagsArray = tags
-            ? tags
-                .split(",")
-                .map((tag: string) => tag.trim())
-                .filter(Boolean)
-            : [];
-
           await updateLesson({
             id: lesson._id,
             unitId: unitId as Id<"units">,
@@ -115,9 +95,8 @@ export function LessonEditPanel({
             description,
             durationSeconds: lesson.durationSeconds,
             order_index: lesson.order_index,
-            lessonNumber,
             isPublished: lesson.isPublished,
-            tags: tagsArray.length > 0 ? tagsArray : undefined,
+            tags: lesson.tags,
             videoId: undefined,
           });
 
@@ -176,13 +155,6 @@ export function LessonEditPanel({
       const { videoId } = await uploadVideo(uploadFile, title, user.id);
 
       // Update lesson with videoId
-      const tagsArray = tags
-        ? tags
-            .split(",")
-            .map((tag: string) => tag.trim())
-            .filter(Boolean)
-        : [];
-
       await updateLesson({
         id: lesson._id,
         unitId: unitId as Id<"units">,
@@ -190,9 +162,8 @@ export function LessonEditPanel({
         description,
         durationSeconds: lesson.durationSeconds,
         order_index: lesson.order_index,
-        lessonNumber,
         isPublished: lesson.isPublished,
-        tags: tagsArray.length > 0 ? tagsArray : undefined,
+        tags: lesson.tags,
         videoId: videoId,
       });
 
@@ -214,13 +185,11 @@ export function LessonEditPanel({
 
   return (
     <Card className="max-w-3xl mx-auto">
-      <CardContent className="pt-6">
-        <form onSubmit={handleSubmit} className="space-y-6">
+      <CardContent className="pt-2">
+        <form onSubmit={handleSubmit} className="space-y-2">
           <div>
             <h2 className="text-xl font-semibold mb-4">Editar Aula</h2>
-            <p className="text-sm text-muted-foreground mb-6">
-              Atualize as informações da aula abaixo
-            </p>
+
           </div>
 
           <div className="space-y-4">
@@ -267,38 +236,13 @@ export function LessonEditPanel({
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="edit-lesson-number">Número da Aula *</Label>
-              <Input
-                id="edit-lesson-number"
-                type="number"
-                value={lessonNumber}
-                onChange={(e) => setLessonNumber(parseInt(e.target.value) || 1)}
-                disabled={isSubmitting}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-lesson-tags">
-                Tags (separadas por vírgula)
-              </Label>
-              <Input
-                id="edit-lesson-tags"
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
-                disabled={isSubmitting}
-                placeholder="ortopedia, medicina, traumatologia"
-              />
-            </div>
-
             {/* Video Management Section */}
-            <div className="space-y-3 pt-4 border-t">
+            <div className="space-y-3 pt-4 ">
               <Label>Gerenciar Vídeo</Label>
               {currentVideoId && !showUploader ? (
                 <div className="space-y-2">
                   {video === undefined ? (
-                    <div className="flex items-center gap-2 p-3 rounded-lg bg-gray-100">
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-gray-50">
                       <LoaderIcon className="h-5 w-5 text-gray-600 animate-spin" />
                       <p className="text-sm text-gray-700">
                         Carregando informações do vídeo...
@@ -367,7 +311,7 @@ export function LessonEditPanel({
                     />
                     {uploadFile && (
                       <p className="text-xs text-muted-foreground">
-                        📁 {uploadFile.name} (
+                        {uploadFile.name} (
                         {(uploadFile.size / (1024 * 1024)).toFixed(2)} MB)
                       </p>
                     )}
@@ -419,7 +363,7 @@ export function LessonEditPanel({
             </div>
           </div>
 
-          <div className="flex gap-2 justify-end pt-4 border-t">
+          <div className="flex gap-2 justify-end pt-4">
             <Button
               type="button"
               variant="outline"

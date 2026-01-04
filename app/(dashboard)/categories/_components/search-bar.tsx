@@ -15,7 +15,7 @@ interface SearchBarProps {
 }
 
 export function SearchBar({
-  placeholder = "Pesquise por temas, subtemas e grupos...",
+  placeholder = "Pesquise por módulos e aulas...",
   onSearch,
 }: SearchBarProps) {
   const [query, setQuery] = useState("");
@@ -100,7 +100,7 @@ export function SearchBar({
           value={query}
           onChange={handleInputChange}
           placeholder={placeholder}
-          className="pl-10 md:pl-11 pr-3 md:pr-4 h-12 md:h-14 rounded-full border text-sm md:text-base"
+          className="pl-10 md:pl-11 pr-3 md:pr-4 h-12 md:h-10 rounded-full border text-sm md:text-base"
           onFocus={() => {
             if (hasSuggestions) {
               setIsManuallyHidden(false);

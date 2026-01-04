@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import cardValidator from "card-validator";
 import { useAction, useMutation, useQuery } from "convex/react";
-import { Loader2, Tag } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -677,11 +677,10 @@ function CheckoutPageContent() {
                     <Label>Forma de Pagamento</Label>
                     <div className="grid grid-cols-2 gap-3">
                       <div
-                        className={`cursor-pointer rounded-lg border-2 p-4 transition-all ${
-                          selectedPaymentMethod === "PIX"
-                            ? "border-brand-blue bg-brand-blue/10"
-                            : "border-gray-200 hover:border-gray-300"
-                        }`}
+                        className={`cursor-pointer rounded-lg border-2 p-4 transition-all ${selectedPaymentMethod === "PIX"
+                          ? "border-brand-blue bg-brand-blue/10"
+                          : "border-gray-200 hover:border-gray-300"
+                          }`}
                         onClick={() => {
                           setSelectedPaymentMethod("PIX");
                           setValue("paymentMethod", "PIX");
@@ -699,11 +698,10 @@ function CheckoutPageContent() {
                         </div>
                       </div>
                       <div
-                        className={`cursor-pointer rounded-lg border-2 p-4 transition-all ${
-                          selectedPaymentMethod === "CREDIT_CARD"
-                            ? "border-brand-blue bg-brand-blue/10"
-                            : "border-gray-200 hover:border-gray-300"
-                        }`}
+                        className={`cursor-pointer rounded-lg border-2 p-4 transition-all ${selectedPaymentMethod === "CREDIT_CARD"
+                          ? "border-brand-blue bg-brand-blue/10"
+                          : "border-gray-200 hover:border-gray-300"
+                          }`}
                         onClick={() => {
                           setSelectedPaymentMethod("CREDIT_CARD");
                           setValue("paymentMethod", "CREDIT_CARD");
@@ -731,7 +729,6 @@ function CheckoutPageContent() {
                     </Label>
                     {appliedCoupon ? (
                       <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3">
-                        <Tag className="h-4 w-4 text-green-600" />
                         <div className="flex-1">
                           <div className="font-medium text-green-900">
                             {couponCode}
@@ -754,7 +751,6 @@ function CheckoutPageContent() {
                     ) : (
                       <div className="flex gap-2">
                         <div className="relative flex-1">
-                          <Tag className="absolute top-3 left-3 h-4 w-4 text-gray-400" />
                           <Input
                             id="couponCode"
                             type="text"
@@ -764,7 +760,6 @@ function CheckoutPageContent() {
                               setCouponCode(e.target.value.toUpperCase())
                             }
                             disabled={isLoading || isValidatingCoupon}
-                            className="pl-10"
                             onKeyDown={(e) => {
                               if (e.key === "Enter") {
                                 e.preventDefault();
@@ -1100,23 +1095,23 @@ function CheckoutPageContent() {
 
                     {(appliedCoupon ||
                       (selectedPaymentMethod === "PIX" && pixSavings > 0)) && (
-                      <div className="rounded-lg bg-green-50 p-3">
-                        <p className="text-sm font-medium text-green-700">
-                          ✓ Você está economizando R${" "}
-                          {(() => {
-                            let totalSavings = 0;
-                            if (selectedPaymentMethod === "PIX") {
-                              totalSavings += pixSavings;
-                            }
-                            if (appliedCoupon) {
-                              totalSavings += appliedCoupon.discountAmount;
-                            }
-                            return totalSavings.toFixed(2);
-                          })()}
-                          !
-                        </p>
-                      </div>
-                    )}
+                        <div className="rounded-lg bg-green-50 p-3">
+                          <p className="text-sm font-medium text-green-700">
+                            ✓ Você está economizando R${" "}
+                            {(() => {
+                              let totalSavings = 0;
+                              if (selectedPaymentMethod === "PIX") {
+                                totalSavings += pixSavings;
+                              }
+                              if (appliedCoupon) {
+                                totalSavings += appliedCoupon.discountAmount;
+                              }
+                              return totalSavings.toFixed(2);
+                            })()}
+                            !
+                          </p>
+                        </div>
+                      )}
 
                     <div className="space-y-2 border-t pt-4 text-xs text-gray-600">
                       <div className="flex items-center gap-2">

@@ -5,18 +5,6 @@ import { internal } from "./_generated/api";
 // Query para listar todas as categorias ordenadas por position (ADMIN - mostra todas)
 export const list = query({
   args: {},
-  returns: v.array(
-    v.object({
-      _id: v.id("categories"),
-      _creationTime: v.number(),
-      title: v.string(),
-      slug: v.string(),
-      description: v.string(),
-      position: v.number(),
-      iconUrl: v.optional(v.string()),
-      isPublished: v.boolean(),
-    }),
-  ),
   handler: async (ctx) => {
     const categories = await ctx.db
       .query("categories")
@@ -31,18 +19,6 @@ export const list = query({
 // Query para listar apenas categorias PUBLICADAS (USER - mostra apenas publicadas)
 export const listPublished = query({
   args: {},
-  returns: v.array(
-    v.object({
-      _id: v.id("categories"),
-      _creationTime: v.number(),
-      title: v.string(),
-      slug: v.string(),
-      description: v.string(),
-      position: v.number(),
-      iconUrl: v.optional(v.string()),
-      isPublished: v.boolean(),
-    }),
-  ),
   handler: async (ctx) => {
     const categories = await ctx.db
       .query("categories")
@@ -57,19 +33,6 @@ export const listPublished = query({
 // Query para buscar uma categoria por ID
 export const getById = query({
   args: { id: v.id("categories") },
-  returns: v.union(
-    v.object({
-      _id: v.id("categories"),
-      _creationTime: v.number(),
-      title: v.string(),
-      slug: v.string(),
-      description: v.string(),
-      position: v.number(),
-      iconUrl: v.optional(v.string()),
-      isPublished: v.boolean(),
-    }),
-    v.null(),
-  ),
   handler: async (ctx, args) => {
     const category = await ctx.db.get(args.id);
     return category;
@@ -79,19 +42,6 @@ export const getById = query({
 // Query para buscar uma categoria por slug
 export const getBySlug = query({
   args: { slug: v.string() },
-  returns: v.union(
-    v.object({
-      _id: v.id("categories"),
-      _creationTime: v.number(),
-      title: v.string(),
-      slug: v.string(),
-      description: v.string(),
-      position: v.number(),
-      iconUrl: v.optional(v.string()),
-      isPublished: v.boolean(),
-    }),
-    v.null(),
-  ),
   handler: async (ctx, args) => {
     const category = await ctx.db
       .query("categories")
@@ -185,7 +135,6 @@ export const create = mutation({
     description: v.string(),
     iconUrl: v.optional(v.string()),
   },
-  returns: v.id("categories"),
   handler: async (ctx, args) => {
     // Validate input lengths
     if (args.title.trim().length < 3) {
@@ -253,7 +202,6 @@ export const update = mutation({
     description: v.string(),
     iconUrl: v.optional(v.string()),
   },
-  returns: v.null(),
   handler: async (ctx, args) => {
     // Validate input lengths
     if (args.title.trim().length < 3) {
@@ -305,10 +253,6 @@ export const update = mutation({
 // Query para obter informações sobre exclusão em cascata
 export const getCascadeDeleteInfo = query({
   args: { id: v.id("categories") },
-  returns: v.object({
-    unitsCount: v.number(),
-    lessonsCount: v.number(),
-  }),
   handler: async (ctx, args) => {
     // Get all units in this category
     const units = await ctx.db
@@ -340,7 +284,6 @@ export const remove = mutation({
   args: {
     id: v.id("categories"),
   },
-  returns: v.null(),
   handler: async (ctx, args) => {
     // Get all units in this category
     const units = await ctx.db
@@ -400,7 +343,6 @@ export const reorder = mutation({
       }),
     ),
   },
-  returns: v.null(),
   handler: async (ctx, args) => {
     // Update all category positions
     for (const update of args.updates) {
@@ -418,7 +360,6 @@ export const togglePublish = mutation({
   args: {
     id: v.id("categories"),
   },
-  returns: v.boolean(),
   handler: async (ctx, args) => {
     const category = await ctx.db.get(args.id);
 

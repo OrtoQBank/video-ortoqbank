@@ -27,7 +27,6 @@ export const createWaitlistEntry = mutation({
       v.literal("Pé e Tornozelo"),
     ),
   },
-  returns: v.union(v.id("waitlist"), v.literal("email_already_exists")),
   handler: async (ctx, args) => {
     // Check if email already exists
     const existingEntry = await ctx.db

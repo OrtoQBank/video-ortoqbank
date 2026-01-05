@@ -37,6 +37,7 @@ import type * as userAccess from "../userAccess.js";
 import type * as users from "../users.js";
 import type * as videos from "../videos.js";
 import type * as waitlist from "../waitlist.js";
+import type * as watermark from "../watermark.js";
 
 import type {
   ApiFromModules,
@@ -74,6 +75,7 @@ declare const fullApi: ApiFromModules<{
   users: typeof users;
   videos: typeof videos;
   waitlist: typeof waitlist;
+  watermark: typeof watermark;
 }>;
 
 /**

@@ -12,7 +12,6 @@ export const addFavorite = mutation({
     userId: v.string(),
     lessonId: v.id("lessons"),
   },
-  returns: v.id("favorites"),
   handler: async (ctx, args) => {
     const lesson = await ctx.db.get(args.lessonId);
     if (!lesson) throw new Error("Aula não encontrada");
@@ -40,7 +39,6 @@ export const removeFavorite = mutation({
     userId: v.string(),
     lessonId: v.id("lessons"),
   },
-  returns: v.null(),
   handler: async (ctx, args) => {
     const favorite = await ctx.db
       .query("favorites")
@@ -62,7 +60,6 @@ export const toggleFavorite = mutation({
     userId: v.string(),
     lessonId: v.id("lessons"),
   },
-  returns: v.boolean(),
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("favorites")
@@ -92,7 +89,6 @@ export const isFavorited = query({
     userId: v.string(),
     lessonId: v.id("lessons"),
   },
-  returns: v.boolean(),
   handler: async (ctx, args) => {
     const favorite = await ctx.db
       .query("favorites")
@@ -107,14 +103,6 @@ export const isFavorited = query({
 
 export const getUserFavorites = query({
   args: { userId: v.string() },
-  returns: v.array(
-    v.object({
-      _id: v.id("favorites"),
-      _creationTime: v.number(),
-      userId: v.string(),
-      lessonId: v.id("lessons"),
-    }),
-  ),
   handler: async (ctx, args) => {
     const favorites = await ctx.db
       .query("favorites")
@@ -134,55 +122,6 @@ export const getUserFavoriteLessons = query({
     userId: v.string(),
     paginationOpts: paginationOptsValidator,
   },
-  returns: v.object({
-    page: v.array(
-      v.object({
-        _id: v.id("favorites"),
-        _creationTime: v.number(),
-        lesson: v.object({
-          _id: v.id("lessons"),
-          _creationTime: v.number(),
-          title: v.string(),
-          slug: v.string(),
-          description: v.string(),
-          durationSeconds: v.number(),
-          order_index: v.number(),
-          unitId: v.id("units"),
-          categoryId: v.id("categories"),
-          bunnyStoragePath: v.optional(v.string()),
-          publicUrl: v.optional(v.string()),
-          isPublished: v.boolean(),
-          tags: v.optional(v.array(v.string())),
-          videoId: v.optional(v.string()),
-          lessonNumber: v.number(),
-        }),
-        unit: v.object({
-          _id: v.id("units"),
-          _creationTime: v.number(),
-          title: v.string(),
-          slug: v.string(),
-          description: v.string(),
-          order_index: v.number(),
-          categoryId: v.id("categories"),
-          totalLessonVideos: v.number(),
-          lessonCounter: v.optional(v.number()),
-          isPublished: v.boolean(),
-        }),
-        category: v.object({
-          _id: v.id("categories"),
-          _creationTime: v.number(),
-          title: v.string(),
-          slug: v.string(),
-          description: v.string(),
-          position: v.number(),
-          iconUrl: v.optional(v.string()),
-          isPublished: v.boolean(),
-        }),
-      }),
-    ),
-    isDone: v.boolean(),
-    continueCursor: v.string(),
-  }),
   handler: async (ctx, args) => {
     const paginatedFavorites = await ctx.db
       .query("favorites")
@@ -247,7 +186,6 @@ export const getUserFavoriteLessons = query({
 
 export const getFavoritesCount = query({
   args: { userId: v.string() },
-  returns: v.number(),
   handler: async (ctx, args) => {
     const favorites = await ctx.db
       .query("favorites")
@@ -260,7 +198,6 @@ export const getFavoritesCount = query({
 
 export const getLessonFavoritesCount = query({
   args: { lessonId: v.id("lessons") },
-  returns: v.number(),
   handler: async (ctx, args) => {
     const favorites = await ctx.db
       .query("favorites")
@@ -273,7 +210,6 @@ export const getLessonFavoritesCount = query({
 
 export const clearUserFavorites = mutation({
   args: { userId: v.string() },
-  returns: v.number(),
   handler: async (ctx, args) => {
     const favorites = await ctx.db
       .query("favorites")

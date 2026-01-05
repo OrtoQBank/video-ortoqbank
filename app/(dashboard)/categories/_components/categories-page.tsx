@@ -113,9 +113,11 @@ export function CategoriesPage({ preloadedCategories }: CategoriesPageProps) {
                 />
               ))
             ) : (
-              <div className="col-span-full flex items-center justify-center py-56">
+              <div className="col-span-full flex items-center justify-center py-20">
                 <p className="text-muted-foreground text-center">
-                  Nenhuma categoria encontrada com este filtro
+                  {searchQuery
+                    ? "Nenhuma categoria encontrada com este filtro"
+                    : "Nenhuma categoria encontrada"}
                 </p>
               </div>
             )}

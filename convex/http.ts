@@ -189,11 +189,9 @@ http.route({
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     try {
-      // Get webhook body
+      // Get raw webhook body (but don't parse yet)
       const rawBody = await request.text();
       const timestamp = new Date().toISOString();
-      const body = JSON.parse(rawBody);
-      const { payment } = body;
 
       // Validate webhook secret is configured
       const webhookSecret = process.env.ASAAS_WEBHOOK_SECRET;
@@ -241,6 +239,20 @@ http.route({
         path: "/webhooks/asaas",
         verified: true,
       });
+
+      // Parse the body only after authentication is verified
+      let body;
+      let payment;
+      try {
+        body = JSON.parse(rawBody);
+        payment = body.payment;
+      } catch (parseError) {
+        console.error("[AsaaS Webhook] JSON parsing error", {
+          timestamp,
+          error: parseError instanceof Error ? parseError.message : "Unknown parsing error",
+        });
+        return new Response("Invalid JSON payload", { status: 400 });
+      }
 
       const { event, checkout } = body;
 

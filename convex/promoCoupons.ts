@@ -5,24 +5,6 @@ import { checkRateLimit, couponRateLimit } from "./lib/rateLimits";
 
 export const list = query({
   args: {},
-  returns: v.array(
-    v.object({
-      _id: v.id("coupons"),
-      _creationTime: v.number(),
-      code: v.string(),
-      type: v.union(
-        v.literal("percentage"),
-        v.literal("fixed"),
-        v.literal("fixed_price"),
-      ),
-      value: v.number(),
-      description: v.string(),
-      active: v.boolean(),
-      validFrom: v.optional(v.number()),
-      validUntil: v.optional(v.number()),
-      currentUses: v.optional(v.number()),
-    }),
-  ),
   handler: async (ctx) => {
     return await ctx.db.query("coupons").order("desc").collect();
   },
@@ -30,28 +12,6 @@ export const list = query({
 
 export const getByCode = query({
   args: { code: v.string() },
-  returns: v.union(
-    v.object({
-      _id: v.id("coupons"),
-      _creationTime: v.number(),
-      code: v.string(),
-      type: v.union(
-        v.literal("percentage"),
-        v.literal("fixed"),
-        v.literal("fixed_price"),
-      ),
-      value: v.number(),
-      description: v.string(),
-      active: v.boolean(),
-      validFrom: v.optional(v.number()),
-      validUntil: v.optional(v.number()),
-      maxUses: v.optional(v.number()),
-      maxUsesPerUser: v.optional(v.number()),
-      currentUses: v.optional(v.number()),
-      minimumPrice: v.optional(v.number()),
-    }),
-    v.null(),
-  ),
   handler: async (ctx, args) => {
     const code = args.code.toUpperCase();
     const byCode = await ctx.db
@@ -76,7 +36,6 @@ export const create = mutation({
     validFrom: v.optional(v.number()),
     validUntil: v.optional(v.number()),
   },
-  returns: v.id("coupons"),
   handler: async (ctx, args) => {
     const code = args.code.toUpperCase();
     // Ensure uniqueness
@@ -108,7 +67,6 @@ export const update = mutation({
     validFrom: v.optional(v.union(v.number(), v.null())),
     validUntil: v.optional(v.union(v.number(), v.null())),
   },
-  returns: v.null(),
   handler: async (ctx, args) => {
     const { id, ...rest } = args;
     const updates: Record<string, unknown> = { ...rest };
@@ -123,7 +81,6 @@ export const update = mutation({
 
 export const remove = mutation({
   args: { id: v.id("coupons") },
-  returns: v.null(),
   handler: async (ctx, args) => {
     await ctx.db.delete(args.id);
     return null;
@@ -142,29 +99,6 @@ export const validateAndApplyCoupon = mutation({
     originalPrice: v.number(),
     userCpf: v.optional(v.string()), // For checking per-user limits
   },
-  returns: v.union(
-    v.object({
-      isValid: v.boolean(),
-      finalPrice: v.number(),
-      discountAmount: v.number(),
-      couponDescription: v.string(),
-      coupon: v.object({
-        _id: v.id("coupons"),
-        code: v.string(),
-        type: v.union(
-          v.literal("percentage"),
-          v.literal("fixed"),
-          v.literal("fixed_price"),
-        ),
-        value: v.number(),
-        description: v.string(),
-      }),
-    }),
-    v.object({
-      isValid: v.boolean(),
-      errorMessage: v.string(),
-    }),
-  ),
   handler: async (ctx, args) => {
     const identifier = args.userCpf || "anonymous";
 

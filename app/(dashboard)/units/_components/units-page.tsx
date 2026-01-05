@@ -98,9 +98,12 @@ export function UnitsPage({ preloadedUnits, categoryTitle }: UnitsPageProps) {
   );
 
   // Query lesson from URL parameter (if provided)
+  // Validate that lessonIdParam is a non-empty string before casting to Id<"lessons">
   const lessonFromUrl = useQuery(
     api.lessons.getById,
-    lessonIdParam ? { id: lessonIdParam as Id<"lessons"> } : "skip",
+    lessonIdParam && lessonIdParam.length > 0
+      ? { id: lessonIdParam as Id<"lessons"> }
+      : "skip",
   );
 
   // Queries for current state
@@ -129,10 +132,34 @@ export function UnitsPage({ preloadedUnits, categoryTitle }: UnitsPageProps) {
       : "skip",
   );
 
+  // Get secure watermark ID from server (HMAC-SHA256 of CPF with secret)
+  const userCpf = (user?.publicMetadata?.cpf as string) || "";
+  const watermarkId = useQuery(
+    api.watermark.generateWatermarkId,
+    userCpf ? { cpf: userCpf } : "skip",
+  );
+
   // Initialize lesson from URL or fallback to first lesson
   // Using queueMicrotask to defer state updates and avoid cascading renders
   useEffect(() => {
-    // If we have a lesson from URL, use it
+    // Handle invalid URL param: clear it and fallback to first lesson
+    if (
+      lessonIdParam &&
+      lessonFromUrl === null &&
+      initialValues &&
+      !currentLessonId
+    ) {
+      queueMicrotask(() => {
+        // Clear invalid URL param and set default lesson
+        setLessonIdParam(initialValues.lessonId);
+        setCurrentLessonId(initialValues.lessonId);
+        setCurrentUnitId(initialValues.unitId);
+        setExpandedUnits(initialValues.expandedUnits);
+      });
+      return;
+    }
+
+    // If we have a valid lesson from URL, use it
     if (lessonFromUrl && lessonIdParam && !currentLessonId) {
       queueMicrotask(() => {
         setCurrentLessonId(lessonIdParam as Id<"lessons">);
@@ -142,7 +169,7 @@ export function UnitsPage({ preloadedUnits, categoryTitle }: UnitsPageProps) {
       return;
     }
 
-    // Fallback: use first lesson of first unit
+    // Fallback: use first lesson of first unit when no URL param exists
     if (initialValues && !currentLessonId && !lessonIdParam) {
       queueMicrotask(() => {
         setCurrentLessonId(initialValues.lessonId);
@@ -341,9 +368,9 @@ export function UnitsPage({ preloadedUnits, categoryTitle }: UnitsPageProps) {
   const globalProgressPercent =
     totalLessonsCount > 0
       ? Math.min(
-          100,
-          Math.round((totalCompletedLessons / totalLessonsCount) * 100),
-        )
+        100,
+        Math.round((totalCompletedLessons / totalLessonsCount) * 100),
+      )
       : 0;
 
   if (units.length === 0) {
@@ -450,10 +477,7 @@ export function UnitsPage({ preloadedUnits, categoryTitle }: UnitsPageProps) {
                     ) : embedUrl ? (
                       <VideoPlayerWithWatermark
                         embedUrl={embedUrl}
-                        userCpf={
-                          (user?.publicMetadata?.cpf as string) ||
-                          "000.000.000-00"
-                        }
+                        watermarkId={watermarkId}
                       />
                     ) : (
                       <div className="aspect-video bg-red-50 rounded-lg flex items-center justify-center">
@@ -567,7 +591,7 @@ export function UnitsPage({ preloadedUnits, categoryTitle }: UnitsPageProps) {
                           className={cn(
                             "flex-1 lg:flex-none lg:min-w-[160px]",
                             isLessonCompleted &&
-                              "bg-white text-green-600 hover:bg-green-50 border-green-600 border-2",
+                            "bg-white text-green-600 hover:bg-green-50 border-green-600 border-2",
                           )}
                         >
                           <CheckCircleIcon

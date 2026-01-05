@@ -62,6 +62,7 @@ export default defineSchema({
     order_index: v.number(),
     totalLessonVideos: v.number(),
     lessonCounter: v.optional(v.number()), // Atomic counter for lesson order_index allocation
+    lessonNumberCounter: v.optional(v.number()), // Atomic counter for lesson number allocation (prevents race conditions)
     isPublished: v.boolean(),
   })
     .index("by_categoryId", ["categoryId"])

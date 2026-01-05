@@ -1,5 +1,5 @@
 import { mutation, internalMutation, internalQuery } from "./_generated/server";
-import { v } from "convex/values";
+
 import { api, internal } from "./_generated/api";
 
 /**
@@ -8,7 +8,6 @@ import { api, internal } from "./_generated/api";
  */
 export const seedVideos = mutation({
   args: {},
-  returns: v.null(),
   handler: async () => {
     console.log(
       "⚠️  Esta função está depreciada. Use seedLessons() ou seedAll() em vez disso.",
@@ -24,7 +23,6 @@ export const seedVideos = mutation({
  */
 export const clearUserData = mutation({
   args: {},
-  returns: v.null(),
   handler: async () => {
     console.log(
       "⚠️  Esta função está depreciada. A tabela 'progress' foi removida.",
@@ -39,7 +37,6 @@ export const clearUserData = mutation({
  */
 export const clearVideos = mutation({
   args: {},
-  returns: v.null(),
   handler: async () => {
     console.log(
       "⚠️  Esta função está depreciada. Use clearLessons() ou clearAll() em vez disso.",
@@ -54,7 +51,6 @@ export const clearVideos = mutation({
  */
 export const seedCategories = internalMutation({
   args: {},
-  returns: v.null(),
   handler: async (ctx) => {
     // Check if categories already exist
     const existingCategories = await ctx.db.query("categories").first();
@@ -150,7 +146,6 @@ export const seedCategories = internalMutation({
  */
 export const clearCategories = internalMutation({
   args: {},
-  returns: v.null(),
   handler: async (ctx) => {
     const categories = await ctx.db.query("categories").collect();
     for (const category of categories) {
@@ -166,7 +161,6 @@ export const clearCategories = internalMutation({
  */
 export const seedUnits = internalMutation({
   args: {},
-  returns: v.null(),
   handler: async (ctx) => {
     // Check if units already exist
     const existingUnits = await ctx.db.query("units").first();
@@ -274,7 +268,6 @@ export const seedUnits = internalMutation({
  */
 export const clearUnits = internalMutation({
   args: {},
-  returns: v.null(),
   handler: async (ctx) => {
     const units = await ctx.db.query("units").collect();
     for (const unit of units) {
@@ -293,7 +286,6 @@ export const clearUnits = internalMutation({
  */
 export const seedLessons = internalMutation({
   args: {},
-  returns: v.null(),
   handler: async (ctx) => {
     // Check if lessons already exist
     const existingLessons = await ctx.db.query("lessons").first();
@@ -343,7 +335,6 @@ export const seedLessons = internalMutation({
  */
 export const clearLessons = internalMutation({
   args: {},
-  returns: v.null(),
   handler: async (ctx) => {
     const lessons = await ctx.db.query("lessons").collect();
     for (const lesson of lessons) {
@@ -367,7 +358,6 @@ export const clearLessons = internalMutation({
  */
 export const seedAll = internalMutation({
   args: {},
-  returns: v.null(),
   handler: async (ctx) => {
     await ctx.runMutation(internal.seed.seedCategories, {});
     await ctx.runMutation(internal.seed.seedUnits, {});
@@ -383,7 +373,6 @@ export const seedAll = internalMutation({
  */
 export const reseedAll = internalMutation({
   args: {},
-  returns: v.null(),
   handler: async (ctx) => {
     await ctx.runMutation(internal.seed.clearEverything, {});
     await ctx.runMutation(internal.seed.seedAll, {});
@@ -396,7 +385,6 @@ export const reseedAll = internalMutation({
  */
 export const clearAll = internalMutation({
   args: {},
-  returns: v.null(),
   handler: async (ctx) => {
     await ctx.runMutation(internal.seed.clearLessons, {});
     await ctx.runMutation(internal.seed.clearUnits, {});
@@ -410,7 +398,6 @@ export const clearAll = internalMutation({
  */
 export const initializeContentStats = mutation({
   args: {},
-  returns: v.null(),
   handler: async (ctx) => {
     await ctx.runMutation(internal.aggregate.recalculate, {});
     return null;
@@ -422,7 +409,6 @@ export const initializeContentStats = mutation({
  */
 export const seedPricingPlansPublic = mutation({
   args: {},
-  returns: v.null(),
   handler: async (ctx) => {
     await ctx.runMutation(internal.seed.seedPricingPlans, {});
     return null;
@@ -434,7 +420,6 @@ export const seedPricingPlansPublic = mutation({
  */
 export const migrateCategories = internalMutation({
   args: {},
-  returns: v.null(),
   handler: async (ctx) => {
     const categories = await ctx.db.query("categories").collect();
 
@@ -455,7 +440,6 @@ export const migrateCategories = internalMutation({
  */
 export const migrateUnits = internalMutation({
   args: {},
-  returns: v.null(),
   handler: async (ctx) => {
     const units = await ctx.db.query("units").collect();
 
@@ -476,7 +460,6 @@ export const migrateUnits = internalMutation({
  */
 export const cleanOrphanLessons = internalMutation({
   args: {},
-  returns: v.null(),
   handler: async (ctx) => {
     const lessons = await ctx.db.query("lessons").collect();
 
@@ -497,7 +480,6 @@ export const cleanOrphanLessons = internalMutation({
  */
 export const deleteAllLessons = internalMutation({
   args: {},
-  returns: v.null(),
   handler: async (ctx) => {
     const lessons = await ctx.db.query("lessons").collect();
 
@@ -514,12 +496,6 @@ export const deleteAllLessons = internalMutation({
  */
 export const debugDatabase = internalQuery({
   args: {},
-  returns: v.object({
-    categories: v.number(),
-    units: v.number(),
-    lessons: v.number(),
-    orphanedLessons: v.number(),
-  }),
   handler: async (ctx) => {
     const categories = await ctx.db.query("categories").collect();
     const units = await ctx.db.query("units").collect();
@@ -544,7 +520,6 @@ export const debugDatabase = internalQuery({
  */
 export const recreateUnits = internalMutation({
   args: {},
-  returns: v.null(),
   handler: async (ctx) => {
     const units = await ctx.db.query("units").collect();
     for (const unit of units) {
@@ -560,7 +535,6 @@ export const recreateUnits = internalMutation({
  */
 export const seedPricingPlans = internalMutation({
   args: {},
-  returns: v.null(),
   handler: async (ctx) => {
     // Check if pricing plans already exist
     const existingPlans = await ctx.db.query("pricingPlans").first();
@@ -663,7 +637,6 @@ export const seedPricingPlans = internalMutation({
  */
 export const clearPricingPlans = internalMutation({
   args: {},
-  returns: v.null(),
   handler: async (ctx) => {
     const plans = await ctx.db.query("pricingPlans").collect();
     for (const plan of plans) {
@@ -679,7 +652,6 @@ export const clearPricingPlans = internalMutation({
  */
 export const clearEverything = internalMutation({
   args: {},
-  returns: v.null(),
   handler: async (ctx) => {
     // Clear lessons first
     const lessons = await ctx.db.query("lessons").collect();

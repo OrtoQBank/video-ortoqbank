@@ -34,7 +34,12 @@ vi.mock("@clerk/nextjs", () => ({
 
 // Mock Convex hooks
 const mockUsePreloadedQuery = vi.fn(() => [
-  { _id: "unit-1", title: "Test Unit", categoryId: "cat-1", totalLessonVideos: 5 },
+  {
+    _id: "unit-1",
+    title: "Test Unit",
+    categoryId: "cat-1",
+    totalLessonVideos: 5,
+  },
 ]); // Return at least one unit
 const mockUseQuery = vi.fn(() => null);
 const mockUseMutation = vi.fn(() => vi.fn(() => Promise.resolve()));
@@ -47,7 +52,9 @@ vi.mock("convex/react", () => ({
 
 // Mock getSignedEmbedUrl
 vi.mock("@/app/actions/bunny", () => ({
-  getSignedEmbedUrl: vi.fn(() => Promise.resolve({ embedUrl: "https://test-embed-url.com" })),
+  getSignedEmbedUrl: vi.fn(() =>
+    Promise.resolve({ embedUrl: "https://test-embed-url.com" }),
+  ),
 }));
 
 // Mock nuqs (URL query state library)

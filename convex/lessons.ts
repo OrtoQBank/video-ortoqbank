@@ -409,7 +409,10 @@ export const backfillLessonNumberCounter = mutation({
 
     for (const unit of units) {
       // Check if lessonNumberCounter is already set
-      if (unit.lessonNumberCounter !== undefined && unit.lessonNumberCounter !== null) {
+      if (
+        unit.lessonNumberCounter !== undefined &&
+        unit.lessonNumberCounter !== null
+      ) {
         skipped++;
         continue;
       }

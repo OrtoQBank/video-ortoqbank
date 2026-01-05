@@ -36,12 +36,14 @@ async function validateCouponInTransaction(
 > {
   // Rate limit coupon validation attempts
   const identifier = userCpf || "anonymous";
-  const { ok, retryAt } = await checkRateLimit(ctx, couponRateLimit, identifier);
+  const { ok, retryAt } = await checkRateLimit(
+    ctx,
+    couponRateLimit,
+    identifier,
+  );
 
   if (!ok) {
-    const waitSeconds = retryAt
-      ? Math.ceil((retryAt - Date.now()) / 1000)
-      : 60;
+    const waitSeconds = retryAt ? Math.ceil((retryAt - Date.now()) / 1000) : 60;
     return {
       isValid: false,
       errorMessage: `Muitas tentativas. Aguarde ${waitSeconds} segundos.`,

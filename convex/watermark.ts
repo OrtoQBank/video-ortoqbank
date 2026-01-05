@@ -26,7 +26,7 @@ export const generateWatermarkId = query({
     if (!secret) {
       console.error(
         "WATERMARK_SECRET environment variable is not set. " +
-          "Generate one with: openssl rand -hex 32"
+          "Generate one with: openssl rand -hex 32",
       );
       // Return a fallback that indicates the issue without exposing details
       // This allows the app to work in development while flagging the issue
@@ -53,7 +53,7 @@ export const generateWatermarkId = query({
       keyData,
       { name: "HMAC", hash: "SHA-256" },
       false,
-      ["sign"]
+      ["sign"],
     );
 
     // Sign the CPF with HMAC-SHA256
@@ -61,7 +61,9 @@ export const generateWatermarkId = query({
 
     // Convert to hex string
     const hashArray = Array.from(new Uint8Array(signature));
-    const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+    const hashHex = hashArray
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
 
     // Return first 8 characters (32 bits of entropy from the hash)
     // This provides ~4 billion unique values, sufficient for watermark identification

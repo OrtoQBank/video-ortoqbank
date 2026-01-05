@@ -249,7 +249,10 @@ http.route({
       } catch (parseError) {
         console.error("[AsaaS Webhook] JSON parsing error", {
           timestamp,
-          error: parseError instanceof Error ? parseError.message : "Unknown parsing error",
+          error:
+            parseError instanceof Error
+              ? parseError.message
+              : "Unknown parsing error",
         });
         return new Response("Invalid JSON payload", { status: 400 });
       }

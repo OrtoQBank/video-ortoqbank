@@ -19,7 +19,7 @@ import { useConfirmModal } from "@/hooks/use-confirm-modal";
 import { useBunnyUpload } from "@/hooks/use-bunny-upload";
 import { ErrorModal } from "@/components/ui/error-modal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import {
@@ -28,10 +28,24 @@ import {
   XCircleIcon,
   Trash2Icon,
   UploadIcon,
+  SearchIcon,
+  LinkIcon,
 } from "lucide-react";
 import { LessonEditPanelProps } from "./types";
 import { useUser } from "@clerk/nextjs";
 import { ImageUpload } from "@/components/ui/image-upload";
+
+interface VideoInfo {
+  videoId: string;
+  libraryId: string;
+  title: string;
+  description: string;
+  status: "uploading" | "processing" | "ready" | "failed";
+  hlsUrl?: string;
+  duration?: number;
+  thumbnailUrl: string;
+  existsInDatabase: boolean;
+}
 
 export function LessonEditPanel({
   lesson,
@@ -44,6 +58,11 @@ export function LessonEditPanel({
   const { error, showError, hideError } = useErrorModal();
   const { confirm, showConfirm, hideConfirm } = useConfirmModal();
   const updateLesson = useMutation(api.lessons.update);
+  const deleteVideoFromBunny = useAction(api.bunny.videos.deleteVideo);
+  const fetchVideoInfo = useAction(api.bunny.videos.fetchVideoInfo);
+  const registerExistingVideo = useAction(
+    api.bunny.videos.registerExistingVideo,
+  );
   const { uploadVideo, isUploading } = useBunnyUpload();
 
   const [unitId, setUnitId] = useState<string>(lesson.unitId);
@@ -57,6 +76,93 @@ export function LessonEditPanel({
   const [showUploader, setShowUploader] = useState(false);
   const [currentVideoId, setCurrentVideoId] = useState(lesson.videoId);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+
+  // Video ID lookup states
+  const [showVideoIdInput, setShowVideoIdInput] = useState(false);
+  const [videoIdInput, setVideoIdInput] = useState("");
+  const [fetchedVideoInfo, setFetchedVideoInfo] = useState<VideoInfo | null>(
+    null,
+  );
+  const [isFetchingVideo, setIsFetchingVideo] = useState(false);
+
+  // Extract video ID from URL or direct ID
+  const extractVideoId = (input: string): string => {
+    // If it's a URL, try to extract the video ID
+    if (input.includes("/")) {
+      // Match patterns like: /video-id/ or /video-id.m3u8 or video-id at end
+      const match = input.match(/\/([a-f0-9-]{36})(?:\/|\.m3u8|$)/i);
+      if (match) {
+        return match[1];
+      }
+    }
+    // Return as-is if it looks like a GUID
+    return input.trim();
+  };
+
+  const handleFetchVideoInfo = async () => {
+    if (!videoIdInput.trim()) {
+      showError("Insira um ID ou URL do vídeo", "Campo vazio");
+      return;
+    }
+
+    const extractedId = extractVideoId(videoIdInput);
+    setIsFetchingVideo(true);
+
+    try {
+      const info = await fetchVideoInfo({ videoId: extractedId });
+      setFetchedVideoInfo(info as VideoInfo);
+
+      toast({
+        title: "✅ Vídeo encontrado!",
+        description: info.existsInDatabase
+          ? "Vídeo já está registrado no sistema."
+          : "Vídeo encontrado no Bunny. Será registrado ao salvar.",
+      });
+    } catch (err) {
+      setFetchedVideoInfo(null);
+      showError(
+        err instanceof Error ? err.message : "Erro ao buscar vídeo",
+        "Erro ao buscar vídeo",
+      );
+    } finally {
+      setIsFetchingVideo(false);
+    }
+  };
+
+  const handleLinkVideo = async () => {
+    if (!fetchedVideoInfo || !user?.id) return;
+
+    try {
+      // If video is not in database, register it
+      if (!fetchedVideoInfo.existsInDatabase) {
+        await registerExistingVideo({
+          videoId: fetchedVideoInfo.videoId,
+          createdBy: user.id,
+        });
+      }
+
+      setCurrentVideoId(fetchedVideoInfo.videoId);
+      setShowVideoIdInput(false);
+      setVideoIdInput("");
+      setFetchedVideoInfo(null);
+
+      toast({
+        title: "✅ Vídeo vinculado!",
+        description: "Clique em 'Salvar Alterações' para confirmar.",
+      });
+    } catch (err) {
+      showError(
+        err instanceof Error ? err.message : "Erro ao vincular vídeo",
+        "Erro ao vincular vídeo",
+      );
+    }
+  };
+
+  const handleCancelVideoIdInput = () => {
+    setShowVideoIdInput(false);
+    setVideoIdInput("");
+    setFetchedVideoInfo(null);
+  };
 
   const video = useQuery(
     api.videos.getByVideoId,
@@ -75,6 +181,12 @@ export function LessonEditPanel({
     setDescription(lesson.description);
     setThumbnailUrl(lesson.thumbnailUrl || "");
     setCurrentVideoId(lesson.videoId);
+    // Reset video ID input states
+    setShowVideoIdInput(false);
+    setVideoIdInput("");
+    setFetchedVideoInfo(null);
+    setShowUploader(false);
+    setUploadFile(null);
   }, [lesson]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -97,9 +209,15 @@ export function LessonEditPanel({
 
   const handleRemoveVideo = () => {
     showConfirm(
-      "Tem certeza que deseja remover o vídeo desta aula?",
+      "Tem certeza que deseja remover o vídeo desta aula? O vídeo será permanentemente excluído do sistema.",
       async () => {
         try {
+          // First, delete video from Bunny CDN and Convex database
+          if (currentVideoId) {
+            await deleteVideoFromBunny({ videoId: currentVideoId });
+          }
+
+          // Then, update the lesson to clear the videoId reference
           await updateLesson({
             id: lesson._id,
             unitId: unitId as Id<"units">,
@@ -115,7 +233,7 @@ export function LessonEditPanel({
           setCurrentVideoId(undefined);
           toast({
             title: "Sucesso",
-            description: "Vídeo removido da aula com sucesso!",
+            description: "Vídeo excluído permanentemente com sucesso!",
           });
         } catch (error) {
           showError(
@@ -124,7 +242,7 @@ export function LessonEditPanel({
           );
         }
       },
-      "Remover vídeo",
+      "Excluir vídeo",
     );
   };
 
@@ -264,7 +382,7 @@ export function LessonEditPanel({
             {/* Video Management Section */}
             <div className="space-y-3 pt-4 ">
               <Label>Gerenciar Vídeo</Label>
-              {currentVideoId && !showUploader ? (
+              {currentVideoId && !showUploader && !showVideoIdInput ? (
                 <div className="space-y-2">
                   {video === undefined ? (
                     <div className="flex items-center gap-2 p-3 rounded-lg bg-gray-50">
@@ -321,6 +439,102 @@ export function LessonEditPanel({
                     </div>
                   )}
                 </div>
+              ) : showVideoIdInput ? (
+                <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium">
+                      Vincular Vídeo por ID
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                      Cole o ID ou URL do vídeo do Bunny para vincular
+                      automaticamente.
+                    </p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Input
+                      value={videoIdInput}
+                      onChange={(e) => setVideoIdInput(e.target.value)}
+                      disabled={isFetchingVideo}
+                      placeholder="Ex: abc123-def456... ou URL do vídeo"
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleFetchVideoInfo}
+                      disabled={isFetchingVideo || !videoIdInput.trim()}
+                    >
+                      {isFetchingVideo ? (
+                        <LoaderIcon className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <SearchIcon className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Fetched Video Info Display */}
+                  {fetchedVideoInfo && (
+                    <div
+                      className={`flex items-center gap-3 p-3 rounded-lg border ${
+                        fetchedVideoInfo.status === "ready"
+                          ? "bg-green-50 border-green-200"
+                          : fetchedVideoInfo.status === "processing"
+                            ? "bg-yellow-50 border-yellow-200"
+                            : fetchedVideoInfo.status === "failed"
+                              ? "bg-red-50 border-red-200"
+                              : "bg-gray-50 border-gray-200"
+                      }`}
+                    >
+                      {fetchedVideoInfo.status === "ready" ? (
+                        <CheckCircleIcon className="h-5 w-5 text-green-600 flex-shrink-0" />
+                      ) : fetchedVideoInfo.status === "failed" ? (
+                        <XCircleIcon className="h-5 w-5 text-red-600 flex-shrink-0" />
+                      ) : (
+                        <LoaderIcon className="h-5 w-5 text-yellow-600 animate-spin flex-shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {fetchedVideoInfo.title || "Sem título"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Status:{" "}
+                          {fetchedVideoInfo.status === "ready"
+                            ? "Pronto"
+                            : fetchedVideoInfo.status === "processing"
+                              ? "Processando"
+                              : fetchedVideoInfo.status === "uploading"
+                                ? "Enviando"
+                                : "Falhou"}
+                          {fetchedVideoInfo.duration &&
+                            ` • ${Math.floor(fetchedVideoInfo.duration / 60)}min`}
+                          {!fetchedVideoInfo.existsInDatabase &&
+                            " • Novo no sistema"}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    {fetchedVideoInfo && (
+                      <Button
+                        type="button"
+                        onClick={handleLinkVideo}
+                        className="flex-1"
+                      >
+                        <LinkIcon className="h-4 w-4 mr-2" />
+                        Vincular Este Vídeo
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleCancelVideoIdInput}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
               ) : showUploader ? (
                 <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
                   <div className="space-y-2">
@@ -375,15 +589,26 @@ export function LessonEditPanel({
                   </div>
                 </div>
               ) : (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowUploader(true)}
-                  className="w-full"
-                >
-                  <UploadIcon className="h-4 w-4 mr-2" />
-                  Fazer Upload de Vídeo
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowUploader(true)}
+                    className="flex-1"
+                  >
+                    <UploadIcon className="h-4 w-4 mr-2" />
+                    Upload de Vídeo
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowVideoIdInput(true)}
+                    className="flex-1"
+                  >
+                    <LinkIcon className="h-4 w-4 mr-2" />
+                    Vincular por ID
+                  </Button>
+                </div>
               )}
             </div>
           </div>

@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { paginationOptsValidator } from "convex/server";
 
 /**
  * Submit feedback for a lesson
@@ -63,5 +64,53 @@ export const getUserFeedback = query({
       .first();
 
     return feedback || null;
+  },
+});
+
+/**
+ * Get all feedback with user and lesson information (admin only) - Paginated
+ */
+export const getAllFeedbackWithDetails = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    const paginatedFeedbacks = await ctx.db
+      .query("lessonFeedback")
+      .order("desc")
+      .paginate(args.paginationOpts);
+
+    const feedbackWithDetails = await Promise.all(
+      paginatedFeedbacks.page.map(async (feedback) => {
+        const user = await ctx.db
+          .query("users")
+          .withIndex("by_clerkUserId", (q) =>
+            q.eq("clerkUserId", feedback.userId),
+          )
+          .first();
+
+        const lesson = await ctx.db.get(feedback.lessonId);
+        const unit = await ctx.db.get(feedback.unitId);
+
+        return {
+          _id: feedback._id,
+          _creationTime: feedback._creationTime,
+          userId: feedback.userId,
+          lessonId: feedback.lessonId,
+          unitId: feedback.unitId,
+          feedback: feedback.feedback,
+          createdAt: feedback.createdAt,
+          userName: user
+            ? `${user.firstName} ${user.lastName}`
+            : "Usuário desconhecido",
+          userEmail: user?.email || "N/A",
+          lessonTitle: lesson?.title || "Aula não encontrada",
+          unitTitle: unit?.title || "Unidade não encontrada",
+        };
+      }),
+    );
+
+    return {
+      ...paginatedFeedbacks,
+      page: feedbackWithDetails,
+    };
   },
 });

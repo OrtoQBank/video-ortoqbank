@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { paginationOptsValidator } from "convex/server";
 
 /**
  * Submit or update rating for a lesson
@@ -88,6 +89,54 @@ export const getLessonAverageRating = query({
     return {
       average: Math.round(average * 10) / 10, // Round to 1 decimal
       count: ratings.length,
+    };
+  },
+});
+
+/**
+ * Get all ratings with user and lesson information (admin only) - Paginated
+ */
+export const getAllRatingsWithDetails = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    const paginatedRatings = await ctx.db
+      .query("lessonRatings")
+      .order("desc")
+      .paginate(args.paginationOpts);
+
+    const ratingsWithDetails = await Promise.all(
+      paginatedRatings.page.map(async (rating) => {
+        const user = await ctx.db
+          .query("users")
+          .withIndex("by_clerkUserId", (q) =>
+            q.eq("clerkUserId", rating.userId),
+          )
+          .first();
+
+        const lesson = await ctx.db.get(rating.lessonId);
+        const unit = await ctx.db.get(rating.unitId);
+
+        return {
+          _id: rating._id,
+          _creationTime: rating._creationTime,
+          userId: rating.userId,
+          lessonId: rating.lessonId,
+          unitId: rating.unitId,
+          rating: rating.rating,
+          createdAt: rating.createdAt,
+          userName: user
+            ? `${user.firstName} ${user.lastName}`
+            : "Usuário desconhecido",
+          userEmail: user?.email || "N/A",
+          lessonTitle: lesson?.title || "Aula não encontrada",
+          unitTitle: unit?.title || "Unidade não encontrada",
+        };
+      }),
+    );
+
+    return {
+      ...paginatedRatings,
+      page: ratingsWithDetails,
     };
   },
 });

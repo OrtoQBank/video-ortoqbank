@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { paginationOptsValidator } from "convex/server";
 
 /**
  * Submit feedback for a lesson
@@ -67,33 +68,18 @@ export const getUserFeedback = query({
 });
 
 /**
- * Get all feedback with user and lesson information (admin only)
+ * Get all feedback with user and lesson information (admin only) - Paginated
  */
 export const getAllFeedbackWithDetails = query({
-  args: {},
-  returns: v.array(
-    v.object({
-      _id: v.id("lessonFeedback"),
-      _creationTime: v.number(),
-      userId: v.string(),
-      lessonId: v.id("lessons"),
-      unitId: v.id("units"),
-      feedback: v.string(),
-      createdAt: v.number(),
-      userName: v.string(),
-      userEmail: v.string(),
-      lessonTitle: v.string(),
-      unitTitle: v.string(),
-    }),
-  ),
-  handler: async (ctx) => {
-    const feedbacks = await ctx.db
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    const paginatedFeedbacks = await ctx.db
       .query("lessonFeedback")
       .order("desc")
-      .collect();
+      .paginate(args.paginationOpts);
 
     const feedbackWithDetails = await Promise.all(
-      feedbacks.map(async (feedback) => {
+      paginatedFeedbacks.page.map(async (feedback) => {
         const user = await ctx.db
           .query("users")
           .withIndex("by_clerkUserId", (q) =>
@@ -122,6 +108,9 @@ export const getAllFeedbackWithDetails = query({
       }),
     );
 
-    return feedbackWithDetails;
+    return {
+      ...paginatedFeedbacks,
+      page: feedbackWithDetails,
+    };
   },
 });

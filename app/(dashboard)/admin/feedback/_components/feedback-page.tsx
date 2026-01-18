@@ -3,7 +3,8 @@
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useQuery } from "convex/react";
+import { Button } from "@/components/ui/button";
+import { usePaginatedQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { MessageSquare, Star } from "lucide-react";
 import { FeedbackList } from "./feedback-list";
@@ -11,8 +12,17 @@ import { RatingsList } from "./ratings-list";
 
 export function FeedbackPage() {
   const { state } = useSidebar();
-  const feedbacks = useQuery(api.feedback.getAllFeedbackWithDetails);
-  const ratings = useQuery(api.ratings.getAllRatingsWithDetails);
+  const {
+    results: feedbacks,
+    status: feedbackStatus,
+    loadMore: loadMoreFeedbacks,
+  } = usePaginatedQuery(api.feedback.getAllFeedbackWithDetails, {}, { initialNumItems: 10 });
+
+  const {
+    results: ratings,
+    status: ratingsStatus,
+    loadMore: loadMoreRatings,
+  } = usePaginatedQuery(api.ratings.getAllRatingsWithDetails, {}, { initialNumItems: 10 });
 
   return (
     <div className="min-h-screen relative">
@@ -43,11 +53,11 @@ export function FeedbackPage() {
             <TabsList className="grid w-full max-w-md grid-cols-2">
               <TabsTrigger value="feedback" className="gap-2">
                 <MessageSquare className="h-4 w-4" />
-                Feedbacks ({feedbacks?.length || 0})
+                Feedbacks
               </TabsTrigger>
               <TabsTrigger value="ratings" className="gap-2">
                 <Star className="h-4 w-4" />
-                Avaliações ({ratings?.length || 0})
+                Avaliações
               </TabsTrigger>
             </TabsList>
 
@@ -60,16 +70,33 @@ export function FeedbackPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {!feedbacks ? (
+                  {feedbackStatus === "LoadingFirstPage" ? (
                     <div className="text-center py-8 text-muted-foreground">
                       Carregando feedbacks...
                     </div>
-                  ) : feedbacks.length === 0 ? (
+                  ) : !feedbacks || feedbacks.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       Nenhum feedback encontrado
                     </div>
                   ) : (
-                    <FeedbackList feedbacks={feedbacks} />
+                    <>
+                      <FeedbackList feedbacks={feedbacks} />
+                      {feedbackStatus === "CanLoadMore" && (
+                        <div className="flex justify-center mt-6">
+                          <Button
+                            onClick={() => loadMoreFeedbacks(10)}
+                            variant="outline"
+                          >
+                            Carregar mais
+                          </Button>
+                        </div>
+                      )}
+                      {feedbackStatus === "LoadingMore" && (
+                        <div className="text-center py-4 text-muted-foreground">
+                          Carregando mais...
+                        </div>
+                      )}
+                    </>
                   )}
                 </CardContent>
               </Card>
@@ -84,16 +111,33 @@ export function FeedbackPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {!ratings ? (
+                  {ratingsStatus === "LoadingFirstPage" ? (
                     <div className="text-center py-8 text-muted-foreground">
                       Carregando avaliações...
                     </div>
-                  ) : ratings.length === 0 ? (
+                  ) : !ratings || ratings.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       Nenhuma avaliação encontrada
                     </div>
                   ) : (
-                    <RatingsList ratings={ratings} />
+                    <>
+                      <RatingsList ratings={ratings} />
+                      {ratingsStatus === "CanLoadMore" && (
+                        <div className="flex justify-center mt-6">
+                          <Button
+                            onClick={() => loadMoreRatings(10)}
+                            variant="outline"
+                          >
+                            Carregar mais
+                          </Button>
+                        </div>
+                      )}
+                      {ratingsStatus === "LoadingMore" && (
+                        <div className="text-center py-4 text-muted-foreground">
+                          Carregando mais...
+                        </div>
+                      )}
+                    </>
                   )}
                 </CardContent>
               </Card>

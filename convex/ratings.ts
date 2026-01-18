@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { paginationOptsValidator } from "convex/server";
 
 /**
  * Submit or update rating for a lesson
@@ -93,30 +94,18 @@ export const getLessonAverageRating = query({
 });
 
 /**
- * Get all ratings with user and lesson information (admin only)
+ * Get all ratings with user and lesson information (admin only) - Paginated
  */
 export const getAllRatingsWithDetails = query({
-  args: {},
-  returns: v.array(
-    v.object({
-      _id: v.id("lessonRatings"),
-      _creationTime: v.number(),
-      userId: v.string(),
-      lessonId: v.id("lessons"),
-      unitId: v.id("units"),
-      rating: v.number(),
-      createdAt: v.number(),
-      userName: v.string(),
-      userEmail: v.string(),
-      lessonTitle: v.string(),
-      unitTitle: v.string(),
-    }),
-  ),
-  handler: async (ctx) => {
-    const ratings = await ctx.db.query("lessonRatings").order("desc").collect();
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    const paginatedRatings = await ctx.db
+      .query("lessonRatings")
+      .order("desc")
+      .paginate(args.paginationOpts);
 
     const ratingsWithDetails = await Promise.all(
-      ratings.map(async (rating) => {
+      paginatedRatings.page.map(async (rating) => {
         const user = await ctx.db
           .query("users")
           .withIndex("by_clerkUserId", (q) =>
@@ -145,6 +134,9 @@ export const getAllRatingsWithDetails = query({
       }),
     );
 
-    return ratingsWithDetails;
+    return {
+      ...paginatedRatings,
+      page: ratingsWithDetails,
+    };
   },
 });

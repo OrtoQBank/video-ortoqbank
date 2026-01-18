@@ -16,13 +16,21 @@ export function FeedbackPage() {
     results: feedbacks,
     status: feedbackStatus,
     loadMore: loadMoreFeedbacks,
-  } = usePaginatedQuery(api.feedback.getAllFeedbackWithDetails, {}, { initialNumItems: 10 });
+  } = usePaginatedQuery(
+    api.feedback.getAllFeedbackWithDetails,
+    {},
+    { initialNumItems: 10 },
+  );
 
   const {
     results: ratings,
     status: ratingsStatus,
     loadMore: loadMoreRatings,
-  } = usePaginatedQuery(api.ratings.getAllRatingsWithDetails, {}, { initialNumItems: 10 });
+  } = usePaginatedQuery(
+    api.ratings.getAllRatingsWithDetails,
+    {},
+    { initialNumItems: 10 },
+  );
 
   return (
     <div className="min-h-screen relative">

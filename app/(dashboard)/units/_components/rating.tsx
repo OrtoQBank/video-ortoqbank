@@ -6,7 +6,11 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
-import { useTenantMutation, useTenantQuery, useTenantReady } from "@/hooks/use-tenant-convex";
+import {
+  useTenantMutation,
+  useTenantQuery,
+  useTenantReady,
+} from "@/hooks/use-tenant-convex";
 
 interface RatingProps {
   userId: string;
@@ -53,7 +57,8 @@ export function Rating({ userId, lessonId, unitId }: RatingProps) {
   };
 
   const handleConfirmRating = async () => {
-    if (!userId || !lessonId || !unitId || !displayedRating || !isTenantReady) return;
+    if (!userId || !lessonId || !unitId || !displayedRating || !isTenantReady)
+      return;
     try {
       await submitRating({
         userId,

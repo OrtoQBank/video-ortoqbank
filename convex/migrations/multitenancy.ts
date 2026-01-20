@@ -35,7 +35,9 @@ export const createDefaultTenant = internalMutation({
       .unique();
 
     if (existing) {
-      console.log(`Tenant "${args.slug}" already exists with ID: ${existing._id}`);
+      console.log(
+        `Tenant "${args.slug}" already exists with ID: ${existing._id}`,
+      );
       return existing._id;
     }
 
@@ -63,9 +65,7 @@ export const migrateCategories = internalMutation({
     const batchSize = args.batchSize || 100;
 
     // Get categories without tenantId
-    const categories = await ctx.db
-      .query("categories")
-      .take(batchSize);
+    const categories = await ctx.db.query("categories").take(batchSize);
 
     let migrated = 0;
     let skipped = 0;
@@ -280,7 +280,7 @@ export const createUserMemberships = internalMutation({
       const existing = await ctx.db
         .query("tenantMemberships")
         .withIndex("by_userId_and_tenantId", (q) =>
-          q.eq("userId", user._id).eq("tenantId", args.tenantId)
+          q.eq("userId", user._id).eq("tenantId", args.tenantId),
         )
         .unique();
 
@@ -290,9 +290,10 @@ export const createUserMemberships = internalMutation({
       }
 
       // Determine role: admins become tenant admins
-      const role = user.role === "admin" || user.role === "superadmin" 
-        ? "admin" as const 
-        : "member" as const;
+      const role =
+        user.role === "admin" || user.role === "superadmin"
+          ? ("admin" as const)
+          : ("member" as const);
 
       await ctx.db.insert("tenantMemberships", {
         userId: user._id,
@@ -683,13 +684,17 @@ export const runFullMigration = mutation({
 
     // This is a placeholder - the actual migration should be run via
     // internal mutations scheduled from the dashboard or CLI
-    console.log(`Migration requested for tenant: ${args.tenantName} (${args.tenantSlug})`);
-    console.log("Run internal migrations via Convex dashboard or npx convex run");
+    console.log(
+      `Migration requested for tenant: ${args.tenantName} (${args.tenantSlug})`,
+    );
+    console.log(
+      "Run internal migrations via Convex dashboard or npx convex run",
+    );
 
     return {
       message: "Migration must be run via internal mutations",
       instructions: [
-        "1. npx convex run migrations/multitenancy:createDefaultTenant --args '{\"name\":\"OrtoQBank\",\"slug\":\"app\"}'",
+        '1. npx convex run migrations/multitenancy:createDefaultTenant --args \'{"name":"OrtoQBank","slug":"app"}\'',
         "2. Use the returned tenant ID for subsequent migrations",
         "3. Run each migrate* function with the tenant ID",
       ],

@@ -20,7 +20,7 @@ export const list = query({
     const categories = await ctx.db
       .query("categories")
       .withIndex("by_tenantId_and_position", (q) =>
-        q.eq("tenantId", args.tenantId)
+        q.eq("tenantId", args.tenantId),
       )
       .order("asc")
       .collect();
@@ -38,7 +38,7 @@ export const listPublished = query({
     const categories = await ctx.db
       .query("categories")
       .withIndex("by_tenantId_and_isPublished", (q) =>
-        q.eq("tenantId", args.tenantId).eq("isPublished", true)
+        q.eq("tenantId", args.tenantId).eq("isPublished", true),
       )
       .collect();
 
@@ -70,7 +70,7 @@ export const getBySlug = query({
     const category = await ctx.db
       .query("categories")
       .withIndex("by_tenantId_and_slug", (q) =>
-        q.eq("tenantId", args.tenantId).eq("slug", args.slug)
+        q.eq("tenantId", args.tenantId).eq("slug", args.slug),
       )
       .unique();
 
@@ -119,7 +119,7 @@ export const getCascadeDeleteInfo = query({
  */
 async function getNextPosition(
   ctx: MutationCtx,
-  tenantId: Id<"tenants">
+  tenantId: Id<"tenants">,
 ): Promise<number> {
   // Use tenant-specific counter ID
   const COUNTER_ID = `tenant_${tenantId}`;
@@ -166,7 +166,7 @@ async function getNextPosition(
 
     if (!counter) {
       throw new Error(
-        "Failed to retrieve position counter after initialization"
+        "Failed to retrieve position counter after initialization",
       );
     }
   }
@@ -227,7 +227,7 @@ export const create = mutation({
 
     if (slug.length < 3) {
       throw new Error(
-        "Não foi possível gerar um slug válido a partir do título"
+        "Não foi possível gerar um slug válido a partir do título",
       );
     }
 
@@ -235,7 +235,7 @@ export const create = mutation({
     const existing = await ctx.db
       .query("categories")
       .withIndex("by_tenantId_and_slug", (q) =>
-        q.eq("tenantId", args.tenantId).eq("slug", slug)
+        q.eq("tenantId", args.tenantId).eq("slug", slug),
       )
       .first();
 
@@ -261,7 +261,7 @@ export const create = mutation({
     const insertedCategory = await ctx.db.get(categoryId);
     if (!insertedCategory || insertedCategory.position !== nextPosition) {
       throw new Error(
-        "Failed to verify category insertion with expected position"
+        "Failed to verify category insertion with expected position",
       );
     }
 
@@ -314,7 +314,7 @@ export const update = mutation({
 
     if (slug.length < 3) {
       throw new Error(
-        "Não foi possível gerar um slug válido a partir do título"
+        "Não foi possível gerar um slug válido a partir do título",
       );
     }
 
@@ -322,7 +322,7 @@ export const update = mutation({
     const existing = await ctx.db
       .query("categories")
       .withIndex("by_tenantId_and_slug", (q) =>
-        q.eq("tenantId", args.tenantId).eq("slug", slug)
+        q.eq("tenantId", args.tenantId).eq("slug", slug),
       )
       .first();
 
@@ -421,7 +421,7 @@ export const reorder = mutation({
       v.object({
         id: v.id("categories"),
         position: v.number(),
-      })
+      }),
     ),
   },
   handler: async (ctx, args) => {

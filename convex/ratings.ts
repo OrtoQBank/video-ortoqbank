@@ -28,12 +28,12 @@ export const submitRating = mutation({
     const existingRatings = await ctx.db
       .query("lessonRatings")
       .withIndex("by_tenantId_and_lessonId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("lessonId", args.lessonId)
+        q.eq("tenantId", args.tenantId).eq("lessonId", args.lessonId),
       )
       .collect();
 
     const existingRating = existingRatings.find(
-      (r) => r.userId === args.userId
+      (r) => r.userId === args.userId,
     );
 
     if (existingRating) {
@@ -71,7 +71,7 @@ export const getUserRating = query({
     const ratings = await ctx.db
       .query("lessonRatings")
       .withIndex("by_tenantId_and_lessonId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("lessonId", args.lessonId)
+        q.eq("tenantId", args.tenantId).eq("lessonId", args.lessonId),
       )
       .collect();
 
@@ -92,7 +92,7 @@ export const getLessonAverageRating = query({
     const ratings = await ctx.db
       .query("lessonRatings")
       .withIndex("by_tenantId_and_lessonId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("lessonId", args.lessonId)
+        q.eq("tenantId", args.tenantId).eq("lessonId", args.lessonId),
       )
       .collect();
 
@@ -132,7 +132,7 @@ export const getAllRatingsWithDetails = query({
       : 0;
     const ratings = allRatings.slice(
       numToSkip,
-      numToSkip + (args.paginationOpts.numItems || 10)
+      numToSkip + (args.paginationOpts.numItems || 10),
     );
 
     const ratingsWithDetails = await Promise.all(
@@ -140,7 +140,7 @@ export const getAllRatingsWithDetails = query({
         const user = await ctx.db
           .query("users")
           .withIndex("by_clerkUserId", (q) =>
-            q.eq("clerkUserId", rating.userId)
+            q.eq("clerkUserId", rating.userId),
           )
           .first();
 
@@ -162,7 +162,7 @@ export const getAllRatingsWithDetails = query({
           lessonTitle: lesson?.title || "Aula não encontrada",
           unitTitle: unit?.title || "Unidade não encontrada",
         };
-      })
+      }),
     );
 
     const hasMore = numToSkip + ratings.length < allRatings.length;

@@ -42,10 +42,10 @@ interface TenantContextType {
   tenantName: string | null;
   tenantLogoUrl: string | null;
   tenantPrimaryColor: string | null;
-  
+
   // Static config from tenants.config.ts
   config: TenantConfig | null;
-  
+
   // Status
   isLoading: boolean;
   error: string | null;
@@ -73,7 +73,7 @@ interface TenantProviderProps {
  */
 function getTenantSlugFromCookie(): string | null {
   if (typeof document === "undefined") return null;
-  
+
   const cookies = document.cookie.split(";");
   for (const cookie of cookies) {
     const [name, value] = cookie.trim().split("=");
@@ -89,9 +89,9 @@ function getTenantSlugFromCookie(): string | null {
  */
 function getTenantSlugFromLocation(): string {
   if (typeof window === "undefined") return DEFAULT_TENANT_SLUG;
-  
+
   const hostname = window.location.hostname;
-  
+
   // Check for tenant override in URL params (development only)
   if (process.env.NODE_ENV === "development") {
     const params = new URLSearchParams(window.location.search);
@@ -100,19 +100,22 @@ function getTenantSlugFromLocation(): string {
       return override;
     }
   }
-  
+
   // Try to extract subdomain
   const subdomain = extractSubdomain(hostname);
   if (subdomain && isValidTenantSlug(subdomain)) {
     return subdomain;
   }
-  
+
   return DEFAULT_TENANT_SLUG;
 }
 
-export function TenantProvider({ children, tenantSlug: propSlug }: TenantProviderProps) {
+export function TenantProvider({
+  children,
+  tenantSlug: propSlug,
+}: TenantProviderProps) {
   const [slug, setSlug] = useState<TenantSlug | null>(
-    propSlug && isValidTenantSlug(propSlug) ? propSlug : null
+    propSlug && isValidTenantSlug(propSlug) ? propSlug : null,
   );
   const [error, setError] = useState<string | null>(null);
 
@@ -145,10 +148,7 @@ export function TenantProvider({ children, tenantSlug: propSlug }: TenantProvide
   }, [propSlug]);
 
   // Fetch tenant data from Convex (for tenantId)
-  const tenant = useQuery(
-    api.tenants.getBySlug,
-    slug ? { slug } : "skip"
-  );
+  const tenant = useQuery(api.tenants.getBySlug, slug ? { slug } : "skip");
 
   // Handle tenant not found or suspended
   useEffect(() => {
@@ -170,11 +170,12 @@ export function TenantProvider({ children, tenantSlug: propSlug }: TenantProvide
     tenantSlug: slug,
     tenantName: tenant?.name || staticConfig?.branding.name || null,
     tenantLogoUrl: tenant?.logoUrl || staticConfig?.branding.logo || null,
-    tenantPrimaryColor: tenant?.primaryColor || staticConfig?.branding.primaryColor || null,
-    
+    tenantPrimaryColor:
+      tenant?.primaryColor || staticConfig?.branding.primaryColor || null,
+
     // Static config
     config: staticConfig,
-    
+
     // Status
     isLoading: tenant === undefined && slug !== null,
     error,

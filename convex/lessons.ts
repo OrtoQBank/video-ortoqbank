@@ -68,7 +68,7 @@ export const listByUnitPaginated = query({
     return await ctx.db
       .query("lessons")
       .withIndex("by_tenantId_and_unitId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("unitId", args.unitId)
+        q.eq("tenantId", args.tenantId).eq("unitId", args.unitId),
       )
       .paginate(args.paginationOpts);
   },
@@ -86,7 +86,7 @@ export const listByUnit = query({
     const lessons = await ctx.db
       .query("lessons")
       .withIndex("by_tenantId_and_unitId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("unitId", args.unitId)
+        q.eq("tenantId", args.tenantId).eq("unitId", args.unitId),
       )
       .take(100);
 
@@ -112,7 +112,7 @@ export const listByCategory = query({
     const lessons = await ctx.db
       .query("lessons")
       .withIndex("by_categoryId_and_order", (q) =>
-        q.eq("categoryId", args.categoryId)
+        q.eq("categoryId", args.categoryId),
       )
       .collect();
 
@@ -144,7 +144,7 @@ export const listPublishedByUnit = query({
     const lessons = await ctx.db
       .query("lessons")
       .withIndex("by_unitId_isPublished_order", (q) =>
-        q.eq("unitId", args.unitId).eq("isPublished", true)
+        q.eq("unitId", args.unitId).eq("isPublished", true),
       )
       .collect();
 
@@ -467,7 +467,7 @@ export const reorder = mutation({
       v.object({
         id: v.id("lessons"),
         order_index: v.number(),
-      })
+      }),
     ),
   },
   handler: async (ctx, args) => {
@@ -522,7 +522,7 @@ export const backfillCategoryId = mutation({
       const unit = await ctx.db.get(lesson.unitId);
       if (!unit) {
         console.warn(
-          `Unit ${lesson.unitId} not found for lesson ${lesson._id}`
+          `Unit ${lesson.unitId} not found for lesson ${lesson._id}`,
         );
         skipped++;
         continue;
@@ -571,7 +571,7 @@ export const backfillLessonNumberCounter = mutation({
 
       const maxLessonNumber = lessons.reduce(
         (max, lesson) => Math.max(max, lesson.lessonNumber),
-        0
+        0,
       );
 
       await ctx.db.patch(unit._id, {

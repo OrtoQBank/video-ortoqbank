@@ -32,7 +32,7 @@ export const markLessonCompleted = mutation({
         q
           .eq("tenantId", args.tenantId)
           .eq("userId", args.userId)
-          .eq("lessonId", args.lessonId)
+          .eq("lessonId", args.lessonId),
       )
       .unique();
 
@@ -70,19 +70,19 @@ export const markLessonCompleted = mutation({
         q
           .eq("tenantId", args.tenantId)
           .eq("userId", args.userId)
-          .eq("unitId", lesson.unitId)
+          .eq("unitId", lesson.unitId),
       )
       .unique();
 
     const completedLessonsInUnit = await ctx.db
       .query("userProgress")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .collect();
 
     const lessonsInThisUnit = completedLessonsInUnit.filter(
-      (p) => p.unitId === lesson.unitId
+      (p) => p.unitId === lesson.unitId,
     );
     const completedCount = lessonsInThisUnit.filter((p) => p.completed).length;
     const progressPercent =
@@ -113,12 +113,12 @@ export const markLessonCompleted = mutation({
     const allCompletedLessons = await ctx.db
       .query("userProgress")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .collect();
 
     const totalCompletedCount = allCompletedLessons.filter(
-      (p) => p.completed
+      (p) => p.completed,
     ).length;
 
     // Get total lessons from aggregate
@@ -131,7 +131,7 @@ export const markLessonCompleted = mutation({
     const globalProgressDoc = await ctx.db
       .query("userGlobalProgress")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .unique();
 
@@ -183,7 +183,7 @@ export const markLessonIncomplete = mutation({
         q
           .eq("tenantId", args.tenantId)
           .eq("userId", args.userId)
-          .eq("lessonId", args.lessonId)
+          .eq("lessonId", args.lessonId),
       )
       .unique();
 
@@ -205,15 +205,15 @@ export const markLessonIncomplete = mutation({
       const completedLessonsInUnit = await ctx.db
         .query("userProgress")
         .withIndex("by_tenantId_and_userId", (q) =>
-          q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+          q.eq("tenantId", args.tenantId).eq("userId", args.userId),
         )
         .collect();
 
       const lessonsInThisUnit = completedLessonsInUnit.filter(
-        (p) => p.unitId === lesson.unitId
+        (p) => p.unitId === lesson.unitId,
       );
       const completedCount = lessonsInThisUnit.filter(
-        (p) => p.completed
+        (p) => p.completed,
       ).length;
       const progressPercent =
         unit.totalLessonVideos > 0
@@ -226,7 +226,7 @@ export const markLessonIncomplete = mutation({
           q
             .eq("tenantId", args.tenantId)
             .eq("userId", args.userId)
-            .eq("unitId", lesson.unitId)
+            .eq("unitId", lesson.unitId),
         )
         .unique();
 
@@ -243,12 +243,12 @@ export const markLessonIncomplete = mutation({
     const allCompletedLessons = await ctx.db
       .query("userProgress")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .collect();
 
     const totalCompletedCount = allCompletedLessons.filter(
-      (p) => p.completed
+      (p) => p.completed,
     ).length;
 
     // Get total lessons from aggregate
@@ -261,7 +261,7 @@ export const markLessonIncomplete = mutation({
     const globalProgressDoc = await ctx.db
       .query("userGlobalProgress")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .unique();
 
@@ -292,7 +292,7 @@ export const recalculateGlobalProgress = mutation({
     const allProgress = await ctx.db
       .query("userProgress")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .collect();
 
@@ -308,7 +308,7 @@ export const recalculateGlobalProgress = mutation({
     const globalProgressDoc = await ctx.db
       .query("userGlobalProgress")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .unique();
 
@@ -370,7 +370,7 @@ export const saveVideoProgress = mutation({
         q
           .eq("tenantId", args.tenantId)
           .eq("userId", args.userId)
-          .eq("lessonId", args.lessonId)
+          .eq("lessonId", args.lessonId),
       )
       .unique();
 
@@ -394,7 +394,7 @@ export const saveVideoProgress = mutation({
           ctx,
           args.tenantId,
           args.userId,
-          lesson.unitId
+          lesson.unitId,
         );
       }
     } else {
@@ -416,7 +416,7 @@ export const saveVideoProgress = mutation({
           ctx,
           args.tenantId,
           args.userId,
-          lesson.unitId
+          lesson.unitId,
         );
       }
     }

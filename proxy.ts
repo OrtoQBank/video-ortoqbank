@@ -114,7 +114,7 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
     // Log tenant detection for debugging
     if (process.env.NODE_ENV === "development") {
       console.log(
-        `[Tenant] Detected tenant: ${finalTenantSlug} (subdomain: ${subdomain || "none"}, host: ${hostname})`
+        `[Tenant] Detected tenant: ${finalTenantSlug} (subdomain: ${subdomain || "none"}, host: ${hostname})`,
       );
     }
   }

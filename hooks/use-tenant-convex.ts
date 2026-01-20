@@ -1,6 +1,11 @@
 "use client";
 
-import { useMutation, usePaginatedQuery, useQuery, useAction } from "convex/react";
+import {
+  useMutation,
+  usePaginatedQuery,
+  useQuery,
+  useAction,
+} from "convex/react";
 import { FunctionReference, FunctionReturnType } from "convex/server";
 import { useCallback, useMemo } from "react";
 
@@ -45,7 +50,7 @@ interface TenantQueryOptions {
 export function useTenantQuery<Query extends FunctionReference<"query">>(
   query: Query,
   args: QueryArgs,
-  options: TenantQueryOptions = {}
+  options: TenantQueryOptions = {},
 ): FunctionReturnType<Query> | undefined {
   const { tenantId, isLoading: isTenantLoading } = useTenant();
   const { requireTenant = true } = options;
@@ -104,7 +109,7 @@ interface TenantMutationOptions {
  * @returns A mutation function that auto-injects tenantId
  */
 export function useTenantMutation<
-  Mutation extends FunctionReference<"mutation">
+  Mutation extends FunctionReference<"mutation">,
 >(mutation: Mutation, options: TenantMutationOptions = {}) {
   const { tenantId } = useTenant();
   const baseMutation = useMutation(mutation);
@@ -112,11 +117,11 @@ export function useTenantMutation<
 
   const wrappedMutation = useCallback(
     async (
-      args: Omit<Parameters<typeof baseMutation>[0], "tenantId">
+      args: Omit<Parameters<typeof baseMutation>[0], "tenantId">,
     ): Promise<FunctionReturnType<Mutation>> => {
       if (requireTenant && !tenantId) {
         throw new Error(
-          "Tenant not available. Cannot perform mutation without tenant context."
+          "Tenant not available. Cannot perform mutation without tenant context.",
         );
       }
 
@@ -129,7 +134,7 @@ export function useTenantMutation<
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return baseMutation(argsWithTenant as any);
     },
-    [baseMutation, tenantId, requireTenant]
+    [baseMutation, tenantId, requireTenant],
   );
 
   return wrappedMutation;
@@ -163,7 +168,7 @@ interface TenantActionOptions {
  */
 export function useTenantAction<Action extends FunctionReference<"action">>(
   action: Action,
-  options: TenantActionOptions = {}
+  options: TenantActionOptions = {},
 ) {
   const { tenantId } = useTenant();
   const baseAction = useAction(action);
@@ -171,11 +176,11 @@ export function useTenantAction<Action extends FunctionReference<"action">>(
 
   const wrappedAction = useCallback(
     async (
-      args: Omit<Parameters<typeof baseAction>[0], "tenantId">
+      args: Omit<Parameters<typeof baseAction>[0], "tenantId">,
     ): Promise<FunctionReturnType<Action>> => {
       if (requireTenant && !tenantId) {
         throw new Error(
-          "Tenant not available. Cannot perform action without tenant context."
+          "Tenant not available. Cannot perform action without tenant context.",
         );
       }
 
@@ -188,7 +193,7 @@ export function useTenantAction<Action extends FunctionReference<"action">>(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return baseAction(argsWithTenant as any);
     },
-    [baseAction, tenantId, requireTenant]
+    [baseAction, tenantId, requireTenant],
   );
 
   return wrappedAction;
@@ -258,11 +263,11 @@ interface TenantPaginatedQueryOptions {
  * @returns The paginated query result with results, status, and loadMore
  */
 export function useTenantPaginatedQuery<
-  Query extends FunctionReference<"query">
+  Query extends FunctionReference<"query">,
 >(
   query: Query,
   args: Record<string, unknown>,
-  options: TenantPaginatedQueryOptions
+  options: TenantPaginatedQueryOptions,
 ) {
   const { tenantId, isLoading: isTenantLoading } = useTenant();
   const { initialNumItems, requireTenant = true } = options;
@@ -291,7 +296,9 @@ export function useTenantPaginatedQuery<
   }, [shouldSkip, JSON.stringify(args), tenantId]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const result = usePaginatedQuery(query, finalArgs as any, { initialNumItems });
+  const result = usePaginatedQuery(query, finalArgs as any, {
+    initialNumItems,
+  });
 
   // If we should skip, return empty results
   if (shouldSkip) {

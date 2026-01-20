@@ -1,9 +1,5 @@
 import { v } from "convex/values";
-import {
-  internalMutation,
-  mutation,
-  query,
-} from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import {
   getTenantBySlug,
   getTenantOrThrow,
@@ -35,7 +31,7 @@ export const getBySlug = query({
       primaryColor: v.optional(v.string()),
       status: v.union(v.literal("active"), v.literal("suspended")),
     }),
-    v.null()
+    v.null(),
   ),
   handler: async (ctx, args) => {
     const tenant = await getTenantBySlug(ctx, args.slug);
@@ -68,7 +64,7 @@ export const getById = query({
       status: v.union(v.literal("active"), v.literal("suspended")),
       createdAt: v.number(),
     }),
-    v.null()
+    v.null(),
   ),
   handler: async (ctx, args) => {
     const tenant = await ctx.db.get(args.tenantId);
@@ -101,7 +97,7 @@ export const list = query({
       primaryColor: v.optional(v.string()),
       status: v.union(v.literal("active"), v.literal("suspended")),
       createdAt: v.number(),
-    })
+    }),
   ),
   handler: async (ctx) => {
     // Require superadmin for listing all tenants
@@ -134,7 +130,7 @@ export const getMyTenants = query({
       logoUrl: v.optional(v.string()),
       role: v.union(v.literal("member"), v.literal("admin")),
       hasActiveAccess: v.boolean(),
-    })
+    }),
   ),
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
@@ -185,7 +181,7 @@ export const create = mutation({
     const slugRegex = /^[a-z0-9-]+$/;
     if (!slugRegex.test(args.slug)) {
       throw new Error(
-        "Slug must contain only lowercase letters, numbers, and hyphens"
+        "Slug must contain only lowercase letters, numbers, and hyphens",
       );
     }
 
@@ -312,7 +308,7 @@ export const listMembers = query({
       hasActiveAccess: v.boolean(),
       accessExpiresAt: v.optional(v.number()),
       joinedAt: v.number(),
-    })
+    }),
   ),
   handler: async (ctx, args) => {
     await requireTenantAdmin(ctx, args.tenantId);
@@ -360,7 +356,7 @@ export const addMember = mutation({
     const existing = await getUserTenantMembership(
       ctx,
       args.userId,
-      args.tenantId
+      args.tenantId,
     );
     if (existing) {
       throw new Error("User is already a member of this tenant");
@@ -535,7 +531,7 @@ export const addMemberInternal = internalMutation({
     const existing = await getUserTenantMembership(
       ctx,
       args.userId,
-      args.tenantId
+      args.tenantId,
     );
 
     if (existing) {
@@ -586,7 +582,7 @@ export const checkUserAccess = query({
     const membership = await getUserTenantMembership(
       ctx,
       user._id,
-      args.tenantId
+      args.tenantId,
     );
 
     return {

@@ -50,7 +50,7 @@ export const getFeedbackByLesson = query({
     const feedbacks = await ctx.db
       .query("lessonFeedback")
       .withIndex("by_tenantId_and_lessonId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("lessonId", args.lessonId)
+        q.eq("tenantId", args.tenantId).eq("lessonId", args.lessonId),
       )
       .order("desc")
       .collect();
@@ -72,7 +72,7 @@ export const getUserFeedback = query({
     const feedbacks = await ctx.db
       .query("lessonFeedback")
       .withIndex("by_tenantId_and_lessonId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("lessonId", args.lessonId)
+        q.eq("tenantId", args.tenantId).eq("lessonId", args.lessonId),
       )
       .collect();
 
@@ -103,7 +103,7 @@ export const getAllFeedbackWithDetails = query({
       : 0;
     const feedbacks = allFeedbacks.slice(
       numToSkip,
-      numToSkip + (args.paginationOpts.numItems || 10)
+      numToSkip + (args.paginationOpts.numItems || 10),
     );
 
     const feedbackWithDetails = await Promise.all(
@@ -111,7 +111,7 @@ export const getAllFeedbackWithDetails = query({
         const user = await ctx.db
           .query("users")
           .withIndex("by_clerkUserId", (q) =>
-            q.eq("clerkUserId", feedback.userId)
+            q.eq("clerkUserId", feedback.userId),
           )
           .first();
 
@@ -133,7 +133,7 @@ export const getAllFeedbackWithDetails = query({
           lessonTitle: lesson?.title || "Aula não encontrada",
           unitTitle: unit?.title || "Unidade não encontrada",
         };
-      })
+      }),
     );
 
     const hasMore = numToSkip + feedbacks.length < allFeedbacks.length;
@@ -141,7 +141,9 @@ export const getAllFeedbackWithDetails = query({
     return {
       page: feedbackWithDetails,
       isDone: !hasMore,
-      continueCursor: hasMore ? String(numToSkip + feedbacks.length) : undefined,
+      continueCursor: hasMore
+        ? String(numToSkip + feedbacks.length)
+        : undefined,
     };
   },
 });

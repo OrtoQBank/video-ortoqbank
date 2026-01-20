@@ -1,7 +1,10 @@
 "use client";
 
 import { SessionProvider } from "@/components/providers/session-provider";
-import { TenantProvider, useTenant } from "@/components/providers/tenant-provider";
+import {
+  TenantProvider,
+  useTenant,
+} from "@/components/providers/tenant-provider";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { MobileBottomNav } from "@/components/nav/mobile-bottom-nav";

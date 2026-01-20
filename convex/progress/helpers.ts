@@ -9,7 +9,7 @@ export async function updateUnitAndGlobalProgress(
   ctx: MutationCtx,
   tenantId: Id<"tenants">,
   userId: string,
-  unitId: Id<"units">
+  unitId: Id<"units">,
 ) {
   const now = Date.now();
 
@@ -19,13 +19,13 @@ export async function updateUnitAndGlobalProgress(
     const completedLessonsInUnit = await ctx.db
       .query("userProgress")
       .withIndex("by_tenantId_and_userId_and_lessonId", (q) =>
-        q.eq("tenantId", tenantId).eq("userId", userId)
+        q.eq("tenantId", tenantId).eq("userId", userId),
       )
       .collect();
 
     // Filter to this unit only
     const lessonsInThisUnit = completedLessonsInUnit.filter(
-      (p) => p.unitId === unitId
+      (p) => p.unitId === unitId,
     );
 
     const completedCount = lessonsInThisUnit.filter((p) => p.completed).length;
@@ -37,7 +37,7 @@ export async function updateUnitAndGlobalProgress(
     const unitProgressDoc = await ctx.db
       .query("unitProgress")
       .withIndex("by_tenantId_and_userId_and_unitId", (q) =>
-        q.eq("tenantId", tenantId).eq("userId", userId).eq("unitId", unitId)
+        q.eq("tenantId", tenantId).eq("userId", userId).eq("unitId", unitId),
       )
       .unique();
 
@@ -65,12 +65,12 @@ export async function updateUnitAndGlobalProgress(
   const allCompletedLessons = await ctx.db
     .query("userProgress")
     .withIndex("by_tenantId_and_userId", (q) =>
-      q.eq("tenantId", tenantId).eq("userId", userId)
+      q.eq("tenantId", tenantId).eq("userId", userId),
     )
     .collect();
 
   const totalCompletedCount = allCompletedLessons.filter(
-    (p) => p.completed
+    (p) => p.completed,
   ).length;
 
   // Get total lessons from aggregate (TODO: make this tenant-scoped in future)
@@ -83,7 +83,7 @@ export async function updateUnitAndGlobalProgress(
   const globalProgressDoc = await ctx.db
     .query("userGlobalProgress")
     .withIndex("by_tenantId_and_userId", (q) =>
-      q.eq("tenantId", tenantId).eq("userId", userId)
+      q.eq("tenantId", tenantId).eq("userId", userId),
     )
     .unique();
 

@@ -18,7 +18,7 @@ export const addView = mutation({
     action: v.union(
       v.literal("started"),
       v.literal("resumed"),
-      v.literal("completed")
+      v.literal("completed"),
     ),
   },
   handler: async (ctx, args) => {
@@ -56,7 +56,7 @@ export const clearOldViews = mutation({
     const allViews = await ctx.db
       .query("recentViews")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .order("desc")
       .collect();
@@ -80,7 +80,7 @@ export const clearAllViews = mutation({
     const views = await ctx.db
       .query("recentViews")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .collect();
 
@@ -104,7 +104,7 @@ export const getRecentViews = query({
     const views = await ctx.db
       .query("recentViews")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .order("desc")
       .take(limit);
@@ -125,7 +125,7 @@ export const getRecentViewsWithDetails = query({
     const allViews = await ctx.db
       .query("recentViews")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .order("desc")
       .take(50);
@@ -144,23 +144,23 @@ export const getRecentViewsWithDetails = query({
 
     // Batch 1: Get all lessons
     const lessons = await Promise.all(
-      uniqueViews.map((v) => ctx.db.get(v.lessonId))
+      uniqueViews.map((v) => ctx.db.get(v.lessonId)),
     );
     const validLessons = lessons.filter(
-      (l): l is NonNullable<typeof l> => l !== null
+      (l): l is NonNullable<typeof l> => l !== null,
     );
 
     // Batch 2: Get all units
     const units = await Promise.all(
-      validLessons.map((l) => ctx.db.get(l.unitId))
+      validLessons.map((l) => ctx.db.get(l.unitId)),
     );
     const validUnits = units.filter(
-      (u): u is NonNullable<typeof u> => u !== null
+      (u): u is NonNullable<typeof u> => u !== null,
     );
 
     // Batch 3: Get all categories
     const categories = await Promise.all(
-      validUnits.map((u) => ctx.db.get(u.categoryId))
+      validUnits.map((u) => ctx.db.get(u.categoryId)),
     );
 
     // Batch 4: Get all progress in parallel
@@ -172,10 +172,10 @@ export const getRecentViewsWithDetails = query({
             q
               .eq("tenantId", args.tenantId)
               .eq("userId", args.userId)
-              .eq("lessonId", v.lessonId)
+              .eq("lessonId", v.lessonId),
           )
-          .unique()
-      )
+          .unique(),
+      ),
     );
 
     // Build result
@@ -217,7 +217,7 @@ export const getLastViewForLesson = query({
     const views = await ctx.db
       .query("recentViews")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .order("desc")
       .collect();
@@ -236,7 +236,7 @@ export const getUniqueViewedLessonsCount = query({
     const views = await ctx.db
       .query("recentViews")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .take(100);
 

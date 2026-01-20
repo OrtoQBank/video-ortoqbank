@@ -69,9 +69,7 @@ export const checkUserHasTenantAccessByClerkId = query({
   async handler(ctx, args) {
     const user = await ctx.db
       .query("users")
-      .withIndex("by_clerkUserId", (q) =>
-        q.eq("clerkUserId", args.clerkUserId)
-      )
+      .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", args.clerkUserId))
       .unique();
 
     if (!user || user.status !== "active") return false;
@@ -85,7 +83,10 @@ export const checkUserHasTenantAccessByClerkId = query({
  */
 export const getTenantAccessDetails = query({
   args: { tenantId: v.id("tenants") },
-  async handler(ctx, args): Promise<{
+  async handler(
+    ctx,
+    args,
+  ): Promise<{
     hasAccess: boolean;
     role: "member" | "admin" | null;
     hasActiveAccess: boolean;
@@ -104,7 +105,11 @@ export const getTenantAccessDetails = query({
       };
     }
 
-    const membership = await getUserTenantMembership(ctx, user._id, args.tenantId);
+    const membership = await getUserTenantMembership(
+      ctx,
+      user._id,
+      args.tenantId,
+    );
 
     if (!membership) {
       return {
@@ -121,7 +126,7 @@ export const getTenantAccessDetails = query({
       const now = Date.now();
       if (membership.accessExpiresAt > now) {
         daysUntilExpiration = Math.ceil(
-          (membership.accessExpiresAt - now) / (24 * 60 * 60 * 1000)
+          (membership.accessExpiresAt - now) / (24 * 60 * 60 * 1000),
         );
       }
     }
@@ -168,9 +173,7 @@ export const checkUserHasVideoAccessByClerkId = query({
   async handler(ctx, args) {
     const user = await ctx.db
       .query("users")
-      .withIndex("by_clerkUserId", (q) =>
-        q.eq("clerkUserId", args.clerkUserId)
-      )
+      .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", args.clerkUserId))
       .unique();
 
     if (!user) return false;
@@ -214,7 +217,7 @@ export const getVideoAccessDetails = query({
 
       if (expiration > now) {
         daysUntilExpiration = Math.ceil(
-          (expiration - now) / (24 * 60 * 60 * 1000)
+          (expiration - now) / (24 * 60 * 60 * 1000),
         );
       }
     }
@@ -250,7 +253,7 @@ export const updatePayment = mutation({
       v.literal("pending"),
       v.literal("completed"),
       v.literal("failed"),
-      v.literal("refunded")
+      v.literal("refunded"),
     ),
     paymentDate: v.optional(v.number()),
     paymentId: v.optional(v.string()),
@@ -284,7 +287,11 @@ export const updateTenantAccess = mutation({
   async handler(ctx, args) {
     await requireTenantAdmin(ctx, args.tenantId);
 
-    const membership = await getUserTenantMembership(ctx, args.userId, args.tenantId);
+    const membership = await getUserTenantMembership(
+      ctx,
+      args.userId,
+      args.tenantId,
+    );
     if (!membership) {
       throw new Error("User is not a member of this tenant");
     }

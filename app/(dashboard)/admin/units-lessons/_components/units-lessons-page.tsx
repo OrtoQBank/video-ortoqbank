@@ -3,7 +3,11 @@
 import { useState, useMemo } from "react";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { api } from "@/convex/_generated/api";
-import { useTenantQuery, useTenantMutation, useTenantReady } from "@/hooks/use-tenant-convex";
+import {
+  useTenantQuery,
+  useTenantMutation,
+  useTenantReady,
+} from "@/hooks/use-tenant-convex";
 import { Button } from "@/components/ui/button";
 import { PlusIcon, Loader2 } from "lucide-react";
 import { Id, Doc } from "@/convex/_generated/dataModel";
@@ -507,7 +511,9 @@ export function UnitsLessonsPage() {
             </DialogDescription>
           </DialogHeader>
           <UnitForm
-            categories={selectedCategory ? [selectedCategory] : categories || []}
+            categories={
+              selectedCategory ? [selectedCategory] : categories || []
+            }
             onSuccess={() => setShowCreateUnitModal(false)}
           />
         </DialogContent>

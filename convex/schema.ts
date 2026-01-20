@@ -48,7 +48,11 @@ export default defineSchema({
     lastName: v.string(),
     imageUrl: v.optional(v.string()),
     onboardingCompleted: v.boolean(),
-    role: v.union(v.literal("user"), v.literal("admin"), v.literal("superadmin")),
+    role: v.union(
+      v.literal("user"),
+      v.literal("admin"),
+      v.literal("superadmin"),
+    ),
     status: v.union(
       v.literal("active"),
       v.literal("inactive"),
@@ -208,7 +212,11 @@ export default defineSchema({
     .index("by_userId_and_completed", ["userId", "completed"])
     .index("by_tenantId", ["tenantId"])
     .index("by_tenantId_and_userId", ["tenantId", "userId"])
-    .index("by_tenantId_and_userId_and_lessonId", ["tenantId", "userId", "lessonId"]),
+    .index("by_tenantId_and_userId_and_lessonId", [
+      "tenantId",
+      "userId",
+      "lessonId",
+    ]),
 
   // Aggregated progress per unit (for quick unit progress queries)
   unitProgress: defineTable({
@@ -226,7 +234,11 @@ export default defineSchema({
     .index("by_userId_and_progressPercent", ["userId", "progressPercent"])
     .index("by_tenantId", ["tenantId"])
     .index("by_tenantId_and_userId", ["tenantId", "userId"])
-    .index("by_tenantId_and_userId_and_unitId", ["tenantId", "userId", "unitId"]),
+    .index("by_tenantId_and_userId_and_unitId", [
+      "tenantId",
+      "userId",
+      "unitId",
+    ]),
 
   // Global user progress (for dashboard/home quick view)
   userGlobalProgress: defineTable({

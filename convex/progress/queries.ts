@@ -17,7 +17,7 @@ export const getLessonProgress = query({
         q
           .eq("tenantId", args.tenantId)
           .eq("userId", args.userId)
-          .eq("lessonId", args.lessonId)
+          .eq("lessonId", args.lessonId),
       )
       .unique();
 
@@ -41,7 +41,7 @@ export const getUnitProgress = query({
         q
           .eq("tenantId", args.tenantId)
           .eq("userId", args.userId)
-          .eq("unitId", args.unitId)
+          .eq("unitId", args.unitId),
       )
       .unique();
 
@@ -61,7 +61,7 @@ export const getGlobalProgress = query({
     const progress = await ctx.db
       .query("userGlobalProgress")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .unique();
 
@@ -82,7 +82,7 @@ export const getUnitLessonsProgress = query({
     const progress = await ctx.db
       .query("userProgress")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .collect();
 
@@ -103,7 +103,7 @@ export const getAllUnitProgress = query({
     const progress = await ctx.db
       .query("unitProgress")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .collect();
 
@@ -123,7 +123,7 @@ export const getCompletedLessons = query({
     const progress = await ctx.db
       .query("userProgress")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .collect();
 
@@ -146,7 +146,7 @@ export const getCompletedPublishedLessonsCount = query({
     const globalProgress = await ctx.db
       .query("userGlobalProgress")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .unique();
 
@@ -183,7 +183,7 @@ export const getUnitProgressByCategory = query({
     const allProgress = await ctx.db
       .query("unitProgress")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .collect();
 
@@ -219,7 +219,7 @@ export const getCompletedLessonsByCategory = query({
     const allProgress = await ctx.db
       .query("userProgress")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .collect();
 

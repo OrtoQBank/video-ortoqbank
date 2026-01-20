@@ -19,10 +19,9 @@ export default function Page({ params }: UnitsPageProps) {
   const isTenantReady = useTenantReady();
 
   // Query category for title
-  const category = useTenantQuery(
-    api.categories.getById,
-    { id: categoryIdTyped },
-  );
+  const category = useTenantQuery(api.categories.getById, {
+    id: categoryIdTyped,
+  });
 
   // Loading state
   if (!isTenantReady || category === undefined) {
@@ -36,9 +35,6 @@ export default function Page({ params }: UnitsPageProps) {
   const categoryTitle = category?.title ?? "Categoria";
 
   return (
-    <UnitsPage
-      categoryId={categoryIdTyped}
-      categoryTitle={categoryTitle}
-    />
+    <UnitsPage categoryId={categoryIdTyped} categoryTitle={categoryTitle} />
   );
 }

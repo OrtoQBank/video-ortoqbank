@@ -49,7 +49,7 @@ export const listPublished = query({
       .query("units")
       .withIndex("by_tenantId", (q) => q.eq("tenantId", args.tenantId))
       .collect();
-    
+
     // Filter to published only
     return units.filter((u) => u.isPublished);
   },
@@ -68,7 +68,7 @@ export const listByCategoryPaginated = query({
     return await ctx.db
       .query("units")
       .withIndex("by_tenantId_and_categoryId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("categoryId", args.categoryId)
+        q.eq("tenantId", args.tenantId).eq("categoryId", args.categoryId),
       )
       .paginate(args.paginationOpts);
   },
@@ -86,7 +86,7 @@ export const listByCategory = query({
     const units = await ctx.db
       .query("units")
       .withIndex("by_tenantId_and_categoryId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("categoryId", args.categoryId)
+        q.eq("tenantId", args.tenantId).eq("categoryId", args.categoryId),
       )
       .take(100);
 
@@ -117,7 +117,7 @@ export const listPublishedByCategory = query({
     const units = await ctx.db
       .query("units")
       .withIndex("by_categoryId_and_isPublished", (q) =>
-        q.eq("categoryId", args.categoryId).eq("isPublished", true)
+        q.eq("categoryId", args.categoryId).eq("isPublished", true),
       )
       .collect();
 
@@ -238,13 +238,13 @@ export const create = mutation({
     const unitsInCategory = await ctx.db
       .query("units")
       .withIndex("by_categoryId_and_order", (q) =>
-        q.eq("categoryId", args.categoryId)
+        q.eq("categoryId", args.categoryId),
       )
       .collect();
 
     const maxOrderIndex = unitsInCategory.reduce(
       (max, unit) => Math.max(max, unit.order_index),
-      -1
+      -1,
     );
     const nextOrderIndex = maxOrderIndex + 1;
 
@@ -393,7 +393,7 @@ export const reorder = mutation({
       v.object({
         id: v.id("units"),
         order_index: v.number(),
-      })
+      }),
     ),
   },
   handler: async (ctx, args) => {

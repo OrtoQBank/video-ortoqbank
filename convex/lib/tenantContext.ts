@@ -1,9 +1,6 @@
 import { v } from "convex/values";
 import { Id, Doc } from "../_generated/dataModel";
-import {
-  MutationCtx,
-  QueryCtx,
-} from "../_generated/server";
+import { MutationCtx, QueryCtx } from "../_generated/server";
 
 /**
  * ============================================================================
@@ -24,7 +21,7 @@ export const tenantIdValidator = v.id("tenants");
  */
 export async function getTenantBySlug(
   ctx: QueryCtx,
-  slug: string
+  slug: string,
 ): Promise<Doc<"tenants"> | null> {
   return await ctx.db
     .query("tenants")
@@ -38,7 +35,7 @@ export async function getTenantBySlug(
  */
 export async function getTenantOrThrow(
   ctx: QueryCtx,
-  tenantId: Id<"tenants">
+  tenantId: Id<"tenants">,
 ): Promise<Doc<"tenants">> {
   const tenant = await ctx.db.get(tenantId);
 
@@ -57,7 +54,9 @@ export async function getTenantOrThrow(
  * Get the current user from context
  * Helper function to get authenticated user
  */
-async function getCurrentUserFromContext(ctx: QueryCtx): Promise<Doc<"users"> | null> {
+async function getCurrentUserFromContext(
+  ctx: QueryCtx,
+): Promise<Doc<"users"> | null> {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) {
     return null;
@@ -75,12 +74,12 @@ async function getCurrentUserFromContext(ctx: QueryCtx): Promise<Doc<"users"> | 
 export async function getUserTenantMembership(
   ctx: QueryCtx,
   userId: Id<"users">,
-  tenantId: Id<"tenants">
+  tenantId: Id<"tenants">,
 ): Promise<Doc<"tenantMemberships"> | null> {
   return await ctx.db
     .query("tenantMemberships")
     .withIndex("by_userId_and_tenantId", (q) =>
-      q.eq("userId", userId).eq("tenantId", tenantId)
+      q.eq("userId", userId).eq("tenantId", tenantId),
     )
     .unique();
 }
@@ -91,7 +90,7 @@ export async function getUserTenantMembership(
  */
 export async function getUserTenantMemberships(
   ctx: QueryCtx,
-  userId: Id<"users">
+  userId: Id<"users">,
 ): Promise<Array<Doc<"tenantMemberships">>> {
   return await ctx.db
     .query("tenantMemberships")
@@ -104,7 +103,7 @@ export async function getUserTenantMemberships(
  */
 export async function getTenantMembers(
   ctx: QueryCtx,
-  tenantId: Id<"tenants">
+  tenantId: Id<"tenants">,
 ): Promise<Array<Doc<"tenantMemberships">>> {
   return await ctx.db
     .query("tenantMemberships")
@@ -118,7 +117,7 @@ export async function getTenantMembers(
  */
 export async function requireTenantMembership(
   ctx: QueryCtx | MutationCtx,
-  tenantId: Id<"tenants">
+  tenantId: Id<"tenants">,
 ): Promise<{ user: Doc<"users">; membership: Doc<"tenantMemberships"> }> {
   const user = await getCurrentUserFromContext(ctx);
 
@@ -141,7 +140,7 @@ export async function requireTenantMembership(
  */
 export async function requireTenantAdmin(
   ctx: QueryCtx | MutationCtx,
-  tenantId: Id<"tenants">
+  tenantId: Id<"tenants">,
 ): Promise<{ user: Doc<"users">; membership: Doc<"tenantMemberships"> }> {
   const { user, membership } = await requireTenantMembership(ctx, tenantId);
 
@@ -162,7 +161,7 @@ export async function requireTenantAdmin(
  * Throws if user is not authenticated or not a superadmin
  */
 export async function requireSuperAdmin(
-  ctx: QueryCtx | MutationCtx
+  ctx: QueryCtx | MutationCtx,
 ): Promise<Doc<"users">> {
   const user = await getCurrentUserFromContext(ctx);
 
@@ -184,7 +183,7 @@ export async function requireSuperAdmin(
 export async function hasActiveTenantAccess(
   ctx: QueryCtx,
   userId: Id<"users">,
-  tenantId: Id<"tenants">
+  tenantId: Id<"tenants">,
 ): Promise<boolean> {
   const membership = await getUserTenantMembership(ctx, userId, tenantId);
 
@@ -210,7 +209,7 @@ export async function hasActiveTenantAccess(
  */
 export async function getCurrentUserWithTenantRole(
   ctx: QueryCtx,
-  tenantId: Id<"tenants">
+  tenantId: Id<"tenants">,
 ): Promise<{
   user: Doc<"users">;
   membership: Doc<"tenantMemberships">;
@@ -230,7 +229,7 @@ export async function getCurrentUserWithTenantRole(
     // If they have an actual membership, use it; otherwise treat as admin
     return {
       user,
-      membership: membership ?? ({
+      membership: membership ?? {
         _id: "" as Id<"tenantMemberships">,
         _creationTime: 0,
         userId: user._id,
@@ -238,7 +237,7 @@ export async function getCurrentUserWithTenantRole(
         role: "admin" as const,
         hasActiveAccess: true,
         joinedAt: Date.now(),
-      }),
+      },
       effectiveRole: "superadmin",
     };
   }
@@ -262,7 +261,7 @@ export async function getCurrentUserWithTenantRole(
  */
 export async function isTenantActive(
   ctx: QueryCtx,
-  tenantId: Id<"tenants">
+  tenantId: Id<"tenants">,
 ): Promise<boolean> {
   const tenant = await ctx.db.get(tenantId);
   return tenant !== null && tenant.status === "active";

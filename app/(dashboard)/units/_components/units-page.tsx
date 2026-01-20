@@ -23,7 +23,11 @@ import { Feedback } from "./feedback";
 import { Rating } from "./rating";
 import { cn, formatCpf } from "@/lib/utils";
 import { getSignedEmbedUrl } from "@/app/actions/bunny";
-import { useTenantQuery, useTenantMutation, useTenantReady } from "@/hooks/use-tenant-convex";
+import {
+  useTenantQuery,
+  useTenantMutation,
+  useTenantReady,
+} from "@/hooks/use-tenant-convex";
 
 interface UnitsPageProps {
   categoryId: Id<"categories">;
@@ -31,7 +35,8 @@ interface UnitsPageProps {
 }
 
 export function UnitsPage({ categoryId, categoryTitle }: UnitsPageProps) {
-  const units = useTenantQuery(api.units.listPublishedByCategory, { categoryId }) ?? [];
+  const units =
+    useTenantQuery(api.units.listPublishedByCategory, { categoryId }) ?? [];
   const { user } = useUser();
   const { state } = useSidebar();
   const isTenantReady = useTenantReady();
@@ -43,7 +48,9 @@ export function UnitsPage({ categoryId, categoryTitle }: UnitsPageProps) {
   );
 
   // Mutations
-  const markCompleted = useTenantMutation(api.progress.mutations.markLessonCompleted);
+  const markCompleted = useTenantMutation(
+    api.progress.mutations.markLessonCompleted,
+  );
   const markIncomplete = useTenantMutation(
     api.progress.mutations.markLessonIncomplete,
   );
@@ -268,7 +275,8 @@ export function UnitsPage({ categoryId, categoryTitle }: UnitsPageProps) {
   }, [nextUnitId, nextUnitLessons, currentLessonId, handleLessonClick]);
 
   const handleMarkCompleted = async () => {
-    if (!user?.id || !currentLessonId || !currentUnitId || !isTenantReady) return;
+    if (!user?.id || !currentLessonId || !currentUnitId || !isTenantReady)
+      return;
     try {
       // Toggle between completed and incomplete
       if (isLessonCompleted) {

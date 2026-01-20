@@ -25,7 +25,7 @@ export const addFavorite = mutation({
     const existing = await ctx.db
       .query("favorites")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .collect();
 
@@ -52,7 +52,7 @@ export const removeFavorite = mutation({
     const favorites = await ctx.db
       .query("favorites")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .collect();
 
@@ -76,7 +76,7 @@ export const toggleFavorite = mutation({
     const favorites = await ctx.db
       .query("favorites")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .collect();
 
@@ -114,7 +114,7 @@ export const isFavorited = query({
     const favorites = await ctx.db
       .query("favorites")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .collect();
 
@@ -131,7 +131,7 @@ export const getUserFavorites = query({
     const favorites = await ctx.db
       .query("favorites")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .collect();
 
@@ -154,39 +154,41 @@ export const getUserFavoriteLessons = query({
     const allFavorites = await ctx.db
       .query("favorites")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .order("desc")
       .collect();
 
     // Manual pagination
     const numToSkip = args.paginationOpts.numItems
-      ? (args.paginationOpts.cursor ? parseInt(args.paginationOpts.cursor as string) : 0)
+      ? args.paginationOpts.cursor
+        ? parseInt(args.paginationOpts.cursor as string)
+        : 0
       : 0;
     const favorites = allFavorites.slice(
       numToSkip,
-      numToSkip + (args.paginationOpts.numItems || 10)
+      numToSkip + (args.paginationOpts.numItems || 10),
     );
 
     // Batch 1: Get all lessons
     const lessons = await Promise.all(
-      favorites.map((f) => ctx.db.get(f.lessonId))
+      favorites.map((f) => ctx.db.get(f.lessonId)),
     );
     const validLessons = lessons.filter(
-      (l): l is NonNullable<typeof l> => l !== null
+      (l): l is NonNullable<typeof l> => l !== null,
     );
 
     // Batch 2: Get all units
     const units = await Promise.all(
-      validLessons.map((l) => ctx.db.get(l.unitId))
+      validLessons.map((l) => ctx.db.get(l.unitId)),
     );
     const validUnits = units.filter(
-      (u): u is NonNullable<typeof u> => u !== null
+      (u): u is NonNullable<typeof u> => u !== null,
     );
 
     // Batch 3: Get all categories
     const categories = await Promise.all(
-      validUnits.map((u) => ctx.db.get(u.categoryId))
+      validUnits.map((u) => ctx.db.get(u.categoryId)),
     );
 
     // Build result
@@ -232,7 +234,7 @@ export const getFavoritesCount = query({
     const favorites = await ctx.db
       .query("favorites")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .collect();
 
@@ -265,7 +267,7 @@ export const clearUserFavorites = mutation({
     const favorites = await ctx.db
       .query("favorites")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .collect();
 
@@ -292,7 +294,7 @@ export const getWatchAlsoLessons = query({
     const userFavorites = await ctx.db
       .query("favorites")
       .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
       )
       .collect();
 
@@ -306,7 +308,7 @@ export const getWatchAlsoLessons = query({
 
     // Filter to published and not favorited
     const unfavoritedLessons = allLessons.filter(
-      (lesson) => lesson.isPublished && !favoritedIds.has(lesson._id)
+      (lesson) => lesson.isPublished && !favoritedIds.has(lesson._id),
     );
 
     // Take only the requested limit
@@ -314,17 +316,17 @@ export const getWatchAlsoLessons = query({
 
     // Batch get units
     const units = await Promise.all(
-      limitedLessons.map((lesson) => ctx.db.get(lesson.unitId))
+      limitedLessons.map((lesson) => ctx.db.get(lesson.unitId)),
     );
 
     // Filter out null units and only keep published ones
     const validUnits = units.filter(
-      (u): u is NonNullable<typeof u> => u !== null && u.isPublished
+      (u): u is NonNullable<typeof u> => u !== null && u.isPublished,
     );
 
     // Batch get categories
     const categories = await Promise.all(
-      validUnits.map((unit) => ctx.db.get(unit.categoryId))
+      validUnits.map((unit) => ctx.db.get(unit.categoryId)),
     );
 
     // Build result with full details

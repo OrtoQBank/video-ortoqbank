@@ -38,7 +38,14 @@ export function Feedback({
   const isTenantReady = useTenantReady();
 
   const handleSubmitFeedback = async () => {
-    if (!userId || !lessonId || !unitId || !feedbackText.trim() || !isTenantReady) return;
+    if (
+      !userId ||
+      !lessonId ||
+      !unitId ||
+      !feedbackText.trim() ||
+      !isTenantReady
+    )
+      return;
     try {
       await submitFeedback({
         userId,

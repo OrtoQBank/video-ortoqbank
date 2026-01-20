@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, createContext, useContext } from "react";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import {
   Preloaded,
@@ -46,7 +46,7 @@ import { UnitEditPanel } from "./unit-edit-panel";
 import { LessonEditPanel } from "./lesson-edit-panel";
 import { UnitForm } from "./unit-create-form";
 import { LessonForm } from "./lesson-create-form";
-import { EditMode } from "./types";
+import { useUnitsLessonsStore } from "./store";
 
 interface UnitsLessonsPageProps {
   preloadedCategories: Preloaded<typeof api.categories.list>;
@@ -61,28 +61,24 @@ export function UnitsLessonsPage({
   const { error, showError, hideError } = useErrorModal();
   const { confirm, showConfirm, hideConfirm } = useConfirmModal();
 
-  // State for selected category - starts as null
-  const [selectedCategoryId, setSelectedCategoryId] =
-    useState<Id<"categories"> | null>(null);
-
-  // State for expanded units in left sidebar
-  const [expandedUnits, setExpandedUnits] = useState<Set<string>>(new Set());
-
-  // State for modals
-  const [showCreateUnitModal, setShowCreateUnitModal] = useState(false);
-  const [showCreateLessonModal, setShowCreateLessonModal] = useState(false);
-
-  // State for editing
-  const [editMode, setEditMode] = useState<EditMode>({ type: "none" });
-
-  // State for drag and drop reordering
-  const [draggedLessons, setDraggedLessons] = useState<Record<
-    string,
-    Doc<"lessons">[]
-  > | null>(null);
-  const [draggedUnits, setDraggedUnits] = useState<Doc<"units">[] | null>(null);
-  const [isDraggingLesson, setIsDraggingLesson] = useState(false);
-  const [isDraggingUnit, setIsDraggingUnit] = useState(false);
+  // Zustand store
+  const {
+    selectedCategoryId,
+    setSelectedCategoryId,
+    editMode,
+    clearEditMode,
+    showCreateUnitModal,
+    showCreateLessonModal,
+    setShowCreateUnitModal,
+    setShowCreateLessonModal,
+    setIsDraggingUnit,
+    setIsDraggingLesson,
+    draggedUnits,
+    draggedLessons,
+    setDraggedUnits,
+    setDraggedLessons,
+    updateDraggedLessonsForUnit,
+  } = useUnitsLessonsStore();
 
   // DND sensors
   const sensors = useSensors(
@@ -108,8 +104,6 @@ export function UnitsLessonsPage({
   const updateLesson = useMutation(api.lessons.update);
   const reorderLessons = useMutation(api.lessons.reorder);
   const reorderUnits = useMutation(api.units.reorder);
-  const togglePublishUnit = useMutation(api.units.togglePublish);
-  const togglePublishLesson = useMutation(api.lessons.togglePublish);
   const removeUnit = useMutation(api.units.remove);
   const removeLesson = useMutation(api.lessons.remove);
 
@@ -126,7 +120,7 @@ export function UnitsLessonsPage({
 
     if (!lessons) return {};
 
-    const grouped: Record<string, Doc<"lessons">[]> = {};
+    const grouped: Record<string, typeof lessons> = {};
     lessons.forEach((lesson) => {
       if (!grouped[lesson.unitId]) {
         grouped[lesson.unitId] = [];
@@ -141,18 +135,6 @@ export function UnitsLessonsPage({
 
     return grouped;
   }, [lessons, draggedLessons]);
-
-  const toggleUnit = (unitId: string) => {
-    setExpandedUnits((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(unitId)) {
-        newSet.delete(unitId);
-      } else {
-        newSet.add(unitId);
-      }
-      return newSet;
-    });
-  };
 
   const handleDragEndUnits = async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -209,10 +191,7 @@ export function UnitsLessonsPage({
         const reorderedLessons = arrayMove(unitLessons, oldIndex, newIndex);
 
         // Update local state immediately for smooth UI
-        setDraggedLessons((prev) => ({
-          ...(prev || localLessons),
-          [unitId]: reorderedLessons,
-        }));
+        updateDraggedLessonsForUnit(unitId, reorderedLessons, localLessons);
 
         // Save to database
         try {
@@ -245,44 +224,6 @@ export function UnitsLessonsPage({
     (cat) => cat._id === selectedCategoryId,
   );
 
-  const handleEditUnit = (unit: Doc<"units">) => {
-    setEditMode({ type: "unit", unit });
-  };
-
-  const handleEditLesson = (lesson: Doc<"lessons">) => {
-    setEditMode({ type: "lesson", lesson });
-  };
-
-  const handleTogglePublishUnit = async (unitId: Id<"units">) => {
-    try {
-      await togglePublishUnit({ id: unitId });
-      toast({
-        title: "Sucesso",
-        description: "Status de publicação da unidade atualizado!",
-      });
-    } catch (error) {
-      showError(
-        error instanceof Error ? error.message : "Erro ao atualizar status",
-        "Erro ao atualizar status",
-      );
-    }
-  };
-
-  const handleTogglePublishLesson = async (lessonId: Id<"lessons">) => {
-    try {
-      await togglePublishLesson({ id: lessonId });
-      toast({
-        title: "Sucesso",
-        description: "Status de publicação da aula atualizado!",
-      });
-    } catch (error) {
-      showError(
-        error instanceof Error ? error.message : "Erro ao atualizar status",
-        "Erro ao atualizar status",
-      );
-    }
-  };
-
   const handleSaveUnit = async (data: {
     categoryId: Id<"categories">;
     title: string;
@@ -304,7 +245,7 @@ export function UnitsLessonsPage({
         description: "Unidade atualizada com sucesso!",
       });
 
-      setEditMode({ type: "none" });
+      clearEditMode();
     } catch (error) {
       showError(
         error instanceof Error ? error.message : "Erro ao atualizar unidade",
@@ -340,7 +281,7 @@ export function UnitsLessonsPage({
         description: "Aula atualizada com sucesso!",
       });
 
-      setEditMode({ type: "none" });
+      clearEditMode();
     } catch (error) {
       showError(
         error instanceof Error ? error.message : "Erro ao atualizar aula",
@@ -351,24 +292,35 @@ export function UnitsLessonsPage({
 
   const handleDeleteUnit = (unitId: Id<"units">) => {
     const unit = localUnits.find((u) => u._id === unitId);
+    if (!unit) return;
+
     const unitLessons = localLessons[unitId] || [];
     const lessonCount = unitLessons.length;
 
-    const message = lessonCount > 0
-      ? `Tem certeza que deseja excluir a unidade "${unit?.title}"? Isso também excluirá ${lessonCount} ${lessonCount === 1 ? "aula" : "aulas"} associadas.`
-      : `Tem certeza que deseja excluir a unidade "${unit?.title}"?`;
+    const message =
+      lessonCount > 0
+        ? `Tem certeza que deseja excluir a unidade "${unit.title}"? Isso também excluirá ${lessonCount} ${lessonCount === 1 ? "aula" : "aulas"} associadas.`
+        : `Tem certeza que deseja excluir a unidade "${unit.title}"?`;
 
     showConfirm(
       message,
       async () => {
-        await removeUnit({ id: unitId });
-        toast({
-          title: "Sucesso",
-          description: "Unidade excluída com sucesso!",
-        });
-        // Clear edit mode if we were editing this unit
-        if (editMode.type === "unit" && editMode.unit._id === unitId) {
-          setEditMode({ type: "none" });
+        try {
+          await removeUnit({ id: unitId });
+          toast({
+            title: "Sucesso",
+            description: "Unidade excluída com sucesso!",
+          });
+          // Clear edit mode if we were editing this unit
+          if (editMode.type === "unit" && editMode.unit._id === unitId) {
+            clearEditMode();
+          }
+        } catch (error) {
+          console.error("Error deleting unit:", error);
+          showError(
+            error instanceof Error ? error.message : "Erro ao excluir unidade",
+            "Erro ao excluir unidade",
+          );
         }
       },
       "Excluir Unidade",
@@ -383,17 +335,27 @@ export function UnitsLessonsPage({
       if (lessonToDelete) break;
     }
 
+    if (!lessonToDelete) return;
+
     showConfirm(
-      `Tem certeza que deseja excluir a aula "${lessonToDelete?.title}"?`,
+      `Tem certeza que deseja excluir a aula "${lessonToDelete.title}"?`,
       async () => {
-        await removeLesson({ id: lessonId });
-        toast({
-          title: "Sucesso",
-          description: "Aula excluída com sucesso!",
-        });
-        // Clear edit mode if we were editing this lesson
-        if (editMode.type === "lesson" && editMode.lesson._id === lessonId) {
-          setEditMode({ type: "none" });
+        try {
+          await removeLesson({ id: lessonId });
+          toast({
+            title: "Sucesso",
+            description: "Aula excluída com sucesso!",
+          });
+          // Clear edit mode if we were editing this lesson
+          if (editMode.type === "lesson" && editMode.lesson._id === lessonId) {
+            clearEditMode();
+          }
+        } catch (error) {
+          console.error("Error deleting lesson:", error);
+          showError(
+            error instanceof Error ? error.message : "Erro ao excluir aula",
+            "Erro ao excluir aula",
+          );
         }
       },
       "Excluir Aula",
@@ -401,198 +363,219 @@ export function UnitsLessonsPage({
   };
 
   return (
-    <div className=" relative">
-      {/* Sidebar trigger - follows sidebar position */}
-      <SidebarTrigger
-        className={`hidden md:inline-flex fixed top-2 h-6 w-6 text-blue-brand hover:text-blue-brand-dark hover:bg-blue-brand-light transition-[left] duration-200 ease-linear z-10 ${
-          state === "collapsed"
-            ? "left-[calc(var(--sidebar-width-icon)+0.25rem)]"
-            : "left-[calc(var(--sidebar-width)+0.25rem)]"
-        }`}
-      />
+    <UnitsLessonsPageContext.Provider
+      value={{
+        handleDeleteUnit,
+        handleDeleteLesson,
+        localUnits,
+        localLessons,
+      }}
+    >
+      <div className=" relative">
+        {/* Sidebar trigger - follows sidebar position */}
+        <SidebarTrigger
+          className={`hidden md:inline-flex fixed top-2 h-6 w-6 text-blue-brand hover:text-blue-brand-dark hover:bg-blue-brand-light transition-[left] duration-200 ease-linear z-10 ${
+            state === "collapsed"
+              ? "left-[calc(var(--sidebar-width-icon)+0.25rem)]"
+              : "left-[calc(var(--sidebar-width)+0.25rem)]"
+          }`}
+        />
 
-      {/* Header */}
-      <div className="border-b ">
-        <div className="p-4 pt-12 flex items-center pl-14 gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Gerenciar Unidades e Aulas
-            </h1>
-          </div>
-        </div>
-      </div>
-
-      {/* Category Selector */}
-      <div className="py-4 px-8 ">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center gap-4">
-            <label className="text-sm font-medium whitespace-nowrap">
-              Categoria:
-            </label>
-            <Select
-              value={selectedCategoryId || ""}
-              onValueChange={(value) =>
-                setSelectedCategoryId(value as Id<"categories">)
-              }
-            >
-              <SelectTrigger className="w-full max-w-md bg-white">
-                <SelectValue placeholder="Selecione uma categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((category) => (
-                  <SelectItem key={category._id} value={category._id}>
-                    {category.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Create Buttons */}
-            <div className="flex items-center gap-2 ml-auto">
-              <Button
-                onClick={() => setShowCreateUnitModal(true)}
-                disabled={!selectedCategoryId}
-                size="sm"
-                className="flex items-center gap-2"
-              >
-                <PlusIcon className="h-4 w-4" />
-                Criar Unidade
-              </Button>
-              <Button
-                onClick={() => setShowCreateLessonModal(true)}
-                disabled={!selectedCategoryId || !units || units.length === 0}
-                size="sm"
-                className="flex items-center gap-2"
-              >
-                <PlusIcon className="h-4 w-4" />
-                Criar Aula
-              </Button>
+        {/* Header */}
+        <div className="border-b ">
+          <div className="p-4 pt-12 flex items-center pl-14 gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Gerenciar Unidades e Aulas
+              </h1>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Main Content */}
-      {selectedCategoryId ? (
-        <div className="flex h-[calc(100vh-240px)]">
-          {/* Left Sidebar - Units and Lessons Tree */}
-          <UnitsTreeSidebar
-            units={localUnits}
-            lessons={localLessons}
-            expandedUnits={expandedUnits}
-            isDraggingUnit={isDraggingUnit}
-            isDraggingLesson={isDraggingLesson}
-            sensors={sensors}
-            onToggleUnit={toggleUnit}
-            onEditUnit={handleEditUnit}
-            onEditLesson={handleEditLesson}
-            onTogglePublishUnit={handleTogglePublishUnit}
-            onTogglePublishLesson={handleTogglePublishLesson}
-            onDeleteUnit={handleDeleteUnit}
-            onDeleteLesson={handleDeleteLesson}
-            onDragEndUnits={handleDragEndUnits}
-            onDragEndLessons={handleDragEndLessons}
-            onDragStartUnit={() => setIsDraggingUnit(true)}
-            onDragStartLesson={() => setIsDraggingLesson(true)}
-          />
+        {/* Category Selector */}
+        <div className="py-4 px-8 ">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center gap-4">
+              <label className="text-sm font-medium whitespace-nowrap">
+                Categoria:
+              </label>
+              <Select
+                value={selectedCategoryId || ""}
+                onValueChange={(value) =>
+                  setSelectedCategoryId(value as Id<"categories">)
+                }
+              >
+                <SelectTrigger className="w-full max-w-md bg-white">
+                  <SelectValue placeholder="Selecione uma categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((category) => (
+                    <SelectItem key={category._id} value={category._id}>
+                      {category.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-          {/* Right Content Area - Edit Forms or Empty State */}
-          <div className="flex-1 overflow-y-auto p-2">
-            {editMode.type === "none" ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center text-muted-foreground space-y-2">
-                  <p className="text-lg">
-                    Selecione uma unidade ou aula para editar
-                  </p>
-                  <p className="text-sm">
-                    Clique no ícone de lápis ao lado de cada item
-                  </p>
-                </div>
+              {/* Create Buttons */}
+              <div className="flex items-center gap-2 ml-auto">
+                <Button
+                  onClick={() => setShowCreateUnitModal(true)}
+                  disabled={!selectedCategoryId}
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <PlusIcon className="h-4 w-4" />
+                  Criar Unidade
+                </Button>
+                <Button
+                  onClick={() => setShowCreateLessonModal(true)}
+                  disabled={!selectedCategoryId || !units || units.length === 0}
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <PlusIcon className="h-4 w-4" />
+                  Criar Aula
+                </Button>
               </div>
-            ) : editMode.type === "unit" ? (
-              <UnitEditPanel
-                unit={editMode.unit}
-                categories={categories}
-                onSave={handleSaveUnit}
-                onCancel={() => setEditMode({ type: "none" })}
-              />
-            ) : (
-              <LessonEditPanel
-                lesson={editMode.lesson}
-                units={units || []}
-                onSave={handleSaveLesson}
-                onCancel={() => setEditMode({ type: "none" })}
-              />
-            )}
+            </div>
           </div>
         </div>
-      ) : (
-        <div className="flex items-center justify-center h-[calc(100vh-240px)]">
-          <p className="text-muted-foreground">
-            Selecione uma categoria para começar
-          </p>
-        </div>
-      )}
 
-      {/* Create Unit Modal */}
-      <Dialog open={showCreateUnitModal} onOpenChange={setShowCreateUnitModal}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Criar Nova Unidade</DialogTitle>
-            <DialogDescription>
-              Preencha as informações para criar uma nova unidade
-            </DialogDescription>
-          </DialogHeader>
-          <UnitForm
-            categories={selectedCategory ? [selectedCategory] : categories}
-            onSuccess={() => setShowCreateUnitModal(false)}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Create Lesson Modal */}
-      <Dialog
-        open={showCreateLessonModal}
-        onOpenChange={setShowCreateLessonModal}
-      >
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Criar Nova Aula</DialogTitle>
-            <DialogDescription>
-              Preencha as informações para criar uma nova aula
-            </DialogDescription>
-          </DialogHeader>
-          {units && units.length > 0 ? (
-            <LessonForm
-              units={units}
-              onSuccess={() => setShowCreateLessonModal(false)}
+        {/* Main Content */}
+        {selectedCategoryId ? (
+          <div className="flex h-[calc(100vh-240px)]">
+            {/* Left Sidebar - Units and Lessons Tree */}
+            <UnitsTreeSidebar
+              units={localUnits}
+              lessons={localLessons}
+              sensors={sensors}
+              onDragEndUnits={handleDragEndUnits}
+              onDragEndLessons={handleDragEndLessons}
             />
-          ) : (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              Crie uma unidade primeiro para poder adicionar aulas
+
+            {/* Right Content Area - Edit Forms or Empty State */}
+            <div className="flex-1 overflow-y-auto p-2">
+              {editMode.type === "none" ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center text-muted-foreground space-y-2">
+                    <p className="text-lg">
+                      Selecione uma unidade ou aula para editar
+                    </p>
+                    <p className="text-sm">
+                      Clique no ícone de lápis ao lado de cada item
+                    </p>
+                  </div>
+                </div>
+              ) : editMode.type === "unit" ? (
+                <UnitEditPanel
+                  unit={editMode.unit}
+                  categories={categories}
+                  onSave={handleSaveUnit}
+                  onCancel={clearEditMode}
+                />
+              ) : (
+                <LessonEditPanel
+                  lesson={editMode.lesson}
+                  units={units || []}
+                  onSave={handleSaveLesson}
+                  onCancel={clearEditMode}
+                />
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center h-[calc(100vh-240px)]">
+            <p className="text-muted-foreground">
+              Selecione uma categoria para começar
             </p>
-          )}
-        </DialogContent>
-      </Dialog>
+          </div>
+        )}
 
-      {/* Error Modal */}
-      <ErrorModal
-        open={error.isOpen}
-        onOpenChange={hideError}
-        title={error.title}
-        message={error.message}
-      />
+        {/* Create Unit Modal */}
+        <Dialog
+          open={showCreateUnitModal}
+          onOpenChange={setShowCreateUnitModal}
+        >
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Criar Nova Unidade</DialogTitle>
+              <DialogDescription>
+                Preencha as informações para criar uma nova unidade
+              </DialogDescription>
+            </DialogHeader>
+            <UnitForm
+              categories={selectedCategory ? [selectedCategory] : categories}
+              onSuccess={() => setShowCreateUnitModal(false)}
+            />
+          </DialogContent>
+        </Dialog>
 
-      {/* Confirm Modal */}
-      <ConfirmModal
-        open={confirm.isOpen}
-        onOpenChange={hideConfirm}
-        title={confirm.title}
-        message={confirm.message}
-        onConfirm={confirm.onConfirm}
-        confirmText="Excluir"
-        cancelText="Cancelar"
-      />
-    </div>
+        {/* Create Lesson Modal */}
+        <Dialog
+          open={showCreateLessonModal}
+          onOpenChange={setShowCreateLessonModal}
+        >
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Criar Nova Aula</DialogTitle>
+              <DialogDescription>
+                Preencha as informações para criar uma nova aula
+              </DialogDescription>
+            </DialogHeader>
+            {units && units.length > 0 ? (
+              <LessonForm
+                units={units}
+                onSuccess={() => setShowCreateLessonModal(false)}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Crie uma unidade primeiro para poder adicionar aulas
+              </p>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Error Modal */}
+        <ErrorModal
+          open={error.isOpen}
+          onOpenChange={hideError}
+          title={error.title}
+          message={error.message}
+        />
+
+        {/* Confirm Modal */}
+        <ConfirmModal
+          open={confirm.isOpen}
+          onOpenChange={hideConfirm}
+          title={confirm.title}
+          message={confirm.message}
+          onConfirm={confirm.onConfirm}
+          confirmText="Excluir"
+          cancelText="Cancelar"
+        />
+      </div>
+    </UnitsLessonsPageContext.Provider>
   );
+}
+
+// Context for passing down handlers that need access to mutations
+interface UnitsLessonsPageContextValue {
+  handleDeleteUnit: (unitId: Id<"units">) => void;
+  handleDeleteLesson: (lessonId: Id<"lessons">) => void;
+  localUnits: Doc<"units">[];
+  localLessons: Record<string, Doc<"lessons">[]>;
+}
+
+const UnitsLessonsPageContext =
+  createContext<UnitsLessonsPageContextValue | null>(null);
+
+export function useUnitsLessonsPageContext() {
+  const context = useContext(UnitsLessonsPageContext);
+  if (!context) {
+    throw new Error(
+      "useUnitsLessonsPageContext must be used within UnitsLessonsPage",
+    );
+  }
+  return context;
 }

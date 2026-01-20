@@ -1,28 +1,27 @@
 import { render, screen } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { UnitsTreeSidebar } from "./units-tree-sidebar";
 
+// Mock Zustand store
+vi.mock("./store", () => ({
+  useUnitsLessonsStore: () => ({
+    setIsDraggingUnit: vi.fn(),
+  }),
+}));
+
 describe("UnitsTreeSidebar", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("should render", () => {
     render(
       <UnitsTreeSidebar
         units={[]}
         lessons={{}}
-        expandedUnits={new Set()}
-        isDraggingUnit={false}
-        isDraggingLesson={false}
         sensors={[]}
-        onToggleUnit={() => {}}
-        onEditUnit={() => {}}
-        onEditLesson={() => {}}
-        onTogglePublishUnit={() => {}}
-        onTogglePublishLesson={() => {}}
-        onDeleteUnit={() => {}}
-        onDeleteLesson={() => {}}
         onDragEndUnits={async () => {}}
         onDragEndLessons={() => async () => {}}
-        onDragStartUnit={() => {}}
-        onDragStartLesson={() => {}}
       />,
     );
     expect(screen.getByText("Visualização")).toBeInTheDocument();

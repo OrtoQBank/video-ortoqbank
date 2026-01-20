@@ -20,24 +20,35 @@ import {
 } from "@dnd-kit/sortable";
 import { LessonTreeItem } from "./lesson-tree-item";
 import { UnitTreeItemProps } from "./types";
+import { useUnitsLessonsStore } from "./store";
+import { useUnitsLessonsPageContext } from "./units-lessons-page";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 
 export function UnitTreeItem({
   unit,
-  isExpanded,
   unitLessons,
-  onToggle,
-  onEdit,
-  onEditLesson,
-  onTogglePublishUnit,
-  onTogglePublishLesson,
-  onDeleteUnit,
-  onDeleteLesson,
-  isDraggingUnit,
-  isDraggingLesson,
   sensors,
   onDragEndLessons,
-  onDragStartLesson,
 }: UnitTreeItemProps) {
+  const { toast } = useToast();
+  const { showError } = useErrorModal();
+  const togglePublishUnit = useMutation(api.units.togglePublish);
+
+  const {
+    expandedUnits,
+    toggleUnit,
+    editUnit,
+    isDraggingUnit,
+    setIsDraggingLesson,
+  } = useUnitsLessonsStore();
+
+  const { handleDeleteUnit } = useUnitsLessonsPageContext();
+
+  const isExpanded = expandedUnits.has(unit._id);
+
   const {
     attributes,
     listeners,
@@ -50,6 +61,21 @@ export function UnitTreeItem({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+  };
+
+  const handleTogglePublish = async () => {
+    try {
+      await togglePublishUnit({ id: unit._id });
+      toast({
+        title: "Sucesso",
+        description: "Status de publicação da unidade atualizado!",
+      });
+    } catch (error) {
+      showError(
+        error instanceof Error ? error.message : "Erro ao atualizar status",
+        "Erro ao atualizar status",
+      );
+    }
   };
 
   return (
@@ -73,7 +99,7 @@ export function UnitTreeItem({
           <GripVerticalIcon className="h-4 w-4 text-muted-foreground" />
         </div>
         <button
-          onClick={() => onToggle(unit._id)}
+          onClick={() => toggleUnit(unit._id)}
           className="flex items-center gap-2 flex-1 min-w-0 text-left"
         >
           {isExpanded ? (
@@ -94,7 +120,7 @@ export function UnitTreeItem({
           size="icon"
           variant="ghost"
           className="h-8 w-8 shrink-0"
-          onClick={() => onTogglePublishUnit(unit._id)}
+          onClick={handleTogglePublish}
           title={unit.isPublished ? "Despublicar" : "Publicar"}
           disabled={isDraggingUnit}
         >
@@ -108,7 +134,7 @@ export function UnitTreeItem({
           size="icon"
           variant="ghost"
           className="h-8 w-8 shrink-0"
-          onClick={() => onEdit(unit)}
+          onClick={() => editUnit(unit)}
           title="Editar unidade"
           disabled={isDraggingUnit}
         >
@@ -118,8 +144,9 @@ export function UnitTreeItem({
           size="icon"
           variant="ghost"
           className="h-8 w-8 shrink-0 text-red-500 hover:text-red-600 hover:bg-red-50"
-          onClick={() => onDeleteUnit(unit._id)}
+          onClick={() => handleDeleteUnit(unit._id)}
           title="Excluir unidade"
+          aria-label="Excluir unidade"
           disabled={isDraggingUnit}
         >
           <Trash2Icon className="h-4 w-4" />
@@ -133,21 +160,14 @@ export function UnitTreeItem({
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragEnd={onDragEndLessons(unit._id)}
-            onDragStart={onDragStartLesson}
+            onDragStart={() => setIsDraggingLesson(true)}
           >
             <SortableContext
               items={unitLessons.map((lesson) => lesson._id)}
               strategy={verticalListSortingStrategy}
             >
               {unitLessons.map((lesson) => (
-                <LessonTreeItem
-                  key={lesson._id}
-                  lesson={lesson}
-                  onEdit={onEditLesson}
-                  onTogglePublish={onTogglePublishLesson}
-                  onDelete={onDeleteLesson}
-                  isDragging={isDraggingLesson}
-                />
+                <LessonTreeItem key={lesson._id} lesson={lesson} />
               ))}
             </SortableContext>
           </DndContext>

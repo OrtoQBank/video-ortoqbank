@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { UnitsLessonsPage } from "./units-lessons-page";
-import { Preloaded, FunctionReference } from "convex/react";
+import { Preloaded } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { renderWithProviders } from "@/__tests__/utils/test-utils";
 
@@ -11,16 +11,9 @@ const mockUseQuery = vi.fn(() => null);
 const mockUseMutation = vi.fn(() => vi.fn(() => Promise.resolve()));
 
 vi.mock("convex/react", () => ({
-  usePreloadedQuery: <Query extends FunctionReference<"query">>(
-    preloaded: Preloaded<Query>,
-  ) => mockUsePreloadedQuery(preloaded),
-  useQuery: <Query extends FunctionReference<"query">>(
-    query: Query,
-    args?: Record<string, unknown>,
-  ) => mockUseQuery(query, args),
-  useMutation: <Mutation extends FunctionReference<"mutation">>(
-    mutation: Mutation,
-  ) => mockUseMutation(mutation),
+  usePreloadedQuery: () => mockUsePreloadedQuery(),
+  useQuery: () => mockUseQuery(),
+  useMutation: () => mockUseMutation(),
   Preloaded: {} as unknown,
 }));
 
@@ -40,7 +33,41 @@ vi.mock("@/hooks/use-error-modal", () => ({
   }),
 }));
 
+// Mock useConfirmModal hook
+vi.mock("@/hooks/use-confirm-modal", () => ({
+  useConfirmModal: () => ({
+    confirm: { isOpen: false, title: "", message: "", onConfirm: vi.fn() },
+    showConfirm: vi.fn(),
+    hideConfirm: vi.fn(),
+  }),
+}));
+
+// Mock Zustand store
+vi.mock("./store", () => ({
+  useUnitsLessonsStore: () => ({
+    selectedCategoryId: null,
+    setSelectedCategoryId: vi.fn(),
+    editMode: { type: "none" },
+    clearEditMode: vi.fn(),
+    showCreateUnitModal: false,
+    showCreateLessonModal: false,
+    setShowCreateUnitModal: vi.fn(),
+    setShowCreateLessonModal: vi.fn(),
+    setIsDraggingUnit: vi.fn(),
+    setIsDraggingLesson: vi.fn(),
+    draggedUnits: null,
+    draggedLessons: null,
+    setDraggedUnits: vi.fn(),
+    setDraggedLessons: vi.fn(),
+    updateDraggedLessonsForUnit: vi.fn(),
+  }),
+}));
+
 describe("UnitsLessonsPage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("should render", () => {
     renderWithProviders(
       <UnitsLessonsPage

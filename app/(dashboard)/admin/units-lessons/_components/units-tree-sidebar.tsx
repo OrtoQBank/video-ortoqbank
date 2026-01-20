@@ -8,26 +8,17 @@ import {
 import { UnitTreeItem } from "./unit-tree-item";
 import { UnitsTreeSidebarProps } from "./types";
 import { Id } from "@/convex/_generated/dataModel";
+import { useUnitsLessonsStore } from "./store";
 
 export function UnitsTreeSidebar({
   units,
   lessons,
-  expandedUnits,
-  isDraggingUnit,
-  isDraggingLesson,
   sensors,
-  onToggleUnit,
-  onEditUnit,
-  onEditLesson,
-  onTogglePublishUnit,
-  onTogglePublishLesson,
-  onDeleteUnit,
-  onDeleteLesson,
   onDragEndUnits,
   onDragEndLessons,
-  onDragStartUnit,
-  onDragStartLesson,
 }: UnitsTreeSidebarProps) {
+  const { setIsDraggingUnit } = useUnitsLessonsStore();
+
   const getLessonsForUnit = (unitId: Id<"units">) => {
     return lessons[unitId] || [];
   };
@@ -44,7 +35,7 @@ export function UnitsTreeSidebar({
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragEnd={onDragEndUnits}
-            onDragStart={onDragStartUnit}
+            onDragStart={() => setIsDraggingUnit(true)}
           >
             <SortableContext
               items={units.map((unit) => unit._id)}
@@ -55,20 +46,9 @@ export function UnitsTreeSidebar({
                   <UnitTreeItem
                     key={unit._id}
                     unit={unit}
-                    isExpanded={expandedUnits.has(unit._id)}
                     unitLessons={getLessonsForUnit(unit._id)}
-                    onToggle={onToggleUnit}
-                    onEdit={onEditUnit}
-                    onEditLesson={onEditLesson}
-                    onTogglePublishUnit={onTogglePublishUnit}
-                    onTogglePublishLesson={onTogglePublishLesson}
-                    onDeleteUnit={onDeleteUnit}
-                    onDeleteLesson={onDeleteLesson}
-                    isDraggingUnit={isDraggingUnit}
-                    isDraggingLesson={isDraggingLesson}
                     sensors={sensors}
                     onDragEndLessons={onDragEndLessons}
-                    onDragStartLesson={onDragStartLesson}
                   />
                 ))}
               </div>

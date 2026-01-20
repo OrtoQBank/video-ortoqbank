@@ -2,9 +2,21 @@ import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { LessonForm } from "./lesson-create-form";
 
-// Mock Convex useMutation hook
+// Mock Convex hooks
 vi.mock("convex/react", () => ({
   useMutation: vi.fn(() => vi.fn(() => Promise.resolve())),
+  useAction: vi.fn(() => vi.fn(() => Promise.resolve())),
+}));
+
+// Mock Clerk useUser hook
+vi.mock("@clerk/nextjs", () => ({
+  useUser: () => ({
+    user: {
+      id: "test-user-id",
+      firstName: "Test",
+      lastName: "User",
+    },
+  }),
 }));
 
 // Mock useToast hook

@@ -7,25 +7,29 @@ import { CheckCircle2, PlayCircle, TrendingUp } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useTenantQuery, useTenantReady } from "@/hooks/use-tenant-convex";
 
 export default function Dashboard() {
   // Get current user
   const { user, isLoading: isUserLoading } = useCurrentUser();
   const userId = user?.clerkUserId;
+  const isTenantReady = useTenantReady();
 
-  // Use regular queries - all hooks called unconditionally
+  // Use regular query for non-tenant-scoped data
   const contentStats = useQuery(api.aggregate.get, {});
-  const completedCountResult = useQuery(
+
+  // Use tenant queries for tenant-scoped data
+  const completedCountResult = useTenantQuery(
     api.progress.queries.getCompletedPublishedLessonsCount,
     userId ? { userId } : "skip",
   );
-  const viewedCountResult = useQuery(
+  const viewedCountResult = useTenantQuery(
     api.recentViews.getUniqueViewedLessonsCount,
     userId ? { userId } : "skip",
   );
 
   // Show loading skeleton while data is loading
-  const isLoading = contentStats === undefined || isUserLoading;
+  const isLoading = contentStats === undefined || isUserLoading || !isTenantReady;
 
   const totalLessons = contentStats?.totalLessons || 0;
   const completedLessonsCount = completedCountResult ?? 0;

@@ -5,11 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PlayCircleIcon, StarIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useUser } from "@clerk/nextjs";
 import { Id } from "@/convex/_generated/dataModel";
 import Image from "next/image";
+import { useTenantMutation } from "@/hooks/use-tenant-convex";
 
 interface Video {
   _id: string;
@@ -30,7 +30,7 @@ interface WatchAlsoVideosProps {
 export function WatchAlsoVideos({ watchAlsoVideos }: WatchAlsoVideosProps) {
   const router = useRouter();
   const { user } = useUser();
-  const addFavorite = useMutation(api.favorites.addFavorite);
+  const addFavorite = useTenantMutation(api.favorites.addFavorite);
 
   const handleVideoClick = (video: Video) => {
     if (video.categoryId) {

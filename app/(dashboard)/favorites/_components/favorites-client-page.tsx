@@ -1,28 +1,33 @@
 "use client";
 
 import { FavoritesInner } from "./favorites-page";
-import { usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
+import {
+  useTenantPaginatedQuery,
+  useTenantQuery,
+  useTenantReady,
+} from "@/hooks/use-tenant-convex";
 
 export function FavoritesClientPage() {
   const { user } = useUser();
+  const isTenantReady = useTenantReady();
 
   // Get user's favorites with full lesson details (PAGINATED)
-  const { results, status, loadMore } = usePaginatedQuery(
+  const { results, status, loadMore } = useTenantPaginatedQuery(
     api.favorites.getUserFavoriteLessons,
-    user?.id ? { userId: user.id } : "skip",
+    user?.id ? { userId: user.id } : {},
     { initialNumItems: 20 },
   );
 
   // Get some random lessons with full details for "Watch Also" section
-  const watchAlsoData = useQuery(
+  const watchAlsoData = useTenantQuery(
     api.favorites.getWatchAlsoLessons,
     user?.id ? { userId: user.id, limit: 6 } : "skip",
   );
 
-  if (!user || status === "LoadingFirstPage" || watchAlsoData === undefined) {
+  if (!user || !isTenantReady || status === "LoadingFirstPage" || watchAlsoData === undefined) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

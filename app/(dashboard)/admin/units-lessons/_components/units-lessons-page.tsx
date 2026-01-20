@@ -2,15 +2,10 @@
 
 import { useState, useMemo } from "react";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
-import {
-  Preloaded,
-  usePreloadedQuery,
-  useQuery,
-  useMutation,
-} from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useTenantQuery, useTenantMutation, useTenantReady } from "@/hooks/use-tenant-convex";
 import { Button } from "@/components/ui/button";
-import { PlusIcon } from "lucide-react";
+import { PlusIcon, Loader2 } from "lucide-react";
 import { Id, Doc } from "@/convex/_generated/dataModel";
 import {
   Select,
@@ -46,14 +41,11 @@ import { UnitForm } from "./unit-create-form";
 import { LessonForm } from "./lesson-create-form";
 import { EditMode } from "./types";
 
-interface UnitsLessonsPageProps {
-  preloadedCategories: Preloaded<typeof api.categories.list>;
-}
+export function UnitsLessonsPage() {
+  const isTenantReady = useTenantReady();
 
-export function UnitsLessonsPage({
-  preloadedCategories,
-}: UnitsLessonsPageProps) {
-  const categories = usePreloadedQuery(preloadedCategories);
+  // Query categories with tenant context
+  const categories = useTenantQuery(api.categories.list, {});
   const { state } = useSidebar();
   const { toast } = useToast();
   const { error, showError, hideError } = useErrorModal();
@@ -90,23 +82,23 @@ export function UnitsLessonsPage({
   );
 
   // Query units and lessons based on selected category
-  const units = useQuery(
+  const units = useTenantQuery(
     api.units.listByCategory,
     selectedCategoryId ? { categoryId: selectedCategoryId } : "skip",
   );
 
-  const lessons = useQuery(
+  const lessons = useTenantQuery(
     api.lessons.listByCategory,
     selectedCategoryId ? { categoryId: selectedCategoryId } : "skip",
   );
 
   // Mutations
-  const updateUnit = useMutation(api.units.update);
-  const updateLesson = useMutation(api.lessons.update);
-  const reorderLessons = useMutation(api.lessons.reorder);
-  const reorderUnits = useMutation(api.units.reorder);
-  const togglePublishUnit = useMutation(api.units.togglePublish);
-  const togglePublishLesson = useMutation(api.lessons.togglePublish);
+  const updateUnit = useTenantMutation(api.units.update);
+  const updateLesson = useTenantMutation(api.lessons.update);
+  const reorderLessons = useTenantMutation(api.lessons.reorder);
+  const reorderUnits = useTenantMutation(api.units.reorder);
+  const togglePublishUnit = useTenantMutation(api.units.togglePublish);
+  const togglePublishLesson = useTenantMutation(api.lessons.togglePublish);
 
   // Compute sorted units and lessons from server data
   const localUnits = useMemo(() => {
@@ -164,6 +156,10 @@ export function UnitsLessonsPage({
 
       // Save to database
       try {
+        if (!isTenantReady) {
+          throw new Error("Tenant not loaded");
+        }
+
         const updates = reorderedUnits.map((unit, index) => ({
           id: unit._id,
           order_index: index,
@@ -211,6 +207,10 @@ export function UnitsLessonsPage({
 
         // Save to database
         try {
+          if (!isTenantReady) {
+            throw new Error("Tenant not loaded");
+          }
+
           const updates = reorderedLessons.map((lesson, index) => ({
             id: lesson._id,
             order_index: index,
@@ -236,9 +236,18 @@ export function UnitsLessonsPage({
       }
     };
 
-  const selectedCategory = categories.find(
+  const selectedCategory = categories?.find(
     (cat) => cat._id === selectedCategoryId,
   );
+
+  // Loading state
+  if (!isTenantReady || categories === undefined) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   const handleEditUnit = (unit: Doc<"units">) => {
     setEditMode({ type: "unit", unit });
@@ -250,6 +259,9 @@ export function UnitsLessonsPage({
 
   const handleTogglePublishUnit = async (unitId: Id<"units">) => {
     try {
+      if (!isTenantReady) {
+        throw new Error("Tenant not loaded");
+      }
       await togglePublishUnit({ id: unitId });
       toast({
         title: "Sucesso",
@@ -265,6 +277,9 @@ export function UnitsLessonsPage({
 
   const handleTogglePublishLesson = async (lessonId: Id<"lessons">) => {
     try {
+      if (!isTenantReady) {
+        throw new Error("Tenant not loaded");
+      }
       await togglePublishLesson({ id: lessonId });
       toast({
         title: "Sucesso",
@@ -286,6 +301,9 @@ export function UnitsLessonsPage({
     if (editMode.type !== "unit") return;
 
     try {
+      if (!isTenantReady) {
+        throw new Error("Tenant not loaded");
+      }
       await updateUnit({
         id: editMode.unit._id,
         categoryId: data.categoryId,
@@ -318,6 +336,9 @@ export function UnitsLessonsPage({
     if (editMode.type !== "lesson") return;
 
     try {
+      if (!isTenantReady) {
+        throw new Error("Tenant not loaded");
+      }
       await updateLesson({
         id: editMode.lesson._id,
         unitId: data.unitId,
@@ -383,7 +404,7 @@ export function UnitsLessonsPage({
                 <SelectValue placeholder="Selecione uma categoria" />
               </SelectTrigger>
               <SelectContent>
-                {categories.map((category) => (
+                {(categories || []).map((category) => (
                   <SelectItem key={category._id} value={category._id}>
                     {category.title}
                   </SelectItem>
@@ -454,7 +475,7 @@ export function UnitsLessonsPage({
             ) : editMode.type === "unit" ? (
               <UnitEditPanel
                 unit={editMode.unit}
-                categories={categories}
+                categories={categories || []}
                 onSave={handleSaveUnit}
                 onCancel={() => setEditMode({ type: "none" })}
               />
@@ -486,7 +507,7 @@ export function UnitsLessonsPage({
             </DialogDescription>
           </DialogHeader>
           <UnitForm
-            categories={selectedCategory ? [selectedCategory] : categories}
+            categories={selectedCategory ? [selectedCategory] : categories || []}
             onSuccess={() => setShowCreateUnitModal(false)}
           />
         </DialogContent>

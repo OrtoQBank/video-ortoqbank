@@ -5,8 +5,8 @@ import { SendIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Id } from "@/convex/_generated/dataModel";
-import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useTenantMutation, useTenantReady } from "@/hooks/use-tenant-convex";
 
 interface FeedbackProps {
   userId: string;
@@ -34,10 +34,11 @@ export function Feedback({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lessonId]);
 
-  const submitFeedback = useMutation(api.feedback.submitFeedback);
+  const submitFeedback = useTenantMutation(api.feedback.submitFeedback);
+  const isTenantReady = useTenantReady();
 
   const handleSubmitFeedback = async () => {
-    if (!userId || !lessonId || !unitId || !feedbackText.trim()) return;
+    if (!userId || !lessonId || !unitId || !feedbackText.trim() || !isTenantReady) return;
     try {
       await submitFeedback({
         userId,

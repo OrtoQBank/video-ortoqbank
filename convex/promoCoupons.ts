@@ -25,6 +25,7 @@ export const getByCode = query({
 
 export const create = mutation({
   args: {
+    tenantId: v.id("tenants"),
     code: v.string(),
     type: v.union(
       v.literal("percentage"),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { useMemo, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -8,6 +8,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import { CouponForm, CouponFormData, CouponType } from "./coupon-form";
 import { CouponListItem } from "./coupon-list-item";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
+import { useTenantMutation, useTenantReady } from "@/hooks/use-tenant-convex";
 
 const toEpoch = (s: string | undefined) =>
   s ? new Date(s).getTime() : undefined;
@@ -23,17 +24,18 @@ const initialFormData: CouponFormData = {
 };
 
 export function CouponsPage() {
+  const isTenantReady = useTenantReady();
   const coupons = useQuery(api.promoCoupons.list) || [];
-  const createCoupon = useMutation(api.promoCoupons.create);
-  const updateCoupon = useMutation(api.promoCoupons.update);
-  const removeCoupon = useMutation(api.promoCoupons.remove);
+  const createCoupon = useTenantMutation(api.promoCoupons.create);
+  const updateCoupon = useTenantMutation(api.promoCoupons.update);
+  const removeCoupon = useTenantMutation(api.promoCoupons.remove);
   const { state } = useSidebar();
 
   const [form, setForm] = useState<CouponFormData>(initialFormData);
   const nowIso = useMemo(() => new Date().toISOString().slice(0, 16), []);
 
   async function handleCreate() {
-    if (!form.code.trim()) return;
+    if (!form.code.trim() || !isTenantReady) return;
     await createCoupon({
       code: form.code.trim().toUpperCase(),
       type: form.type,

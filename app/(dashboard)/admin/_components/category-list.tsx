@@ -3,13 +3,13 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
 import { useConfirmModal } from "@/hooks/use-confirm-modal";
 import { ErrorModal } from "@/components/ui/error-modal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { useTenantMutation, useTenantReady } from "@/hooks/use-tenant-convex";
 import {
   EditIcon,
   Trash2Icon,
@@ -166,10 +166,11 @@ function SortableCategoryItem({
 }
 
 export function CategoryList({ categories }: CategoryListProps) {
-  const updateCategory = useMutation(api.categories.update);
-  const deleteCategory = useMutation(api.categories.remove);
-  const reorderCategories = useMutation(api.categories.reorder);
-  const togglePublishCategory = useMutation(api.categories.togglePublish);
+  const isTenantReady = useTenantReady();
+  const updateCategory = useTenantMutation(api.categories.update);
+  const deleteCategory = useTenantMutation(api.categories.remove);
+  const reorderCategories = useTenantMutation(api.categories.reorder);
+  const togglePublishCategory = useTenantMutation(api.categories.togglePublish);
   const { toast } = useToast();
   const { error, showError, hideError } = useErrorModal();
   const { confirm, showConfirm, hideConfirm } = useConfirmModal();
@@ -237,6 +238,11 @@ export function CategoryList({ categories }: CategoryListProps) {
       return;
     }
 
+    if (!isTenantReady) {
+      showError("Tenant não encontrado", "Erro de configuração");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -280,6 +286,10 @@ export function CategoryList({ categories }: CategoryListProps) {
     showConfirm(
       message,
       async () => {
+        if (!isTenantReady) {
+          showError("Tenant não encontrado", "Erro de configuração");
+          return;
+        }
         try {
           await deleteCategory({ id });
           toast({
@@ -320,6 +330,10 @@ export function CategoryList({ categories }: CategoryListProps) {
     showConfirm(
       message,
       async () => {
+        if (!isTenantReady) {
+          showError("Tenant não encontrado", "Erro de configuração");
+          return;
+        }
         try {
           const newStatus = await togglePublishCategory({ id });
           toast({
@@ -353,6 +367,11 @@ export function CategoryList({ categories }: CategoryListProps) {
   };
 
   const handleSaveOrder = async () => {
+    if (!isTenantReady) {
+      showError("Tenant não encontrado", "Erro de configuração");
+      return;
+    }
+
     setIsSavingOrder(true);
     try {
       // Create updates array with new positions

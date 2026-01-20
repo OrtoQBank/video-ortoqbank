@@ -13,6 +13,7 @@ export const getPricingPlans = query({
 export const savePricingPlan = mutation({
   args: {
     id: v.optional(v.id("pricingPlans")), // Se não fornecido, cria novo
+    tenantId: v.id("tenants"),
     name: v.string(),
     badge: v.string(),
     originalPrice: v.optional(v.string()), // Marketing strikethrough price
@@ -45,8 +46,9 @@ export const savePricingPlan = mutation({
     const { id, ...planData } = args;
 
     if (id) {
-      // Editar plano existente
-      await ctx.db.patch(id, planData);
+      // Editar plano existente - don't update tenantId
+      const { tenantId: _tenantId, ...updateData } = planData;
+      await ctx.db.patch(id, updateData);
       return id;
     } else {
       // Criar novo plano

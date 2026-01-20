@@ -12,11 +12,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { useRouter } from "next/navigation";
-import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useUser } from "@clerk/nextjs";
 import { Id } from "@/convex/_generated/dataModel";
 import { WatchAlsoVideos } from "./watch-also-videos";
+import { useTenantMutation, useTenantReady } from "@/hooks/use-tenant-convex";
 
 interface Video {
   _id: string;
@@ -41,7 +41,8 @@ export function FavoritesInner({
   const { user } = useUser();
   const [currentPage, setCurrentPage] = useState(0);
   const pageSize = 3;
-  const removeFavorite = useMutation(api.favorites.removeFavorite);
+  const removeFavorite = useTenantMutation(api.favorites.removeFavorite);
+  const isTenantReady = useTenantReady();
   const { state } = useSidebar();
 
   // Mock pagination
@@ -62,7 +63,7 @@ export function FavoritesInner({
     lessonId: string,
   ) => {
     e.stopPropagation();
-    if (!user?.id) return;
+    if (!user?.id || !isTenantReady) return;
 
     try {
       await removeFavorite({

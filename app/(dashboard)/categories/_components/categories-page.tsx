@@ -7,16 +7,13 @@ import { Button } from "@/components/ui/button";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Preloaded, usePreloadedQuery, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useTenantQuery } from "@/hooks/use-tenant-convex";
 
-interface CategoriesPageProps {
-  preloadedCategories: Preloaded<typeof api.categories.listPublished>;
-}
-
-export function CategoriesPage({ preloadedCategories }: CategoriesPageProps) {
-  const categories = usePreloadedQuery(preloadedCategories);
+export function CategoriesPage() {
+  const categories = useTenantQuery(api.categories.listPublished, {});
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
   const { state } = useSidebar();
@@ -26,13 +23,13 @@ export function CategoriesPage({ preloadedCategories }: CategoriesPageProps) {
   // These queries only run when user is authenticated
   const contentStats = useQuery(api.aggregate.get, user ? {} : "skip");
 
-  const completedCountResult = useQuery(
+  const completedCountResult = useTenantQuery(
     api.progress.queries.getCompletedPublishedLessonsCount,
     user?.clerkUserId ? { userId: user.clerkUserId } : "skip",
   );
 
   // Buscar categorias usando a query avançada
-  const searchResults = useQuery(
+  const searchResults = useTenantQuery(
     api.search.searchCategories,
     searchQuery ? { query: searchQuery } : "skip",
   );

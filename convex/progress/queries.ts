@@ -2,18 +2,22 @@ import { v } from "convex/values";
 import { query } from "../_generated/server";
 
 /**
- * Get user progress for a specific lesson
+ * Get user progress for a specific lesson within a tenant
  */
 export const getLessonProgress = query({
   args: {
+    tenantId: v.id("tenants"),
     userId: v.string(),
     lessonId: v.id("lessons"),
   },
   handler: async (ctx, args) => {
     const progress = await ctx.db
       .query("userProgress")
-      .withIndex("by_userId_and_lessonId", (q) =>
-        q.eq("userId", args.userId).eq("lessonId", args.lessonId),
+      .withIndex("by_tenantId_and_userId_and_lessonId", (q) =>
+        q
+          .eq("tenantId", args.tenantId)
+          .eq("userId", args.userId)
+          .eq("lessonId", args.lessonId)
       )
       .unique();
 
@@ -22,18 +26,22 @@ export const getLessonProgress = query({
 });
 
 /**
- * Get user progress for a specific unit
+ * Get user progress for a specific unit within a tenant
  */
 export const getUnitProgress = query({
   args: {
+    tenantId: v.id("tenants"),
     userId: v.string(),
     unitId: v.id("units"),
   },
   handler: async (ctx, args) => {
     const progress = await ctx.db
       .query("unitProgress")
-      .withIndex("by_userId_and_unitId", (q) =>
-        q.eq("userId", args.userId).eq("unitId", args.unitId),
+      .withIndex("by_tenantId_and_userId_and_unitId", (q) =>
+        q
+          .eq("tenantId", args.tenantId)
+          .eq("userId", args.userId)
+          .eq("unitId", args.unitId)
       )
       .unique();
 
@@ -42,16 +50,19 @@ export const getUnitProgress = query({
 });
 
 /**
- * Get global progress for a user
+ * Get global progress for a user within a tenant
  */
 export const getGlobalProgress = query({
   args: {
+    tenantId: v.id("tenants"),
     userId: v.string(),
   },
   handler: async (ctx, args) => {
     const progress = await ctx.db
       .query("userGlobalProgress")
-      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .withIndex("by_tenantId_and_userId", (q) =>
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+      )
       .unique();
 
     return progress;
@@ -59,36 +70,41 @@ export const getGlobalProgress = query({
 });
 
 /**
- * Get all lesson progress for a user in a specific unit
+ * Get all lesson progress for a user in a specific unit within a tenant
  */
 export const getUnitLessonsProgress = query({
   args: {
+    tenantId: v.id("tenants"),
     userId: v.string(),
     unitId: v.id("units"),
   },
   handler: async (ctx, args) => {
     const progress = await ctx.db
       .query("userProgress")
-      .withIndex("by_userId_and_unitId", (q) =>
-        q.eq("userId", args.userId).eq("unitId", args.unitId),
+      .withIndex("by_tenantId_and_userId", (q) =>
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
       )
       .collect();
 
-    return progress;
+    // Filter to this unit only
+    return progress.filter((p) => p.unitId === args.unitId);
   },
 });
 
 /**
- * Get all unit progress for a user
+ * Get all unit progress for a user within a tenant
  */
 export const getAllUnitProgress = query({
   args: {
+    tenantId: v.id("tenants"),
     userId: v.string(),
   },
   handler: async (ctx, args) => {
     const progress = await ctx.db
       .query("unitProgress")
-      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .withIndex("by_tenantId_and_userId", (q) =>
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+      )
       .collect();
 
     return progress;
@@ -96,21 +112,23 @@ export const getAllUnitProgress = query({
 });
 
 /**
- * Get all completed lessons for a user
+ * Get all completed lessons for a user within a tenant
  */
 export const getCompletedLessons = query({
   args: {
+    tenantId: v.id("tenants"),
     userId: v.string(),
   },
   handler: async (ctx, args) => {
     const progress = await ctx.db
       .query("userProgress")
-      .withIndex("by_userId_and_completed", (q) =>
-        q.eq("userId", args.userId).eq("completed", true),
+      .withIndex("by_tenantId_and_userId", (q) =>
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
       )
       .collect();
 
-    return progress;
+    // Filter to completed only
+    return progress.filter((p) => p.completed);
   },
 });
 
@@ -120,13 +138,16 @@ export const getCompletedLessons = query({
  */
 export const getCompletedPublishedLessonsCount = query({
   args: {
+    tenantId: v.id("tenants"),
     userId: v.string(),
   },
   handler: async (ctx, args) => {
     // Use the aggregate table instead of counting manually
     const globalProgress = await ctx.db
       .query("userGlobalProgress")
-      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .withIndex("by_tenantId_and_userId", (q) =>
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+      )
       .unique();
 
     return globalProgress?.completedLessonsCount || 0;
@@ -135,14 +156,21 @@ export const getCompletedPublishedLessonsCount = query({
 
 /**
  * OPTIMIZED: Get unit progress for specific category only
- * Reduces data load from all 1000 units to ~100 per category
+ * Reduces data load from all units to those in the category
  */
 export const getUnitProgressByCategory = query({
   args: {
+    tenantId: v.id("tenants"),
     userId: v.string(),
     categoryId: v.id("categories"),
   },
   handler: async (ctx, args) => {
+    // Verify category belongs to tenant
+    const category = await ctx.db.get(args.categoryId);
+    if (!category || category.tenantId !== args.tenantId) {
+      return [];
+    }
+
     // Get units for this category
     const units = await ctx.db
       .query("units")
@@ -151,10 +179,12 @@ export const getUnitProgressByCategory = query({
 
     const unitIds = new Set(units.map((u) => u._id));
 
-    // Get progress only for these units
+    // Get progress only for this tenant and user
     const allProgress = await ctx.db
       .query("unitProgress")
-      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .withIndex("by_tenantId_and_userId", (q) =>
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+      )
       .collect();
 
     return allProgress.filter((p) => unitIds.has(p.unitId));
@@ -166,10 +196,17 @@ export const getUnitProgressByCategory = query({
  */
 export const getCompletedLessonsByCategory = query({
   args: {
+    tenantId: v.id("tenants"),
     userId: v.string(),
     categoryId: v.id("categories"),
   },
   handler: async (ctx, args) => {
+    // Verify category belongs to tenant
+    const category = await ctx.db.get(args.categoryId);
+    if (!category || category.tenantId !== args.tenantId) {
+      return [];
+    }
+
     // Get lessons for this category
     const lessons = await ctx.db
       .query("lessons")
@@ -178,14 +215,14 @@ export const getCompletedLessonsByCategory = query({
 
     const lessonIds = new Set(lessons.map((l) => l._id));
 
-    // Get completed progress only for these lessons
+    // Get completed progress for this tenant and user
     const allProgress = await ctx.db
       .query("userProgress")
-      .withIndex("by_userId_and_completed", (q) =>
-        q.eq("userId", args.userId).eq("completed", true),
+      .withIndex("by_tenantId_and_userId", (q) =>
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
       )
       .collect();
 
-    return allProgress.filter((p) => lessonIds.has(p.lessonId));
+    return allProgress.filter((p) => p.completed && lessonIds.has(p.lessonId));
   },
 });

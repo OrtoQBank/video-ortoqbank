@@ -1,12 +1,14 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { paginationOptsValidator } from "convex/server";
+import { requireTenantAdmin } from "./lib/tenantContext";
 
 /**
- * Submit feedback for a lesson
+ * Submit feedback for a lesson (tenant-scoped)
  */
 export const submitFeedback = mutation({
   args: {
+    tenantId: v.id("tenants"),
     userId: v.string(), // clerkUserId
     lessonId: v.id("lessons"),
     unitId: v.id("units"),
@@ -17,7 +19,14 @@ export const submitFeedback = mutation({
       throw new Error("Feedback não pode estar vazio");
     }
 
+    // Verify lesson belongs to tenant
+    const lesson = await ctx.db.get(args.lessonId);
+    if (!lesson || lesson.tenantId !== args.tenantId) {
+      throw new Error("Aula não encontrada ou não pertence a este tenant");
+    }
+
     const feedbackId = await ctx.db.insert("lessonFeedback", {
+      tenantId: args.tenantId,
       userId: args.userId,
       lessonId: args.lessonId,
       unitId: args.unitId,
@@ -34,12 +43,15 @@ export const submitFeedback = mutation({
  */
 export const getFeedbackByLesson = query({
   args: {
+    tenantId: v.id("tenants"),
     lessonId: v.id("lessons"),
   },
   handler: async (ctx, args) => {
     const feedbacks = await ctx.db
       .query("lessonFeedback")
-      .withIndex("by_lessonId", (q) => q.eq("lessonId", args.lessonId))
+      .withIndex("by_tenantId_and_lessonId", (q) =>
+        q.eq("tenantId", args.tenantId).eq("lessonId", args.lessonId)
+      )
       .order("desc")
       .collect();
 
@@ -52,38 +64,54 @@ export const getFeedbackByLesson = query({
  */
 export const getUserFeedback = query({
   args: {
+    tenantId: v.id("tenants"),
     userId: v.string(),
     lessonId: v.id("lessons"),
   },
   handler: async (ctx, args) => {
-    const feedback = await ctx.db
+    const feedbacks = await ctx.db
       .query("lessonFeedback")
-      .withIndex("by_userId_and_lessonId", (q) =>
-        q.eq("userId", args.userId).eq("lessonId", args.lessonId),
+      .withIndex("by_tenantId_and_lessonId", (q) =>
+        q.eq("tenantId", args.tenantId).eq("lessonId", args.lessonId)
       )
-      .first();
+      .collect();
 
+    const feedback = feedbacks.find((f) => f.userId === args.userId);
     return feedback || null;
   },
 });
 
 /**
- * Get all feedback with user and lesson information (admin only) - Paginated
+ * Get all feedback with user and lesson information (tenant admin only) - Paginated
  */
 export const getAllFeedbackWithDetails = query({
-  args: { paginationOpts: paginationOptsValidator },
+  args: {
+    tenantId: v.id("tenants"),
+    paginationOpts: paginationOptsValidator,
+  },
   handler: async (ctx, args) => {
-    const paginatedFeedbacks = await ctx.db
+    // Get feedback for this tenant
+    const allFeedbacks = await ctx.db
       .query("lessonFeedback")
+      .withIndex("by_tenantId", (q) => q.eq("tenantId", args.tenantId))
       .order("desc")
-      .paginate(args.paginationOpts);
+      .collect();
+
+    // Manual pagination
+    const numToSkip = args.paginationOpts.cursor
+      ? parseInt(args.paginationOpts.cursor as string)
+      : 0;
+    const feedbacks = allFeedbacks.slice(
+      numToSkip,
+      numToSkip + (args.paginationOpts.numItems || 10)
+    );
 
     const feedbackWithDetails = await Promise.all(
-      paginatedFeedbacks.page.map(async (feedback) => {
+      feedbacks.map(async (feedback) => {
         const user = await ctx.db
           .query("users")
           .withIndex("by_clerkUserId", (q) =>
-            q.eq("clerkUserId", feedback.userId),
+            q.eq("clerkUserId", feedback.userId)
           )
           .first();
 
@@ -105,12 +133,15 @@ export const getAllFeedbackWithDetails = query({
           lessonTitle: lesson?.title || "Aula não encontrada",
           unitTitle: unit?.title || "Unidade não encontrada",
         };
-      }),
+      })
     );
 
+    const hasMore = numToSkip + feedbacks.length < allFeedbacks.length;
+
     return {
-      ...paginatedFeedbacks,
       page: feedbackWithDetails,
+      isDone: !hasMore,
+      continueCursor: hasMore ? String(numToSkip + feedbacks.length) : undefined,
     };
   },
 });

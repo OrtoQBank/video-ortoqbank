@@ -18,6 +18,7 @@ import { api } from "../_generated/api";
  */
 export const createVideo = action({
   args: {
+    tenantId: v.id("tenants"),
     title: v.string(),
     createdBy: v.string(),
   },
@@ -54,6 +55,7 @@ export const createVideo = action({
 
     // Save video record to Convex (status: uploading)
     await ctx.runMutation(api.videos.create, {
+      tenantId: args.tenantId,
       videoId,
       libraryId,
       title: args.title,
@@ -208,6 +210,7 @@ export const fetchVideoInfo = action({
  */
 export const registerExistingVideo = action({
   args: {
+    tenantId: v.id("tenants"),
     videoId: v.string(),
     createdBy: v.string(),
   },
@@ -277,6 +280,7 @@ export const registerExistingVideo = action({
 
     // Create video record in our database
     await ctx.runMutation(api.videos.create, {
+      tenantId: args.tenantId,
       videoId: args.videoId,
       libraryId,
       title: bunnyData.title || "",

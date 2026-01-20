@@ -5,6 +5,42 @@ export default defineSchema({
   numbers: defineTable({
     value: v.number(),
   }),
+
+  // ============================================================================
+  // MULTITENANCY TABLES
+  // ============================================================================
+
+  // Tenants table - represents organizations/companies
+  tenants: defineTable({
+    name: v.string(),
+    slug: v.string(), // subdomain identifier (e.g., "acme" for acme.ortoqbank.com)
+    logoUrl: v.optional(v.string()),
+    primaryColor: v.optional(v.string()),
+    status: v.union(v.literal("active"), v.literal("suspended")),
+    createdAt: v.number(),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_status", ["status"]),
+
+  // Tenant memberships - links users to tenants with roles
+  tenantMemberships: defineTable({
+    userId: v.id("users"),
+    tenantId: v.id("tenants"),
+    role: v.union(v.literal("member"), v.literal("admin")),
+    // Tenant-specific access control
+    hasActiveAccess: v.boolean(), // Whether user has active access in this tenant
+    accessExpiresAt: v.optional(v.number()), // When access expires
+    joinedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_tenantId", ["tenantId"])
+    .index("by_userId_and_tenantId", ["userId", "tenantId"])
+    .index("by_tenantId_and_role", ["tenantId", "role"]),
+
+  // ============================================================================
+  // USER TABLE
+  // ============================================================================
+
   users: defineTable({
     clerkUserId: v.string(),
     email: v.string(),
@@ -12,7 +48,7 @@ export default defineSchema({
     lastName: v.string(),
     imageUrl: v.optional(v.string()),
     onboardingCompleted: v.boolean(),
-    role: v.union(v.literal("user"), v.literal("admin")),
+    role: v.union(v.literal("user"), v.literal("admin"), v.literal("superadmin")),
     status: v.union(
       v.literal("active"),
       v.literal("inactive"),
@@ -35,8 +71,13 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_hasActiveYearAccess", ["hasActiveYearAccess"]),
 
+  // ============================================================================
+  // CONTENT TABLES (tenant-scoped)
+  // ============================================================================
+
   // Categories table
   categories: defineTable({
+    tenantId: v.id("tenants"), // Tenant ownership
     title: v.string(),
     slug: v.string(),
     description: v.string(),
@@ -47,10 +88,15 @@ export default defineSchema({
     .index("by_slug", ["slug"])
     .index("by_position", ["position"])
     .index("by_isPublished", ["isPublished"])
-    .index("by_isPublished_and_position", ["isPublished", "position"]),
+    .index("by_isPublished_and_position", ["isPublished", "position"])
+    .index("by_tenantId", ["tenantId"])
+    .index("by_tenantId_and_position", ["tenantId", "position"])
+    .index("by_tenantId_and_slug", ["tenantId", "slug"])
+    .index("by_tenantId_and_isPublished", ["tenantId", "isPublished"]),
 
   // Units table (formerly modules/courses)
   units: defineTable({
+    tenantId: v.id("tenants"), // Tenant ownership
     categoryId: v.id("categories"),
     title: v.string(),
     slug: v.string(),
@@ -65,10 +111,13 @@ export default defineSchema({
     .index("by_slug", ["slug"])
     .index("by_categoryId_and_order", ["categoryId", "order_index"])
     .index("by_isPublished", ["isPublished"])
-    .index("by_categoryId_and_isPublished", ["categoryId", "isPublished"]),
+    .index("by_categoryId_and_isPublished", ["categoryId", "isPublished"])
+    .index("by_tenantId", ["tenantId"])
+    .index("by_tenantId_and_categoryId", ["tenantId", "categoryId"]),
 
   // Lessons table (video lessons)
   lessons: defineTable({
+    tenantId: v.id("tenants"), // Tenant ownership
     unitId: v.id("units"),
     categoryId: v.id("categories"), // Denormalized for efficient querying
     title: v.string(),
@@ -91,10 +140,13 @@ export default defineSchema({
       "unitId",
       "isPublished",
       "order_index",
-    ]),
+    ])
+    .index("by_tenantId", ["tenantId"])
+    .index("by_tenantId_and_unitId", ["tenantId", "unitId"]),
 
   // Videos table (Bunny Stream videos)
   videos: defineTable({
+    tenantId: v.id("tenants"), // Tenant ownership
     videoId: v.string(), // Bunny video ID
     libraryId: v.string(), // Bunny library ID
     title: v.string(),
@@ -129,10 +181,17 @@ export default defineSchema({
   })
     .index("by_videoId", ["videoId"])
     .index("by_createdBy", ["createdBy"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_tenantId", ["tenantId"])
+    .index("by_tenantId_and_videoId", ["tenantId", "videoId"]),
+
+  // ============================================================================
+  // USER PROGRESS TABLES (tenant-scoped)
+  // ============================================================================
 
   // User progress per lesson (granular tracking)
   userProgress: defineTable({
+    tenantId: v.id("tenants"), // Tenant context
     userId: v.string(), // clerkUserId
     lessonId: v.id("lessons"),
     unitId: v.id("units"),
@@ -146,10 +205,14 @@ export default defineSchema({
     .index("by_userId_and_lessonId", ["userId", "lessonId"])
     .index("by_userId_and_unitId", ["userId", "unitId"])
     .index("by_lessonId", ["lessonId"])
-    .index("by_userId_and_completed", ["userId", "completed"]),
+    .index("by_userId_and_completed", ["userId", "completed"])
+    .index("by_tenantId", ["tenantId"])
+    .index("by_tenantId_and_userId", ["tenantId", "userId"])
+    .index("by_tenantId_and_userId_and_lessonId", ["tenantId", "userId", "lessonId"]),
 
   // Aggregated progress per unit (for quick unit progress queries)
   unitProgress: defineTable({
+    tenantId: v.id("tenants"), // Tenant context
     userId: v.string(), // clerkUserId
     unitId: v.id("units"),
     completedLessonsCount: v.number(),
@@ -160,29 +223,39 @@ export default defineSchema({
     .index("by_userId", ["userId"])
     .index("by_userId_and_unitId", ["userId", "unitId"])
     .index("by_unitId", ["unitId"])
-    .index("by_userId_and_progressPercent", ["userId", "progressPercent"]),
+    .index("by_userId_and_progressPercent", ["userId", "progressPercent"])
+    .index("by_tenantId", ["tenantId"])
+    .index("by_tenantId_and_userId", ["tenantId", "userId"])
+    .index("by_tenantId_and_userId_and_unitId", ["tenantId", "userId", "unitId"]),
 
   // Global user progress (for dashboard/home quick view)
   userGlobalProgress: defineTable({
+    tenantId: v.id("tenants"), // Tenant context
     userId: v.string(), // clerkUserId
     completedLessonsCount: v.number(),
     progressPercent: v.number(), // 0-100
     updatedAt: v.number(), // timestamp of last update
   })
     .index("by_userId", ["userId"])
-    .index("by_progressPercent", ["progressPercent"]),
+    .index("by_progressPercent", ["progressPercent"])
+    .index("by_tenantId", ["tenantId"])
+    .index("by_tenantId_and_userId", ["tenantId", "userId"]),
 
   // Favorites (user's favorite lessons)
   favorites: defineTable({
+    tenantId: v.id("tenants"), // Tenant context
     userId: v.string(), // clerkUserId
     lessonId: v.id("lessons"),
   })
     .index("by_userId", ["userId"])
     .index("by_userId_and_lessonId", ["userId", "lessonId"])
-    .index("by_lessonId", ["lessonId"]),
+    .index("by_lessonId", ["lessonId"])
+    .index("by_tenantId", ["tenantId"])
+    .index("by_tenantId_and_userId", ["tenantId", "userId"]),
 
   // Recent views (user's recent lesson views)
   recentViews: defineTable({
+    tenantId: v.id("tenants"), // Tenant context
     userId: v.string(), // clerkUserId
     lessonId: v.id("lessons"),
     unitId: v.id("units"),
@@ -196,7 +269,9 @@ export default defineSchema({
     .index("by_userId", ["userId"])
     .index("by_userId_and_viewedAt", ["userId", "viewedAt"])
     .index("by_lessonId", ["lessonId"])
-    .index("by_userId_and_lessonId", ["userId", "lessonId"]),
+    .index("by_userId_and_lessonId", ["userId", "lessonId"])
+    .index("by_tenantId", ["tenantId"])
+    .index("by_tenantId_and_userId", ["tenantId", "userId"]),
 
   // Content statistics moved to Aggregate component
   // See convex/aggregate.ts for the new implementation using @convex-dev/aggregate
@@ -209,6 +284,7 @@ export default defineSchema({
 
   // Lesson feedback (user feedback/questions about lessons)
   lessonFeedback: defineTable({
+    tenantId: v.id("tenants"), // Tenant context
     userId: v.string(), // clerkUserId
     lessonId: v.id("lessons"),
     unitId: v.id("units"),
@@ -217,10 +293,13 @@ export default defineSchema({
   })
     .index("by_userId", ["userId"])
     .index("by_lessonId", ["lessonId"])
-    .index("by_userId_and_lessonId", ["userId", "lessonId"]),
+    .index("by_userId_and_lessonId", ["userId", "lessonId"])
+    .index("by_tenantId", ["tenantId"])
+    .index("by_tenantId_and_lessonId", ["tenantId", "lessonId"]),
 
   // Lesson ratings (user star ratings for lessons)
   lessonRatings: defineTable({
+    tenantId: v.id("tenants"), // Tenant context
     userId: v.string(), // clerkUserId
     lessonId: v.id("lessons"),
     unitId: v.id("units"),
@@ -229,9 +308,12 @@ export default defineSchema({
   })
     .index("by_userId", ["userId"])
     .index("by_lessonId", ["lessonId"])
-    .index("by_userId_and_lessonId", ["userId", "lessonId"]),
+    .index("by_userId_and_lessonId", ["userId", "lessonId"])
+    .index("by_tenantId", ["tenantId"])
+    .index("by_tenantId_and_lessonId", ["tenantId", "lessonId"]),
   // Admin-managed coupons for checkout
   coupons: defineTable({
+    tenantId: v.id("tenants"), // Tenant ownership
     code: v.string(), // store uppercase
     type: v.union(
       v.literal("percentage"),
@@ -246,10 +328,14 @@ export default defineSchema({
     // Usage limits
     currentUses: v.optional(v.number()), // Current total usage count
     maxUses: v.optional(v.number()), // Maximum total uses allowed
-  }).index("by_code", ["code"]),
+  })
+    .index("by_code", ["code"])
+    .index("by_tenantId", ["tenantId"])
+    .index("by_tenantId_and_code", ["tenantId", "code"]),
 
   // Coupon usage tracking
   couponUsage: defineTable({
+    tenantId: v.id("tenants"), // Tenant context
     couponId: v.id("coupons"),
     couponCode: v.string(),
     orderId: v.id("pendingOrders"),
@@ -263,10 +349,12 @@ export default defineSchema({
     .index("by_coupon", ["couponId"])
     .index("by_coupon_user", ["couponCode", "userCpf"])
     .index("by_email", ["userEmail"])
-    .index("by_cpf", ["userCpf"]),
+    .index("by_cpf", ["userCpf"])
+    .index("by_tenantId", ["tenantId"]),
 
-  //pricing plans
+  // Pricing plans
   pricingPlans: defineTable({
+    tenantId: v.id("tenants"), // Tenant ownership
     name: v.string(),
     badge: v.string(),
     originalPrice: v.optional(v.string()), // Marketing strikethrough price
@@ -297,7 +385,9 @@ export default defineSchema({
     .index("by_product_id", ["productId"])
     .index("by_category", ["category"])
     .index("by_year", ["year"])
-    .index("by_active", ["isActive"]),
+    .index("by_active", ["isActive"])
+    .index("by_tenantId", ["tenantId"])
+    .index("by_tenantId_and_productId", ["tenantId", "productId"]),
   // Waitlist - tracks users interested in OrtoClub TEOT
   waitlist: defineTable({
     name: v.string(),
@@ -322,8 +412,14 @@ export default defineSchema({
     ),
   }).index("by_email", ["email"]),
 
+  // ============================================================================
+  // ORDER AND PAYMENT TABLES (tenant-scoped)
+  // ============================================================================
+
   // Pending orders - tracks checkout sessions and payment lifecycle
   pendingOrders: defineTable({
+    tenantId: v.id("tenants"), // Tenant context
+
     // Contact info (from checkout)
     email: v.string(), // Contact email from checkout
     cpf: v.string(),
@@ -383,11 +479,14 @@ export default defineSchema({
     .index("by_account_email", ["accountEmail"])
     .index("by_status", ["status"])
     .index("by_asaas_payment", ["asaasPaymentId"])
-    .index("by_external_reference", ["externalReference"]),
+    .index("by_external_reference", ["externalReference"])
+    .index("by_tenantId", ["tenantId"])
+    .index("by_tenantId_and_status", ["tenantId", "status"]),
 
   // Invoices - tracks nota fiscal (invoice) generation for paid orders
   // IMPORTANT: For installment payments, ONE invoice is generated with the TOTAL value
   invoices: defineTable({
+    tenantId: v.id("tenants"), // Tenant context
     orderId: v.id("pendingOrders"),
     asaasPaymentId: v.string(),
     asaasInvoiceId: v.optional(v.string()), // Set when invoice is successfully created
@@ -421,10 +520,12 @@ export default defineSchema({
     .index("by_order", ["orderId"])
     .index("by_payment", ["asaasPaymentId"])
     .index("by_status", ["status"])
-    .index("by_asaas_invoice", ["asaasInvoiceId"]),
+    .index("by_asaas_invoice", ["asaasInvoiceId"])
+    .index("by_tenantId", ["tenantId"]),
 
   // Email invitations - tracks Clerk invitation emails sent after payment
   emailInvitations: defineTable({
+    tenantId: v.id("tenants"), // Tenant context
     orderId: v.id("pendingOrders"),
     email: v.string(),
     customerName: v.string(),
@@ -444,5 +545,6 @@ export default defineSchema({
   })
     .index("by_order", ["orderId"])
     .index("by_email", ["email"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_tenantId", ["tenantId"]),
 });

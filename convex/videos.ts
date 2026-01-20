@@ -56,6 +56,7 @@ export const listByUser = query({
  */
 export const create = mutation({
   args: {
+    tenantId: v.id("tenants"),
     videoId: v.string(),
     libraryId: v.string(),
     title: v.string(),
@@ -96,6 +97,7 @@ export const create = mutation({
     }
 
     const videoId: Id<"videos"> = await ctx.db.insert("videos", {
+      tenantId: args.tenantId,
       videoId: args.videoId,
       libraryId: args.libraryId,
       title: args.title,

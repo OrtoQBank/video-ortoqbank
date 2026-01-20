@@ -19,7 +19,7 @@ import { useConfirmModal } from "@/hooks/use-confirm-modal";
 import { useBunnyUpload } from "@/hooks/use-bunny-upload";
 import { ErrorModal } from "@/components/ui/error-modal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
-import { useQuery, useMutation, useAction } from "convex/react";
+import { useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import {
@@ -34,6 +34,7 @@ import {
 import { LessonEditPanelProps } from "./types";
 import { useUser } from "@clerk/nextjs";
 import { ImageUpload } from "@/components/ui/image-upload";
+import { useTenantMutation, useTenantReady } from "@/hooks/use-tenant-convex";
 
 interface VideoInfo {
   videoId: string;
@@ -53,11 +54,12 @@ export function LessonEditPanel({
   onSave,
   onCancel,
 }: LessonEditPanelProps) {
+  const isTenantReady = useTenantReady();
   const { user } = useUser();
   const { toast } = useToast();
   const { error, showError, hideError } = useErrorModal();
   const { confirm, showConfirm, hideConfirm } = useConfirmModal();
-  const updateLesson = useMutation(api.lessons.update);
+  const updateLesson = useTenantMutation(api.lessons.update);
   const deleteVideoFromBunny = useAction(api.bunny.videos.deleteVideo);
   const fetchVideoInfo = useAction(api.bunny.videos.fetchVideoInfo);
   const registerExistingVideo = useAction(
@@ -212,6 +214,10 @@ export function LessonEditPanel({
       "Tem certeza que deseja remover o vídeo desta aula? O vídeo será permanentemente excluído do sistema.",
       async () => {
         try {
+          if (!isTenantReady) {
+            throw new Error("Tenant not loaded");
+          }
+
           // First, delete video from Bunny CDN and Convex database
           if (currentVideoId) {
             await deleteVideoFromBunny({ videoId: currentVideoId });

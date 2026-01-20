@@ -12,12 +12,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
 import { ErrorModal } from "@/components/ui/error-modal";
 import { Doc, Id } from "@/convex/_generated/dataModel";
+import { useTenantMutation, useTenantReady } from "@/hooks/use-tenant-convex";
 
 interface UnitFormProps {
   categories: Doc<"categories">[];
@@ -25,7 +25,8 @@ interface UnitFormProps {
 }
 
 export function UnitForm({ categories, onSuccess }: UnitFormProps) {
-  const createUnit = useMutation(api.units.create);
+  const isTenantReady = useTenantReady();
+  const createUnit = useTenantMutation(api.units.create);
   const { toast } = useToast();
   const { error, showError, hideError } = useErrorModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -38,6 +39,10 @@ export function UnitForm({ categories, onSuccess }: UnitFormProps) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!isTenantReady) {
+      showError("Tenant not loaded", "Error");
+      return;
+    }
     setIsSubmitting(true);
 
     try {

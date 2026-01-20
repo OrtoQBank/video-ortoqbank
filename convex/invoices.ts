@@ -58,6 +58,7 @@ export const generateInvoice = internalMutation({
 
     // Create invoice record with installment information for reference
     const invoiceId = await ctx.db.insert("invoices", {
+      tenantId: order.tenantId, // Get tenantId from the order
       orderId: args.orderId,
       asaasPaymentId: args.asaasPaymentId,
       status: "pending",

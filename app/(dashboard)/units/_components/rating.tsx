@@ -5,8 +5,8 @@ import { StarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Id } from "@/convex/_generated/dataModel";
-import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useTenantMutation, useTenantQuery, useTenantReady } from "@/hooks/use-tenant-convex";
 
 interface RatingProps {
   userId: string;
@@ -19,8 +19,9 @@ export function Rating({ userId, lessonId, unitId }: RatingProps) {
   const [showRatingConfirm, setShowRatingConfirm] = useState(false);
   const prevLessonIdRef = useRef(lessonId);
 
-  const submitRating = useMutation(api.ratings.submitRating);
-  const userRating = useQuery(
+  const submitRating = useTenantMutation(api.ratings.submitRating);
+  const isTenantReady = useTenantReady();
+  const userRating = useTenantQuery(
     api.ratings.getUserRating,
     userId && lessonId ? { userId, lessonId } : "skip",
   );
@@ -52,7 +53,7 @@ export function Rating({ userId, lessonId, unitId }: RatingProps) {
   };
 
   const handleConfirmRating = async () => {
-    if (!userId || !lessonId || !unitId || !displayedRating) return;
+    if (!userId || !lessonId || !unitId || !displayedRating || !isTenantReady) return;
     try {
       await submitRating({
         userId,

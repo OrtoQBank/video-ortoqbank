@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useMutation, useAction } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
@@ -20,6 +20,7 @@ import { ErrorModal } from "@/components/ui/error-modal";
 import { Doc, Id } from "@/convex/_generated/dataModel";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { useUser } from "@clerk/nextjs";
+import { useTenantMutation, useTenantReady } from "@/hooks/use-tenant-convex";
 import {
   SearchIcon,
   LoaderIcon,
@@ -46,8 +47,9 @@ interface VideoInfo {
 }
 
 export function LessonForm({ units, onSuccess }: LessonFormProps) {
+  const isTenantReady = useTenantReady();
   const { user } = useUser();
-  const createLesson = useMutation(api.lessons.create);
+  const createLesson = useTenantMutation(api.lessons.create);
   const fetchVideoInfo = useAction(api.bunny.videos.fetchVideoInfo);
   const registerExistingVideo = useAction(
     api.bunny.videos.registerExistingVideo,
@@ -133,6 +135,10 @@ export function LessonForm({ units, onSuccess }: LessonFormProps) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!isTenantReady) {
+      showError("Tenant not loaded", "Error");
+      return;
+    }
     setIsSubmitting(true);
 
     try {

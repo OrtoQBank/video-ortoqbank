@@ -4,11 +4,12 @@ import { updateUnitAndGlobalProgress } from "./helpers";
 import { getTotalLessonsCount } from "../aggregate";
 
 /**
- * Mark a lesson as completed for a user
+ * Mark a lesson as completed for a user within a tenant
  * This will update userProgress, unitProgress, and userGlobalProgress atomically
  */
 export const markLessonCompleted = mutation({
   args: {
+    tenantId: v.id("tenants"),
     userId: v.string(), // clerkUserId
     lessonId: v.id("lessons"),
   },
@@ -19,11 +20,19 @@ export const markLessonCompleted = mutation({
       throw new Error("Aula não encontrada");
     }
 
+    // Verify lesson belongs to this tenant
+    if (lesson.tenantId !== args.tenantId) {
+      throw new Error("Aula não pertence a este tenant");
+    }
+
     // Check if already completed
     const existingProgress = await ctx.db
       .query("userProgress")
-      .withIndex("by_userId_and_lessonId", (q) =>
-        q.eq("userId", args.userId).eq("lessonId", args.lessonId),
+      .withIndex("by_tenantId_and_userId_and_lessonId", (q) =>
+        q
+          .eq("tenantId", args.tenantId)
+          .eq("userId", args.userId)
+          .eq("lessonId", args.lessonId)
       )
       .unique();
 
@@ -32,6 +41,7 @@ export const markLessonCompleted = mutation({
     // Create or update userProgress
     if (!existingProgress) {
       await ctx.db.insert("userProgress", {
+        tenantId: args.tenantId,
         userId: args.userId,
         lessonId: args.lessonId,
         unitId: lesson.unitId,
@@ -56,21 +66,25 @@ export const markLessonCompleted = mutation({
 
     const unitProgressDoc = await ctx.db
       .query("unitProgress")
-      .withIndex("by_userId_and_unitId", (q) =>
-        q.eq("userId", args.userId).eq("unitId", lesson.unitId),
+      .withIndex("by_tenantId_and_userId_and_unitId", (q) =>
+        q
+          .eq("tenantId", args.tenantId)
+          .eq("userId", args.userId)
+          .eq("unitId", lesson.unitId)
       )
       .unique();
 
     const completedLessonsInUnit = await ctx.db
       .query("userProgress")
-      .withIndex("by_userId_and_unitId", (q) =>
-        q.eq("userId", args.userId).eq("unitId", lesson.unitId),
+      .withIndex("by_tenantId_and_userId", (q) =>
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
       )
       .collect();
 
-    const completedCount = completedLessonsInUnit.filter(
-      (p) => p.completed,
-    ).length;
+    const lessonsInThisUnit = completedLessonsInUnit.filter(
+      (p) => p.unitId === lesson.unitId
+    );
+    const completedCount = lessonsInThisUnit.filter((p) => p.completed).length;
     const progressPercent =
       unit.totalLessonVideos > 0
         ? Math.round((completedCount / unit.totalLessonVideos) * 100)
@@ -78,6 +92,7 @@ export const markLessonCompleted = mutation({
 
     if (!unitProgressDoc) {
       await ctx.db.insert("unitProgress", {
+        tenantId: args.tenantId,
         userId: args.userId,
         unitId: lesson.unitId,
         completedLessonsCount: completedCount,
@@ -97,12 +112,14 @@ export const markLessonCompleted = mutation({
     // Update userGlobalProgress
     const allCompletedLessons = await ctx.db
       .query("userProgress")
-      .withIndex("by_userId_and_completed", (q) =>
-        q.eq("userId", args.userId).eq("completed", true),
+      .withIndex("by_tenantId_and_userId", (q) =>
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
       )
       .collect();
 
-    const totalCompletedCount = allCompletedLessons.length;
+    const totalCompletedCount = allCompletedLessons.filter(
+      (p) => p.completed
+    ).length;
 
     // Get total lessons from aggregate
     const totalLessonsInSystem = await getTotalLessonsCount(ctx);
@@ -113,11 +130,14 @@ export const markLessonCompleted = mutation({
 
     const globalProgressDoc = await ctx.db
       .query("userGlobalProgress")
-      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .withIndex("by_tenantId_and_userId", (q) =>
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+      )
       .unique();
 
     if (!globalProgressDoc) {
       await ctx.db.insert("userGlobalProgress", {
+        tenantId: args.tenantId,
         userId: args.userId,
         completedLessonsCount: totalCompletedCount,
         progressPercent: globalProgressPercent,
@@ -140,6 +160,7 @@ export const markLessonCompleted = mutation({
  */
 export const markLessonIncomplete = mutation({
   args: {
+    tenantId: v.id("tenants"),
     userId: v.string(),
     lessonId: v.id("lessons"),
   },
@@ -150,11 +171,19 @@ export const markLessonIncomplete = mutation({
       throw new Error("Aula não encontrada");
     }
 
+    // Verify lesson belongs to this tenant
+    if (lesson.tenantId !== args.tenantId) {
+      throw new Error("Aula não pertence a este tenant");
+    }
+
     // Find and update userProgress
     const existingProgress = await ctx.db
       .query("userProgress")
-      .withIndex("by_userId_and_lessonId", (q) =>
-        q.eq("userId", args.userId).eq("lessonId", args.lessonId),
+      .withIndex("by_tenantId_and_userId_and_lessonId", (q) =>
+        q
+          .eq("tenantId", args.tenantId)
+          .eq("userId", args.userId)
+          .eq("lessonId", args.lessonId)
       )
       .unique();
 
@@ -175,13 +204,16 @@ export const markLessonIncomplete = mutation({
     if (unit) {
       const completedLessonsInUnit = await ctx.db
         .query("userProgress")
-        .withIndex("by_userId_and_unitId", (q) =>
-          q.eq("userId", args.userId).eq("unitId", lesson.unitId),
+        .withIndex("by_tenantId_and_userId", (q) =>
+          q.eq("tenantId", args.tenantId).eq("userId", args.userId)
         )
         .collect();
 
-      const completedCount = completedLessonsInUnit.filter(
-        (p) => p.completed,
+      const lessonsInThisUnit = completedLessonsInUnit.filter(
+        (p) => p.unitId === lesson.unitId
+      );
+      const completedCount = lessonsInThisUnit.filter(
+        (p) => p.completed
       ).length;
       const progressPercent =
         unit.totalLessonVideos > 0
@@ -190,8 +222,11 @@ export const markLessonIncomplete = mutation({
 
       const unitProgressDoc = await ctx.db
         .query("unitProgress")
-        .withIndex("by_userId_and_unitId", (q) =>
-          q.eq("userId", args.userId).eq("unitId", lesson.unitId),
+        .withIndex("by_tenantId_and_userId_and_unitId", (q) =>
+          q
+            .eq("tenantId", args.tenantId)
+            .eq("userId", args.userId)
+            .eq("unitId", lesson.unitId)
         )
         .unique();
 
@@ -207,14 +242,16 @@ export const markLessonIncomplete = mutation({
     // Update userGlobalProgress
     const allCompletedLessons = await ctx.db
       .query("userProgress")
-      .withIndex("by_userId_and_completed", (q) =>
-        q.eq("userId", args.userId).eq("completed", true),
+      .withIndex("by_tenantId_and_userId", (q) =>
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
       )
       .collect();
 
-    const totalCompletedCount = allCompletedLessons.length;
+    const totalCompletedCount = allCompletedLessons.filter(
+      (p) => p.completed
+    ).length;
 
-    // Get total lessons from aggregate instead of .collect()
+    // Get total lessons from aggregate
     const totalLessonsInSystem = await getTotalLessonsCount(ctx);
     const globalProgressPercent =
       totalLessonsInSystem > 0
@@ -223,7 +260,9 @@ export const markLessonIncomplete = mutation({
 
     const globalProgressDoc = await ctx.db
       .query("userGlobalProgress")
-      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .withIndex("by_tenantId_and_userId", (q) =>
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+      )
       .unique();
 
     if (globalProgressDoc) {
@@ -239,25 +278,25 @@ export const markLessonIncomplete = mutation({
 });
 
 /**
- * Initialize or recalculate global progress for a user
- * Useful for migrations or fixing inconsistencies
+ * Initialize or recalculate global progress for a user in a tenant
  */
 export const recalculateGlobalProgress = mutation({
   args: {
+    tenantId: v.id("tenants"),
     userId: v.string(),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
 
-    // Get all completed lessons
-    const allCompletedLessons = await ctx.db
+    // Get all completed lessons for this tenant
+    const allProgress = await ctx.db
       .query("userProgress")
-      .withIndex("by_userId_and_completed", (q) =>
-        q.eq("userId", args.userId).eq("completed", true),
+      .withIndex("by_tenantId_and_userId", (q) =>
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
       )
       .collect();
 
-    const totalCompletedCount = allCompletedLessons.length;
+    const totalCompletedCount = allProgress.filter((p) => p.completed).length;
 
     // Get total lessons from aggregate
     const totalLessonsInSystem = await getTotalLessonsCount(ctx);
@@ -268,11 +307,14 @@ export const recalculateGlobalProgress = mutation({
 
     const globalProgressDoc = await ctx.db
       .query("userGlobalProgress")
-      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .withIndex("by_tenantId_and_userId", (q) =>
+        q.eq("tenantId", args.tenantId).eq("userId", args.userId)
+      )
       .unique();
 
     if (!globalProgressDoc) {
       await ctx.db.insert("userGlobalProgress", {
+        tenantId: args.tenantId,
         userId: args.userId,
         completedLessonsCount: totalCompletedCount,
         progressPercent: globalProgressPercent,
@@ -296,6 +338,7 @@ export const recalculateGlobalProgress = mutation({
  */
 export const saveVideoProgress = mutation({
   args: {
+    tenantId: v.id("tenants"),
     userId: v.string(),
     lessonId: v.id("lessons"),
     currentTimeSec: v.number(),
@@ -308,6 +351,11 @@ export const saveVideoProgress = mutation({
       throw new Error("Aula não encontrada");
     }
 
+    // Verify lesson belongs to this tenant
+    if (lesson.tenantId !== args.tenantId) {
+      throw new Error("Aula não pertence a este tenant");
+    }
+
     const now = Date.now();
 
     // Calculate if video should be marked as completed (>90%)
@@ -318,14 +366,18 @@ export const saveVideoProgress = mutation({
     // Check if progress exists
     const existingProgress = await ctx.db
       .query("userProgress")
-      .withIndex("by_userId_and_lessonId", (q) =>
-        q.eq("userId", args.userId).eq("lessonId", args.lessonId),
+      .withIndex("by_tenantId_and_userId_and_lessonId", (q) =>
+        q
+          .eq("tenantId", args.tenantId)
+          .eq("userId", args.userId)
+          .eq("lessonId", args.lessonId)
       )
       .unique();
 
     if (!existingProgress) {
       // Create new progress record
       await ctx.db.insert("userProgress", {
+        tenantId: args.tenantId,
         userId: args.userId,
         lessonId: args.lessonId,
         unitId: lesson.unitId,
@@ -338,7 +390,12 @@ export const saveVideoProgress = mutation({
 
       // If marking as completed, update unit and global progress
       if (shouldComplete) {
-        await updateUnitAndGlobalProgress(ctx, args.userId, lesson.unitId);
+        await updateUnitAndGlobalProgress(
+          ctx,
+          args.tenantId,
+          args.userId,
+          lesson.unitId
+        );
       }
     } else {
       // Update existing progress
@@ -355,7 +412,12 @@ export const saveVideoProgress = mutation({
 
       // If newly completed (wasn't completed before), update unit and global progress
       if (shouldComplete && !wasCompleted) {
-        await updateUnitAndGlobalProgress(ctx, args.userId, lesson.unitId);
+        await updateUnitAndGlobalProgress(
+          ctx,
+          args.tenantId,
+          args.userId,
+          lesson.unitId
+        );
       }
     }
 

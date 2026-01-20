@@ -142,6 +142,7 @@ interface PendingOrderWithInstallments {
  */
 export const createPendingOrder = mutation({
   args: {
+    tenantId: v.id("tenants"),
     email: v.string(),
     cpf: v.string(),
     name: v.string(),
@@ -245,6 +246,7 @@ export const createPendingOrder = mutation({
     const pendingOrderId: Id<"pendingOrders"> = await ctx.db.insert(
       "pendingOrders",
       {
+        tenantId: args.tenantId,
         email: args.email,
         cpf: args.cpf.replaceAll(/\D/g, ""), // Clean CPF
         name: args.name,
@@ -559,6 +561,7 @@ export const confirmPayment = internalMutation({
       if (coupon) {
         // Create usage record (payment is confirmed)
         await ctx.db.insert("couponUsage", {
+          tenantId: order.tenantId,
           couponId: coupon._id,
           couponCode: order.couponCode,
           orderId: order._id,
@@ -922,7 +925,14 @@ export const createEmailInvitation = internalMutation({
     retrierRunId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Get order to retrieve tenantId
+    const order = await ctx.db.get(args.orderId);
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
     return await ctx.db.insert("emailInvitations", {
+      tenantId: order.tenantId,
       orderId: args.orderId,
       email: args.email,
       customerName: args.customerName,

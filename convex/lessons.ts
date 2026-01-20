@@ -3,73 +3,116 @@ import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { paginationOptsValidator } from "convex/server";
-import { requireAdmin } from "./users";
+import { requireTenantAdmin } from "./lib/tenantContext";
 
-// ADMIN: List all lessons with pagination
+// ============================================================================
+// QUERIES
+// ============================================================================
+
+/**
+ * List all lessons for a tenant with pagination (ADMIN)
+ */
 export const listPaginated = query({
-  args: { paginationOpts: paginationOptsValidator },
+  args: {
+    tenantId: v.id("tenants"),
+    paginationOpts: paginationOptsValidator,
+  },
   handler: async (ctx, args) => {
-    return await ctx.db.query("lessons").paginate(args.paginationOpts);
+    return await ctx.db
+      .query("lessons")
+      .withIndex("by_tenantId", (q) => q.eq("tenantId", args.tenantId))
+      .paginate(args.paginationOpts);
   },
 });
 
-// Query para listar todas as lessons (ADMIN - deprecated)
+/**
+ * List all lessons for a tenant (ADMIN - limited to 100)
+ */
 export const list = query({
-  args: {},
-  handler: async (ctx) => {
-    const lessons = await ctx.db.query("lessons").take(100);
-    return lessons;
-  },
-});
-
-// Query para listar apenas lessons PUBLICADAS (USER)
-export const listPublished = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { tenantId: v.id("tenants") },
+  handler: async (ctx, args) => {
     const lessons = await ctx.db
       .query("lessons")
-      .withIndex("by_isPublished", (q) => q.eq("isPublished", true))
-      .collect();
+      .withIndex("by_tenantId", (q) => q.eq("tenantId", args.tenantId))
+      .take(100);
     return lessons;
   },
 });
 
-// ADMIN: List lessons by unit with pagination
+/**
+ * List only PUBLISHED lessons for a tenant (USER)
+ */
+export const listPublished = query({
+  args: { tenantId: v.id("tenants") },
+  handler: async (ctx, args) => {
+    const lessons = await ctx.db
+      .query("lessons")
+      .withIndex("by_tenantId", (q) => q.eq("tenantId", args.tenantId))
+      .collect();
+
+    // Filter to published only
+    return lessons.filter((l) => l.isPublished);
+  },
+});
+
+/**
+ * List lessons by unit with pagination (ADMIN)
+ */
 export const listByUnitPaginated = query({
   args: {
+    tenantId: v.id("tenants"),
     unitId: v.id("units"),
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
     return await ctx.db
       .query("lessons")
-      .withIndex("by_unitId_and_order", (q) => q.eq("unitId", args.unitId))
+      .withIndex("by_tenantId_and_unitId", (q) =>
+        q.eq("tenantId", args.tenantId).eq("unitId", args.unitId)
+      )
       .paginate(args.paginationOpts);
   },
 });
 
-// Query para listar lessons de uma unidade específica (deprecated)
+/**
+ * List lessons by unit (ADMIN - limited to 100)
+ */
 export const listByUnit = query({
-  args: { unitId: v.id("units") },
+  args: {
+    tenantId: v.id("tenants"),
+    unitId: v.id("units"),
+  },
   handler: async (ctx, args) => {
     const lessons = await ctx.db
       .query("lessons")
-      .withIndex("by_unitId_and_order", (q) => q.eq("unitId", args.unitId))
+      .withIndex("by_tenantId_and_unitId", (q) =>
+        q.eq("tenantId", args.tenantId).eq("unitId", args.unitId)
+      )
       .take(100);
 
     return lessons;
   },
 });
 
-// Query para listar todas as lessons de uma categoria (ADMIN - mostra todas)
+/**
+ * List all lessons for a category (ADMIN)
+ */
 export const listByCategory = query({
-  args: { categoryId: v.id("categories") },
+  args: {
+    tenantId: v.id("tenants"),
+    categoryId: v.id("categories"),
+  },
   handler: async (ctx, args) => {
-    // Use the categoryId index for efficient querying
+    // Verify category belongs to tenant
+    const category = await ctx.db.get(args.categoryId);
+    if (!category || category.tenantId !== args.tenantId) {
+      return [];
+    }
+
     const lessons = await ctx.db
       .query("lessons")
       .withIndex("by_categoryId_and_order", (q) =>
-        q.eq("categoryId", args.categoryId),
+        q.eq("categoryId", args.categoryId)
       )
       .collect();
 
@@ -77,13 +120,18 @@ export const listByCategory = query({
   },
 });
 
-// Query para listar apenas lessons PUBLICADAS de uma unidade PUBLICADA (USER)
+/**
+ * List only PUBLISHED lessons for a PUBLISHED unit (USER)
+ */
 export const listPublishedByUnit = query({
-  args: { unitId: v.id("units") },
+  args: {
+    tenantId: v.id("tenants"),
+    unitId: v.id("units"),
+  },
   handler: async (ctx, args) => {
-    // Check if unit is published
+    // Check if unit is published and belongs to tenant
     const unit = await ctx.db.get(args.unitId);
-    if (!unit || !unit.isPublished) {
+    if (!unit || !unit.isPublished || unit.tenantId !== args.tenantId) {
       return [];
     }
 
@@ -96,7 +144,7 @@ export const listPublishedByUnit = query({
     const lessons = await ctx.db
       .query("lessons")
       .withIndex("by_unitId_isPublished_order", (q) =>
-        q.eq("unitId", args.unitId).eq("isPublished", true),
+        q.eq("unitId", args.unitId).eq("isPublished", true)
       )
       .collect();
 
@@ -104,7 +152,9 @@ export const listPublishedByUnit = query({
   },
 });
 
-// Query para buscar uma lesson por ID
+/**
+ * Get a lesson by ID
+ */
 export const getById = query({
   args: { id: v.id("lessons") },
   handler: async (ctx, args) => {
@@ -113,20 +163,36 @@ export const getById = query({
   },
 });
 
-// Query para buscar uma lesson por slug
+/**
+ * Get a lesson by slug within a tenant
+ */
 export const getBySlug = query({
-  args: { slug: v.string() },
+  args: {
+    tenantId: v.id("tenants"),
+    slug: v.string(),
+  },
   handler: async (ctx, args) => {
     const lesson = await ctx.db
       .query("lessons")
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .unique();
 
+    // Verify tenant ownership
+    if (lesson && lesson.tenantId !== args.tenantId) {
+      return null;
+    }
+
     return lesson;
   },
 });
 
-// Helper function to generate slug from title
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Generate slug from title
+ */
 function generateSlug(title: string): string {
   return title
     .toLowerCase()
@@ -136,9 +202,16 @@ function generateSlug(title: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-// Mutation para criar uma nova lesson
+// ============================================================================
+// MUTATIONS
+// ============================================================================
+
+/**
+ * Create a new lesson (tenant admin only)
+ */
 export const create = mutation({
   args: {
+    tenantId: v.id("tenants"),
     unitId: v.id("units"),
     title: v.string(),
     description: v.string(),
@@ -148,13 +221,22 @@ export const create = mutation({
     isPublished: v.boolean(),
   },
   handler: async (ctx, args) => {
-    // SECURITY: Require admin access
-    await requireAdmin(ctx);
+    // SECURITY: Require tenant admin access
+    await requireTenantAdmin(ctx, args.tenantId);
+
+    // Verify unit belongs to this tenant
+    const unit = await ctx.db.get(args.unitId);
+    if (!unit) {
+      throw new Error("Unidade não encontrada");
+    }
+    if (unit.tenantId !== args.tenantId) {
+      throw new Error("Unidade não pertence a este tenant");
+    }
 
     // Auto-generate slug from title
     const slug = generateSlug(args.title);
 
-    // Verificar se já existe uma lesson com o mesmo slug
+    // Check if slug already exists
     const existing = await ctx.db
       .query("lessons")
       .withIndex("by_slug", (q) => q.eq("slug", slug))
@@ -164,18 +246,10 @@ export const create = mutation({
       throw new Error("Já existe uma aula com este slug");
     }
 
-    // Atomically increment the lesson counter on the unit document
-    // to get a unique order_index (prevents race conditions on concurrent creates)
-    const unit = await ctx.db.get(args.unitId);
-    if (!unit) {
-      throw new Error("Unidade não encontrada");
-    }
-
-    // Initialize counters if they don't exist (for backward compatibility)
+    // Initialize counters if they don't exist
     const currentOrderCounter = unit.lessonCounter ?? 0;
     const currentNumberCounter = unit.lessonNumberCounter ?? 0;
     const nextOrderIndex = currentOrderCounter;
-    // Use atomic counter for lessonNumber (prevents race conditions on concurrent creates)
     const nextLessonNumber = currentNumberCounter + 1;
 
     // Atomically increment all counters and totalLessonVideos
@@ -186,8 +260,9 @@ export const create = mutation({
     });
 
     const lessonId: Id<"lessons"> = await ctx.db.insert("lessons", {
+      tenantId: args.tenantId,
       unitId: args.unitId,
-      categoryId: unit.categoryId, // Denormalized for efficient querying
+      categoryId: unit.categoryId,
       title: args.title,
       slug: slug,
       description: args.description,
@@ -199,7 +274,7 @@ export const create = mutation({
       isPublished: args.isPublished,
     });
 
-    // Atualizar contentStats se a lesson foi publicada
+    // Update contentStats if lesson was published
     if (args.isPublished) {
       await ctx.scheduler.runAfter(0, internal.aggregate.incrementLessons, {
         amount: 1,
@@ -210,9 +285,12 @@ export const create = mutation({
   },
 });
 
-// Mutation para atualizar uma lesson
+/**
+ * Update a lesson (tenant admin only)
+ */
 export const update = mutation({
   args: {
+    tenantId: v.id("tenants"),
     id: v.id("lessons"),
     unitId: v.id("units"),
     title: v.string(),
@@ -224,13 +302,31 @@ export const update = mutation({
     isPublished: v.boolean(),
   },
   handler: async (ctx, args) => {
-    // SECURITY: Require admin access
-    await requireAdmin(ctx);
+    // SECURITY: Require tenant admin access
+    await requireTenantAdmin(ctx, args.tenantId);
+
+    // Verify lesson belongs to this tenant
+    const currentLesson = await ctx.db.get(args.id);
+    if (!currentLesson) {
+      throw new Error("Aula não encontrada");
+    }
+    if (currentLesson.tenantId !== args.tenantId) {
+      throw new Error("Aula não pertence a este tenant");
+    }
+
+    // Verify target unit belongs to this tenant
+    const unit = await ctx.db.get(args.unitId);
+    if (!unit) {
+      throw new Error("Unidade não encontrada");
+    }
+    if (unit.tenantId !== args.tenantId) {
+      throw new Error("Unidade não pertence a este tenant");
+    }
 
     // Auto-generate slug from title
     const slug = generateSlug(args.title);
 
-    // Verificar se já existe outra lesson com o mesmo slug
+    // Check if slug already exists (excluding current lesson)
     const existing = await ctx.db
       .query("lessons")
       .withIndex("by_slug", (q) => q.eq("slug", slug))
@@ -240,20 +336,12 @@ export const update = mutation({
       throw new Error("Já existe uma aula com este slug");
     }
 
-    // Get current lesson to check if publish status changed
-    const currentLesson = await ctx.db.get(args.id);
-    const wasPublished = currentLesson?.isPublished || false;
+    const wasPublished = currentLesson.isPublished;
     const willBePublished = args.isPublished;
-
-    // Get the unit to get the categoryId
-    const unit = await ctx.db.get(args.unitId);
-    if (!unit) {
-      throw new Error("Unidade não encontrada");
-    }
 
     await ctx.db.patch(args.id, {
       unitId: args.unitId,
-      categoryId: unit.categoryId, // Update categoryId when unit changes
+      categoryId: unit.categoryId,
       title: args.title,
       slug: slug,
       description: args.description,
@@ -261,18 +349,15 @@ export const update = mutation({
       thumbnailUrl: args.thumbnailUrl,
       durationSeconds: args.durationSeconds || 0,
       order_index: args.order_index,
-      // lessonNumber is NOT updated - it remains the original value
       isPublished: args.isPublished,
     });
 
     // Update contentStats if publish status changed
     if (!wasPublished && willBePublished) {
-      // Was unpublished, now published
       await ctx.scheduler.runAfter(0, internal.aggregate.incrementLessons, {
         amount: 1,
       });
     } else if (wasPublished && !willBePublished) {
-      // Was published, now unpublished
       await ctx.scheduler.runAfter(0, internal.aggregate.decrementLessons, {
         amount: 1,
       });
@@ -282,14 +367,17 @@ export const update = mutation({
   },
 });
 
-// Mutation para deletar uma lesson
+/**
+ * Delete a lesson (tenant admin only)
+ */
 export const remove = mutation({
   args: {
+    tenantId: v.id("tenants"),
     id: v.id("lessons"),
   },
   handler: async (ctx, args) => {
-    // SECURITY: Require admin access
-    await requireAdmin(ctx);
+    // SECURITY: Require tenant admin access
+    await requireTenantAdmin(ctx, args.tenantId);
 
     const lesson = await ctx.db.get(args.id);
 
@@ -297,11 +385,16 @@ export const remove = mutation({
       throw new Error("Aula não encontrada");
     }
 
+    // Verify lesson belongs to this tenant
+    if (lesson.tenantId !== args.tenantId) {
+      throw new Error("Aula não pertence a este tenant");
+    }
+
     const wasPublished = lesson.isPublished;
 
     await ctx.db.delete(args.id);
 
-    // Atualizar o total de lessons na unidade
+    // Update the total lessons count on the unit
     const unit = await ctx.db.get(lesson.unitId);
     if (unit && unit.totalLessonVideos > 0) {
       await ctx.db.patch(lesson.unitId, {
@@ -320,19 +413,27 @@ export const remove = mutation({
   },
 });
 
-// Mutation para alternar o status de publicação de uma lesson
+/**
+ * Toggle publish status (tenant admin only)
+ */
 export const togglePublish = mutation({
   args: {
+    tenantId: v.id("tenants"),
     id: v.id("lessons"),
   },
   handler: async (ctx, args) => {
-    // SECURITY: Require admin access
-    await requireAdmin(ctx);
+    // SECURITY: Require tenant admin access
+    await requireTenantAdmin(ctx, args.tenantId);
 
     const lesson = await ctx.db.get(args.id);
 
     if (!lesson) {
       throw new Error("Aula não encontrada");
+    }
+
+    // Verify lesson belongs to this tenant
+    if (lesson.tenantId !== args.tenantId) {
+      throw new Error("Aula não pertence a este tenant");
     }
 
     const newPublishStatus = !lesson.isPublished;
@@ -343,12 +444,10 @@ export const togglePublish = mutation({
 
     // Update contentStats
     if (newPublishStatus) {
-      // Now published
       await ctx.scheduler.runAfter(0, internal.aggregate.incrementLessons, {
         amount: 1,
       });
     } else {
-      // Now unpublished
       await ctx.scheduler.runAfter(0, internal.aggregate.decrementLessons, {
         amount: 1,
       });
@@ -358,19 +457,33 @@ export const togglePublish = mutation({
   },
 });
 
-// Mutation para reordenar lessons
+/**
+ * Reorder lessons (tenant admin only)
+ */
 export const reorder = mutation({
   args: {
+    tenantId: v.id("tenants"),
     updates: v.array(
       v.object({
         id: v.id("lessons"),
         order_index: v.number(),
-      }),
+      })
     ),
   },
   handler: async (ctx, args) => {
-    // SECURITY: Require admin access
-    await requireAdmin(ctx);
+    // SECURITY: Require tenant admin access
+    await requireTenantAdmin(ctx, args.tenantId);
+
+    // Verify all lessons belong to this tenant
+    for (const update of args.updates) {
+      const lesson = await ctx.db.get(update.id);
+      if (!lesson) {
+        throw new Error(`Aula não encontrada: ${update.id}`);
+      }
+      if (lesson.tenantId !== args.tenantId) {
+        throw new Error("Uma das aulas não pertence a este tenant");
+      }
+    }
 
     // Update all lesson order_index
     for (const update of args.updates) {
@@ -383,35 +496,38 @@ export const reorder = mutation({
   },
 });
 
-// Migration: Backfill categoryId for existing lessons
+/**
+ * Migration: Backfill categoryId and tenantId for existing lessons
+ */
 export const backfillCategoryId = mutation({
-  args: {},
-  handler: async (ctx) => {
-    // SECURITY: Require admin access
-    await requireAdmin(ctx);
+  args: { tenantId: v.id("tenants") },
+  handler: async (ctx, args) => {
+    // SECURITY: Require tenant admin access
+    await requireTenantAdmin(ctx, args.tenantId);
 
-    const lessons = await ctx.db.query("lessons").collect();
+    const lessons = await ctx.db
+      .query("lessons")
+      .withIndex("by_tenantId", (q) => q.eq("tenantId", args.tenantId))
+      .collect();
+
     let updated = 0;
     let skipped = 0;
 
     for (const lesson of lessons) {
-      // Check if categoryId is already set
       if ("categoryId" in lesson && lesson.categoryId) {
         skipped++;
         continue;
       }
 
-      // Get the unit to find the categoryId
       const unit = await ctx.db.get(lesson.unitId);
       if (!unit) {
         console.warn(
-          `Unit ${lesson.unitId} not found for lesson ${lesson._id}`,
+          `Unit ${lesson.unitId} not found for lesson ${lesson._id}`
         );
         skipped++;
         continue;
       }
 
-      // Patch the lesson with the categoryId
       await ctx.db.patch(lesson._id, {
         categoryId: unit.categoryId,
       });
@@ -422,19 +538,24 @@ export const backfillCategoryId = mutation({
   },
 });
 
-// Migration: Initialize lessonNumberCounter for existing units based on max lessonNumber
+/**
+ * Migration: Initialize lessonNumberCounter for existing units
+ */
 export const backfillLessonNumberCounter = mutation({
-  args: {},
-  handler: async (ctx) => {
-    // SECURITY: Require admin access
-    await requireAdmin(ctx);
+  args: { tenantId: v.id("tenants") },
+  handler: async (ctx, args) => {
+    // SECURITY: Require tenant admin access
+    await requireTenantAdmin(ctx, args.tenantId);
 
-    const units = await ctx.db.query("units").collect();
+    const units = await ctx.db
+      .query("units")
+      .withIndex("by_tenantId", (q) => q.eq("tenantId", args.tenantId))
+      .collect();
+
     let updated = 0;
     let skipped = 0;
 
     for (const unit of units) {
-      // Check if lessonNumberCounter is already set
       if (
         unit.lessonNumberCounter !== undefined &&
         unit.lessonNumberCounter !== null
@@ -443,7 +564,6 @@ export const backfillLessonNumberCounter = mutation({
         continue;
       }
 
-      // Get all lessons in this unit and find the max lessonNumber
       const lessons = await ctx.db
         .query("lessons")
         .withIndex("by_unitId", (q) => q.eq("unitId", unit._id))
@@ -451,10 +571,9 @@ export const backfillLessonNumberCounter = mutation({
 
       const maxLessonNumber = lessons.reduce(
         (max, lesson) => Math.max(max, lesson.lessonNumber),
-        0,
+        0
       );
 
-      // Set lessonNumberCounter to the max lessonNumber found
       await ctx.db.patch(unit._id, {
         lessonNumberCounter: maxLessonNumber,
       });

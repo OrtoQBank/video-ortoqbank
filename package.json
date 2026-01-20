@@ -59,7 +59,8 @@
     "svix": "^1.84.1",
     "tailwind-merge": "^3.4.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
-    "zod": "^4.3.5"
+    "zod": "^4.3.5",
+    "zustand": "^5.0.10"
   },
   "devDependencies": {
     "@convex-dev/eslint-plugin": "^1.1.1",

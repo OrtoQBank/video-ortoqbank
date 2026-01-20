@@ -1,27 +1,12 @@
-import { screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { UnitsLessonsPage } from "./units-lessons-page";
-import { Preloaded, FunctionReference } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { renderWithProviders } from "@/__tests__/utils/test-utils";
 
-// Mock Convex hooks
-const mockUsePreloadedQuery = vi.fn(() => []);
-const mockUseQuery = vi.fn(() => null);
-const mockUseMutation = vi.fn(() => vi.fn(() => Promise.resolve()));
-
-vi.mock("convex/react", () => ({
-  usePreloadedQuery: <Query extends FunctionReference<"query">>(
-    preloaded: Preloaded<Query>,
-  ) => mockUsePreloadedQuery(preloaded),
-  useQuery: <Query extends FunctionReference<"query">>(
-    query: Query,
-    args?: Record<string, unknown>,
-  ) => mockUseQuery(query, args),
-  useMutation: <Mutation extends FunctionReference<"mutation">>(
-    mutation: Mutation,
-  ) => mockUseMutation(mutation),
-  Preloaded: {} as unknown,
+// Mock useTenantQuery, useTenantMutation, useTenantReady
+vi.mock("@/hooks/use-tenant-convex", () => ({
+  useTenantQuery: () => [],
+  useTenantMutation: () => vi.fn(() => Promise.resolve()),
+  useTenantReady: () => true,
 }));
 
 // Mock useToast hook
@@ -40,17 +25,84 @@ vi.mock("@/hooks/use-error-modal", () => ({
   }),
 }));
 
+// Mock useConfirmModal hook
+vi.mock("@/hooks/use-confirm-modal", () => ({
+  useConfirmModal: () => ({
+    confirm: { isOpen: false, title: "", message: "", onConfirm: vi.fn() },
+    showConfirm: vi.fn(),
+    hideConfirm: vi.fn(),
+  }),
+}));
+
+// Mock the sidebar component - include all exports
+vi.mock("@/components/ui/sidebar", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/components/ui/sidebar")>();
+  return {
+    ...actual,
+    useSidebar: () => ({ state: "expanded" }),
+    SidebarTrigger: () => null,
+    SidebarProvider: ({ children }: { children: React.ReactNode }) => (
+      <div>{children}</div>
+    ),
+  };
+});
+
+// Mock the Zustand store
+vi.mock("./store", () => ({
+  useUnitsLessonsStore: () => ({
+    selectedCategoryId: null,
+    setSelectedCategoryId: vi.fn(),
+    editMode: { type: "none" },
+    clearEditMode: vi.fn(),
+    showCreateUnitModal: false,
+    showCreateLessonModal: false,
+    setShowCreateUnitModal: vi.fn(),
+    setShowCreateLessonModal: vi.fn(),
+    setIsDraggingUnit: vi.fn(),
+    setIsDraggingLesson: vi.fn(),
+    draggedUnits: null,
+    draggedLessons: null,
+    setDraggedUnits: vi.fn(),
+    setDraggedLessons: vi.fn(),
+    updateDraggedLessonsForUnit: vi.fn(),
+  }),
+}));
+
+// Mock UnitsTreeSidebar
+vi.mock("./units-tree-sidebar", () => ({
+  UnitsTreeSidebar: () => <div data-testid="units-tree-sidebar">Sidebar</div>,
+}));
+
+// Mock dialog components
+vi.mock("@/components/ui/dialog", () => ({
+  Dialog: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DialogContent: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  DialogHeader: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  DialogTitle: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  DialogDescription: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+}));
+
+// Mock error modal
+vi.mock("@/components/ui/error-modal", () => ({
+  ErrorModal: () => null,
+}));
+
+// Mock confirm modal
+vi.mock("@/components/ui/confirm-modal", () => ({
+  ConfirmModal: () => null,
+}));
+
 describe("UnitsLessonsPage", () => {
   it("should render", () => {
-    renderWithProviders(
-      <UnitsLessonsPage
-        preloadedCategories={
-          api.categories.list as unknown as Preloaded<
-            typeof api.categories.list
-          >
-        }
-      />,
-    );
+    render(<UnitsLessonsPage />);
     expect(
       screen.getByText("Selecione uma categoria para começar"),
     ).toBeInTheDocument();

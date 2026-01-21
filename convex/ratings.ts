@@ -67,11 +67,24 @@ export const getUserRating = query({
     userId: v.string(),
     lessonId: v.id("lessons"),
   },
+  returns: v.union(
+    v.object({
+      _id: v.id("lessonRatings"),
+      _creationTime: v.number(),
+      createdAt: v.number(),
+      userId: v.string(),
+      tenantId: v.id("tenants"),
+      unitId: v.id("units"),
+      lessonId: v.id("lessons"),
+      rating: v.number(),
+    }),
+    v.null()
+  ),
   handler: async (ctx, args) => {
     const ratings = await ctx.db
       .query("lessonRatings")
       .withIndex("by_tenantId_and_lessonId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("lessonId", args.lessonId),
+        q.eq("tenantId", args.tenantId).eq("lessonId", args.lessonId)
       )
       .collect();
 
@@ -88,6 +101,10 @@ export const getLessonAverageRating = query({
     tenantId: v.id("tenants"),
     lessonId: v.id("lessons"),
   },
+  returns: v.object({
+    average: v.number(),
+    count: v.number(),
+  }),
   handler: async (ctx, args) => {
     const ratings = await ctx.db
       .query("lessonRatings")
@@ -118,22 +135,35 @@ export const getAllRatingsWithDetails = query({
     tenantId: v.id("tenants"),
     paginationOpts: paginationOptsValidator,
   },
+
+  returns: v.object({
+    page: v.array(v.object({
+      _id: v.id("lessonRatings"),
+      _creationTime: v.number(),
+      userId: v.string(),
+      lessonId: v.id("lessons"),
+      unitId: v.id("units"),
+      rating: v.number(),
+      createdAt: v.number(),
+      userName: v.string(),
+      userEmail: v.string(),
+      lessonTitle: v.string(),
+      unitTitle: v.string(),
+    })),
+    isDone: v.boolean(),
+    continueCursor: v.union(v.string(), v.null()),
+  }),
   handler: async (ctx, args) => {
     // Get all ratings for this tenant
-    const allRatings = await ctx.db
+    const paginatedRatings = await ctx.db
       .query("lessonRatings")
       .withIndex("by_tenantId", (q) => q.eq("tenantId", args.tenantId))
       .order("desc")
-      .collect();
-
-    // Manual pagination
-    const numToSkip = args.paginationOpts.cursor
-      ? parseInt(args.paginationOpts.cursor as string)
-      : 0;
-    const ratings = allRatings.slice(
-      numToSkip,
-      numToSkip + (args.paginationOpts.numItems || 10),
-    );
+     
+      .paginate(args.paginationOpts);
+      
+       const ratings = paginatedRatings.page;
+    
 
     const ratingsWithDetails = await Promise.all(
       ratings.map(async (rating) => {
@@ -165,12 +195,12 @@ export const getAllRatingsWithDetails = query({
       }),
     );
 
-    const hasMore = numToSkip + ratings.length < allRatings.length;
+  
 
     return {
       page: ratingsWithDetails,
-      isDone: !hasMore,
-      continueCursor: hasMore ? String(numToSkip + ratings.length) : undefined,
+      isDone: paginatedRatings.isDone,
+      continueCursor: paginatedRatings.continueCursor,
     };
   },
 });

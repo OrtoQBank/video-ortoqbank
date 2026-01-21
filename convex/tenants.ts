@@ -177,11 +177,10 @@ export const create = mutation({
   handler: async (ctx, args) => {
     await requireSuperAdmin(ctx);
 
-    // Validate slug format (lowercase, alphanumeric, hyphens only)
-    const slugRegex = /^[a-z0-9-]+$/;
+    const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
     if (!slugRegex.test(args.slug)) {
       throw new Error(
-        "Slug must contain only lowercase letters, numbers, and hyphens",
+        "Slug must contain only lowercase letters, numbers, and hyphens (no leading/trailing/consecutive hyphens)",
       );
     }
 
@@ -406,6 +405,30 @@ export const removeMember = mutation({
     if (membership.userId === user._id && user.role !== "superadmin") {
       throw new Error("Cannot remove yourself from the tenant");
     }
+ // Prevent removing the last admin
+    if (membership.role === "admin") {
+      const adminMemberships = await ctx.db
+        .query("tenantMemberships")
+        .withIndex("by_tenantId", (q) => q.eq("tenantId", args.tenantId))
+        .filter((q) => q.eq(q.field("role"), "admin"))
+        .collect();
+      if (adminMemberships.length <= 1) {
+        throw new Error("Cannot remove the last admin from the tenant");
+      }
+    }
+
+     // Prevent removing the last admin
+     if (membership.role === "admin") {
+      const adminMemberships = await ctx.db
+        .query("tenantMemberships")
+        .withIndex("by_tenantId", (q) => q.eq("tenantId", args.tenantId))
+        .filter((q) => q.eq(q.field("role"), "admin"))
+        .collect();
+      if (adminMemberships.length <= 1) {
+        throw new Error("Cannot remove the last admin from the tenant");
+      }
+    }
+
 
     await ctx.db.delete(args.membershipId);
 
@@ -442,6 +465,17 @@ export const updateMemberRole = mutation({
       user.role !== "superadmin"
     ) {
       throw new Error("Cannot demote yourself");
+    }
+// Prevent demoting the last admin
+    if (membership.role === "admin" && args.role === "member") {
+      const adminCount = await ctx.db
+        .query("tenantMemberships")
+        .withIndex("by_tenantId", (q) => q.eq("tenantId", args.tenantId))
+        .filter((q) => q.eq(q.field("role"), "admin"))
+        .collect();
+      if (adminCount.length <= 1) {
+        throw new Error("Cannot demote the last admin");
+      }
     }
 
     await ctx.db.patch(args.membershipId, { role: args.role });

@@ -48,7 +48,8 @@ function hasVideoAccessGlobal(user: {
  */
 export const checkUserHasTenantAccess = query({
   args: { tenantId: v.id("tenants") },
-  async handler(ctx, args) {
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     if (!user) return false;
 
@@ -66,7 +67,8 @@ export const checkUserHasTenantAccessByClerkId = query({
     tenantId: v.id("tenants"),
     clerkUserId: v.string(),
   },
-  async handler(ctx, args) {
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", args.clerkUserId))
@@ -83,6 +85,14 @@ export const checkUserHasTenantAccessByClerkId = query({
  */
 export const getTenantAccessDetails = query({
   args: { tenantId: v.id("tenants") },
+  returns: v.object({
+    hasAccess: v.boolean(),
+    role: v.union(v.literal("member"), v.literal("admin"), v.null()),
+    hasActiveAccess: v.boolean(),
+    accessExpiresAt: v.optional(v.number()),
+    daysUntilExpiration: v.optional(v.number()),
+    userStatus: v.union(v.literal("active"), v.literal("inactive"), v.literal("suspended")),
+  }),
   async handler(
     ctx,
     args,
@@ -119,11 +129,11 @@ export const getTenantAccessDetails = query({
         userStatus: user.status,
       };
     }
-
+    const now = Date.now();
     let daysUntilExpiration: number | undefined;
 
     if (membership.accessExpiresAt && membership.hasActiveAccess) {
-      const now = Date.now();
+        
       if (membership.accessExpiresAt > now) {
         daysUntilExpiration = Math.ceil(
           (membership.accessExpiresAt - now) / (24 * 60 * 60 * 1000),
@@ -134,7 +144,7 @@ export const getTenantAccessDetails = query({
     const hasAccess =
       user.status === "active" &&
       membership.hasActiveAccess &&
-      (!membership.accessExpiresAt || membership.accessExpiresAt > Date.now());
+      (!membership.accessExpiresAt || membership.accessExpiresAt > now);
 
     return {
       hasAccess,
@@ -157,7 +167,8 @@ export const getTenantAccessDetails = query({
  */
 export const checkUserHasVideoAccess = query({
   args: {},
-  async handler(ctx) {
+  returns: v.boolean(),
+  handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
     if (!user) return false;
     return hasVideoAccessGlobal(user);
@@ -284,7 +295,8 @@ export const updateTenantAccess = mutation({
     hasActiveAccess: v.boolean(),
     accessExpiresAt: v.optional(v.number()),
   },
-  async handler(ctx, args) {
+  returns: v.null(),
+  handler: async (ctx, args) => {
     await requireTenantAdmin(ctx, args.tenantId);
 
     const membership = await getUserTenantMembership(
@@ -301,7 +313,7 @@ export const updateTenantAccess = mutation({
       accessExpiresAt: args.accessExpiresAt,
     });
 
-    return null;
+    return;
   },
 });
 
@@ -332,7 +344,9 @@ export const checkUserTenantAccessById = query({
     tenantId: v.id("tenants"),
     userId: v.id("users"),
   },
-  async handler(ctx, args) {
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    await requireTenantAdmin(ctx, args.tenantId);
     return await hasActiveTenantAccess(ctx, args.userId, args.tenantId);
   },
 });

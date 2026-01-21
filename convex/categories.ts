@@ -4,7 +4,6 @@ import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import {
   requireTenantAdmin,
-  requireTenantMembership,
 } from "./lib/tenantContext";
 
 // ============================================================================
@@ -57,8 +56,26 @@ export const getById = query({
     id: v.id("categories"),
     tenantId: v.optional(v.id("tenants")),
   },
+  returns: v.union(
+      v.object({
+      _id: v.id("categories"),
+      _creationTime: v.number(),
+      tenantId: v.id("tenants"),
+      title: v.string(),
+      slug: v.string(),
+      description: v.string(),
+      position: v.number(),
+      iconUrl: v.optional(v.string()),
+      isPublished: v.boolean(),
+    }),
+    v.null()
+  ),
   handler: async (ctx, args) => {
     const category = await ctx.db.get(args.id);
+ // Verify tenant ownership if tenantId provided
+    if (category && args.tenantId && category.tenantId !== args.tenantId) {
+      return null;
+    }
     return category;
   },
 });
@@ -87,8 +104,19 @@ export const getBySlug = query({
  * Get cascade delete info for a category
  */
 export const getCascadeDeleteInfo = query({
-  args: { id: v.id("categories") },
+  args: { 
+    id: v.id("categories"),
+    tenantId: v.id("tenants"),
+  },
+  returns: v.object({
+    unitsCount: v.number(),
+    lessonsCount: v.number(),
+  }),
   handler: async (ctx, args) => {
+    const category = await ctx.db.get(args.id);
+    if (!category || category.tenantId !== args.tenantId) {
+      throw new Error("Categoria não encontrada");
+    }
     // Get all units in this category
     const units = await ctx.db
       .query("units")

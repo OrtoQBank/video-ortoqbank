@@ -1,137 +1,85 @@
-"use client";
-
-import { ProgressBar } from "./_components/progress-bar";
-import { SearchBar } from "./_components/search-bar";
-import { CategoriesCard } from "./_components/categories-card";
-import { Button } from "@/components/ui/button";
-import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useQuery } from "convex/react";
+import { preloadQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useTenantQuery, useTenantReady } from "@/hooks/use-tenant-convex";
-import { Loader2 } from "lucide-react";
+import { auth } from "@clerk/nextjs/server";
+import { headers } from "next/headers";
+import { getTenantSlugFromHostname } from "@/lib/tenant";
+import { CategoriesClientPage } from "./_components/categories-client";
+import { fetchQuery } from "convex/nextjs";
 
-export default function CategoriesPage() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const router = useRouter();
-  const { state } = useSidebar();
-  const { user } = useCurrentUser();
-  const isTenantReady = useTenantReady();
+export default async function CategoriesPage() {
+  // Get tenant from hostname
+  const headersList = await headers();
+  const host = headersList.get("host") || "localhost";
+  const tenantSlug = getTenantSlugFromHostname(host);
 
-  // Query categories with tenant context
-  const categories = useTenantQuery(api.categories.listPublished, {});
+  console.log("[Categories Page] Host:", host);
+  console.log("[Categories Page] Resolved tenant slug:", tenantSlug);
 
-  // Fetch progress data on client side
-  const contentStats = useQuery(api.aggregate.get, user ? {} : "skip");
+  // Get auth token for Convex
+  const { userId, getToken } = await auth();
+  const token = await getToken({ template: "convex" }).catch(() => null);
 
-  const completedCountResult = useTenantQuery(
-    api.progress.queries.getCompletedPublishedLessonsCount,
-    user?.clerkUserId ? { userId: user.clerkUserId } : "skip",
-  );
+  // Fetch tenantId from Convex
+  const tenant = await fetchQuery(
+    api.tenants.getBySlug,
+    { slug: tenantSlug },
+    token ? { token } : undefined,
+  ).catch((error) => {
+    console.error("[Categories Page] Failed to fetch tenant:", error);
+    return null;
+  });
 
-  // Search query
-  const searchResults = useTenantQuery(
-    api.search.searchCategories,
-    searchQuery ? { query: searchQuery } : "skip",
-  );
-
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
-  };
-
-  const handleCategoryClick = (categoryId: string) => {
-    router.push(`/units/${categoryId}`);
-  };
-
-  // Loading state
-  if (!isTenantReady || categories === undefined) {
+  if (!tenant) {
+    console.error(
+      `[Categories Page] Tenant "${tenantSlug}" not found in database`,
+    );
     return (
       <div className="flex items-center justify-center h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <div className="text-center">
+          <p className="text-muted-foreground mb-2">
+            Tenant &quot;{tenantSlug}&quot; not found
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Host: {host}
+          </p>
+        </div>
       </div>
     );
   }
 
-  // Usar resultados da busca avançada se houver query, senão mostrar todas
-  const filteredCategories =
-    searchQuery && searchResults ? searchResults : categories || [];
+  console.log("[Categories Page] Tenant found:", tenant.slug, tenant._id);
+
+  // Preload categories (main data)
+  const preloadedCategories = await preloadQuery(
+    api.categories.listPublished,
+    { tenantId: tenant._id },
+    token ? { token } : undefined,
+  );
+
+  // Preload aggregate stats (only if user is authenticated)
+  const preloadedContentStats = userId
+    ? await preloadQuery(
+      api.aggregate.get,
+      {},
+      token ? { token } : undefined,
+    ).catch(() => null)
+    : null;
+
+  // Preload completed count (only if user is authenticated)
+  const preloadedCompletedCount =
+    userId && tenant._id
+      ? await preloadQuery(
+        api.progress.queries.getCompletedPublishedLessonsCount,
+        { userId, tenantId: tenant._id },
+        token ? { token } : undefined,
+      ).catch(() => null)
+      : null;
 
   return (
-    <div className="min-h-screen relative">
-      {/* Sidebar trigger - follows sidebar position */}
-      <SidebarTrigger
-        className={`hidden md:inline-flex fixed top-2 h-6 w-6 text-blue-brand hover:text-blue-brand hover:bg-blue-brand transition-[left] duration-200 ease-linear z-10 ${state === "collapsed" ? "left-[calc(var(--sidebar-width-icon)+0.25rem)]" : "left-[calc(var(--sidebar-width)+0.25rem)]"}`}
-      />
-
-      <div className="px-12 sm:px-16 md:px-24 lg:px-24 xl:px-42 pb-24 md:pb-3 pt-8 md:pt-8">
-        {/* Barra de pesquisa com progresso total - alinhado com o grid */}
-        <div className="mb-4 md:mb-8 grid grid-cols-1 lg:grid-cols-3 gap-3">
-          <div className="col-span-1 flex items-center gap-2">
-            <SearchBar onSearch={handleSearch} />
-            {searchQuery && (
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setSearchQuery("");
-                }}
-                className="text-blue-brand hover:text-blue-brand-dark hover:bg-transparent px-3 whitespace-nowrap shrink-0"
-              >
-                Limpar filtro
-              </Button>
-            )}
-          </div>
-          <div className="hidden lg:block"></div>
-          <div className="col-span-1">
-            <ProgressBar
-              totalLessons={contentStats?.totalLessons ?? 0}
-              completedLessons={completedCountResult ?? 0}
-            />
-          </div>
-        </div>
-
-        {/* Grid de cards - 3 linhas de 3 categorias sem scroll */}
-        {searchQuery && searchResults === undefined ? (
-          <div
-            className="flex items-center justify-center py-12"
-            role="status"
-            aria-live="polite"
-            aria-busy="true"
-            aria-label="Pesquisando categorias"
-          >
-            <div className="text-center">
-              <div
-                className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-brand mx-auto mb-4"
-                aria-hidden="true"
-              ></div>
-              <p className="text-muted-foreground">Pesquisando...</p>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            {filteredCategories.length > 0 ? (
-              filteredCategories.map((category) => (
-                <CategoriesCard
-                  key={category._id}
-                  title={category.title}
-                  description={category.description}
-                  imageUrl={category.iconUrl}
-                  onClick={() => handleCategoryClick(category._id)}
-                />
-              ))
-            ) : (
-              <div className="col-span-full flex items-center justify-center py-20">
-                <p className="text-muted-foreground text-center">
-                  {searchQuery
-                    ? "Nenhuma categoria encontrada com este filtro"
-                    : "Nenhuma categoria encontrada"}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+    <CategoriesClientPage
+      preloadedCategories={preloadedCategories}
+      preloadedContentStats={preloadedContentStats}
+      preloadedCompletedCount={preloadedCompletedCount}
+    />
   );
 }

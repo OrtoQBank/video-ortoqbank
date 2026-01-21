@@ -3,8 +3,7 @@
 import {
   createContext,
   useContext,
-  useState,
-  useEffect,
+  useMemo,
   type ReactNode,
 } from "react";
 import { useQuery } from "convex/react";
@@ -14,11 +13,10 @@ import {
   TENANT_COOKIE_NAME,
   getTenantConfig,
   DEFAULT_TENANT_SLUG,
-  isValidTenantSlug,
   extractSubdomain,
   type TenantConfig,
-  type TenantSlug,
 } from "@/lib/tenant";
+
 
 /**
  * ============================================================================
@@ -51,16 +49,9 @@ interface TenantContextType {
   error: string | null;
 }
 
-const TenantContext = createContext<TenantContextType>({
-  tenantId: null,
-  tenantSlug: null,
-  tenantName: null,
-  tenantLogoUrl: null,
-  tenantPrimaryColor: null,
-  config: null,
-  isLoading: true,
-  error: null,
-});
+const TenantContext = createContext<TenantContextType | null>(null);
+
+
 
 interface TenantProviderProps {
   children: ReactNode;
@@ -76,12 +67,23 @@ function getTenantSlugFromCookie(): string | null {
 
   const cookies = document.cookie.split(";");
   for (const cookie of cookies) {
-    const [name, value] = cookie.trim().split("=");
+    const trimmed = cookie.trim();
+    const eqIndex = trimmed.indexOf("=");
+    if (eqIndex === -1) continue;
+    const name = trimmed.slice(0, eqIndex);
+    const value = trimmed.slice(eqIndex + 1);
     if (name === TENANT_COOKIE_NAME) {
       return value || null;
     }
   }
   return null;
+}
+
+/**
+ * Basic slug format validation (not checking static config)
+ */
+function isValidSlugFormat(slug: string): boolean {
+  return /^[a-z0-9](?:[a-z0-9-]{0,48}[a-z0-9])?$/.test(slug.toLowerCase());
 }
 
 /**
@@ -96,14 +98,14 @@ function getTenantSlugFromLocation(): string {
   if (process.env.NODE_ENV === "development") {
     const params = new URLSearchParams(window.location.search);
     const override = params.get("tenant");
-    if (override && isValidTenantSlug(override)) {
+    if (override && isValidSlugFormat(override)) {
       return override;
     }
   }
 
   // Try to extract subdomain
   const subdomain = extractSubdomain(hostname);
-  if (subdomain && isValidTenantSlug(subdomain)) {
+  if (subdomain && isValidSlugFormat(subdomain)) {
     return subdomain;
   }
 
@@ -114,52 +116,40 @@ export function TenantProvider({
   children,
   tenantSlug: propSlug,
 }: TenantProviderProps) {
-  const [slug, setSlug] = useState<TenantSlug | null>(
-    propSlug && isValidTenantSlug(propSlug) ? propSlug : null,
-  );
-  const [error, setError] = useState<string | null>(null);
-
-  // Resolve tenant slug from cookie or location on mount
-  useEffect(() => {
+  const slug = useMemo<string | null>(() => {
+    // Priority 1: Use prop if provided
     if (propSlug) {
-      // Use prop if provided
-      if (isValidTenantSlug(propSlug)) {
-        setSlug(propSlug);
-      } else {
-        setSlug(DEFAULT_TENANT_SLUG);
+      if (isValidSlugFormat(propSlug)) {
+        return propSlug;
       }
-      return;
+      return DEFAULT_TENANT_SLUG;
     }
 
-    // Try cookie first (set by middleware)
+    // Priority 2: Try cookie first (set by middleware)
     const cookieSlug = getTenantSlugFromCookie();
-    if (cookieSlug && isValidTenantSlug(cookieSlug)) {
-      setSlug(cookieSlug);
-      return;
+    if (cookieSlug && isValidSlugFormat(cookieSlug)) {
+      return cookieSlug;
     }
 
-    // Fallback to location-based detection
+    // Priority 3: Fallback to location-based detection
     const locationSlug = getTenantSlugFromLocation();
-    if (isValidTenantSlug(locationSlug)) {
-      setSlug(locationSlug);
-    } else {
-      setSlug(DEFAULT_TENANT_SLUG);
+    if (isValidSlugFormat(locationSlug)) {
+      return locationSlug;
     }
-  }, [propSlug]);
 
+    // Priority 4: Use default tenant
+    return DEFAULT_TENANT_SLUG;
+  }, [propSlug]);
   // Fetch tenant data from Convex (for tenantId)
   const tenant = useQuery(api.tenants.getBySlug, slug ? { slug } : "skip");
 
-  // Handle tenant not found or suspended
-  useEffect(() => {
-    if (slug && tenant === null) {
-      setError(`Tenant "${slug}" not found`);
-    } else if (tenant && tenant.status === "suspended") {
-      setError("This organization is suspended");
-    } else {
-      setError(null);
-    }
-  }, [tenant, slug]);
+  // Derive error state from tenant query results
+  const error =
+    slug && tenant === null
+      ? `Tenant "${slug}" not found`
+      : tenant && tenant.status === "suspended"
+        ? "This organization is suspended"
+        : null;
 
   // Get static config for this tenant
   const staticConfig = slug ? getTenantConfig(slug) : null;
@@ -204,51 +194,39 @@ export function useTenant() {
  * Use this in components that require a tenant
  */
 export function useTenantId(): Id<"tenants"> {
-  const { tenantId, isLoading, error } = useTenant();
-
-  if (isLoading) {
-    throw new Error("Tenant is still loading");
+  const tenant = useTenant();
+  if (!tenant) {
+    throw new Error("Tenant is not available");
   }
-
-  if (error) {
-    throw new Error(error);
+  if (!tenant.tenantId) {
+    throw new Error("Tenant ID is not available");
   }
-
-  if (!tenantId) {
-    throw new Error("No tenant context available");
-  }
-
-  return tenantId;
+  return tenant.tenantId;
 }
 
 /**
  * Hook to safely get tenant ID (returns null if not available)
  */
 export function useTenantIdSafe(): Id<"tenants"> | null {
-  const { tenantId } = useTenant();
-  return tenantId;
+  const tenant = useTenant();
+  if (!tenant) return null;
+  return tenant.tenantId;
 }
 
-/**
- * Hook to get static tenant config
- */
-export function useTenantConfig(): TenantConfig | null {
-  const { config } = useTenant();
-  return config;
-}
-
-/**
+/** 
  * Hook to get tenant branding
  */
 export function useTenantBranding() {
-  const { config } = useTenant();
-  return config?.branding || null;
+  const tenant = useTenant();
+  if (!tenant) return null;
+  return tenant.config?.branding || null;
 }
 
 /**
  * Hook to get tenant content labels
  */
 export function useTenantLabels() {
-  const { config } = useTenant();
-  return config?.content.labels || null;
+  const tenant = useTenant();
+  if (!tenant) return null;
+  return tenant.config?.content.labels || null;
 }

@@ -105,15 +105,20 @@ export function isPlainLocalhost(hostname: string): boolean {
 
 /**
  * Get the tenant slug from a hostname.
- * Falls back to default tenant if no valid subdomain is found.
+ * Returns the subdomain if found, otherwise falls back to default tenant.
+ * 
+ * Note: This returns the actual subdomain from the hostname, even if it's not
+ * in the static config. The static config is only used for UI branding fallbacks.
+ * Tenant existence should be validated by querying the Convex database.
  *
  * @param hostname - The full hostname
- * @returns The tenant slug
+ * @returns The tenant slug (subdomain or default)
  */
-export function getTenantSlugFromHostname(hostname: string): TenantSlug {
+export function getTenantSlugFromHostname(hostname: string): string {
   const subdomain = extractSubdomain(hostname);
 
-  if (subdomain && isValidTenantSlug(subdomain)) {
+  // Return the subdomain if it exists and looks valid (basic validation only)
+  if (subdomain && /^[a-z0-9](?:[a-z0-9-]{0,48}[a-z0-9])?$/.test(subdomain)) {
     return subdomain;
   }
 

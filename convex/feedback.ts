@@ -1,8 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { paginationOptsValidator } from "convex/server";
-import { requireTenantAdmin } from "./lib/tenantContext";
-
 /**
  * Submit feedback for a lesson (tenant-scoped)
  */

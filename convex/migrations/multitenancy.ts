@@ -11,7 +11,7 @@ import { requireSuperAdmin } from "../lib/tenantContext";
  * It should be run once after deploying the schema changes.
  *
  * Steps:
- * 1. Create default tenant (e.g., "OrtoQBank" with slug "app")
+ * 1. Create default tenant (e.g., "Ortoclub" with slug "app")
  * 2. Add tenantId to all existing content records
  * 3. Create tenantMemberships for all existing users
  * ============================================================================
@@ -853,7 +853,7 @@ export const runFullMigration = mutation({
     return {
       message: "Migration must be run via internal mutations",
       instructions: [
-        '1. npx convex run migrations/multitenancy:createDefaultTenant --args \'{"name":"OrtoQBank","slug":"app"}\'',
+        '1. npx convex run migrations/multitenancy:createDefaultTenant --args \'{"name":"Ortoclub","slug":"app"}\'',
         "2. Use the returned tenant ID for subsequent migrations",
         "3. Run each migrate* function with the tenant ID",
       ],

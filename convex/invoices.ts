@@ -42,7 +42,7 @@ export const generateInvoice = internalMutation({
     }
 
     // Build service description
-    const serviceDescription = "Acesso à plataforma OrtoQBank";
+    const serviceDescription = "Acesso à plataforma Ortoclub";
 
     // Build payment method description for invoice observations
     let paymentMethodDescription = "Cartão de Crédito";

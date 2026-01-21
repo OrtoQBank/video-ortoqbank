@@ -59,7 +59,7 @@ export function WaitlistPage() {
     XLSX.utils.book_append_sheet(wb, ws, "Lista de Espera");
 
     const date = new Date().toISOString().split("T")[0];
-    const fileName = `waitlist-ortoqbank-${date}.xlsx`;
+    const fileName = `waitlist-Ortoclub-${date}.xlsx`;
 
     XLSX.writeFile(wb, fileName);
   }

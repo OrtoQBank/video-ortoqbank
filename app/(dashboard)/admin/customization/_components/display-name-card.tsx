@@ -24,7 +24,7 @@ export function DisplayNameCard({ displayName, onDisplayNameChange }: DisplayNam
                         id="displayName"
                         value={displayName}
                         onChange={(e) => onDisplayNameChange(e.target.value)}
-                        placeholder="Ex: OrtoQBank, MeuApp..."
+                        placeholder="Ex: Ortoclub, MeuApp..."
                         className="max-w-md"
                     />
                     <p className="text-sm text-muted-foreground">

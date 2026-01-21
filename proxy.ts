@@ -15,8 +15,8 @@ import {
  * MULTITENANCY PROXY (Next.js 16+)
  *
  * This proxy handles subdomain-based tenant resolution:
- * - tenant1.ortoqbank.com -> tenantSlug = "tenant1"
- * - app.ortoqbank.com -> tenantSlug = "app" (default tenant)
+ * - tenant1.Ortoclub.com -> tenantSlug = "tenant1"
+ * - app.Ortoclub.com -> tenantSlug = "app" (default tenant)
  * - localhost:3000 -> tenantSlug = "app" (development)
  * - demo.localhost:3000 -> tenantSlug = "demo" (development subdomain)
  *

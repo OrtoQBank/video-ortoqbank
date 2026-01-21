@@ -13,7 +13,7 @@ export default defineSchema({
   // Tenants table - represents organizations/companies
   tenants: defineTable({
     name: v.string(),
-    slug: v.string(), // subdomain identifier (e.g., "acme" for acme.ortoqbank.com)
+    slug: v.string(), // subdomain identifier (e.g., "acme" for acme.Ortoclub.com)
     displayName: v.optional(v.string()), // Name displayed next to logo (can differ from name)
     logoUrl: v.optional(v.string()),
     primaryColor: v.optional(v.string()), // Primary brand color (replaces --blue-brand CSS variable)
@@ -379,7 +379,7 @@ export default defineSchema({
     features: v.array(v.string()),
     buttonText: v.string(),
     // Extended fields for product identification and access control
-    productId: v.string(), // e.g., "ortoqbank_2025", "ortoqbank_2026", "premium_pack" - REQUIRED
+    productId: v.string(), // e.g., "Ortoclub_2025", "Ortoclub_2026", "premium_pack" - REQUIRED
     category: v.optional(
       v.union(
         v.literal("year_access"),
@@ -442,7 +442,7 @@ export default defineSchema({
     email: v.string(), // Contact email from checkout
     cpf: v.string(),
     name: v.string(),
-    productId: v.string(), // Product identifier (e.g., "ortoqbank_2025")
+    productId: v.string(), // Product identifier (e.g., "Ortoclub_2025")
 
     // Address info (required for invoice generation - optional for migration)
     phone: v.optional(v.string()),

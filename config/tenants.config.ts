@@ -59,10 +59,10 @@ export interface TenantConfig {
  * Keys must match the `slug` field in the Convex `tenants` table.
  */
 export const tenantsConfig = {
-  // Default tenant - OrtoQBank (app)
+  // Default tenant - Ortoclub (app)
   app: {
     branding: {
-      name: "OrtoQBank",
+      name: "Ortoclub",
       shortName: "OQB",
       primaryColor: "#2563eb", // Blue
       secondaryColor: "#1e40af",

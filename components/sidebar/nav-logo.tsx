@@ -20,14 +20,14 @@ export default function NavLogo() {
             <div className="flex aspect-square size-8 items-center justify-center rounded-lg">
               <Image
                 src="/logo.webp"
-                alt="OrtoQBank Logo"
+                alt="Ortoclub Logo"
                 width={32}
                 height={32}
                 className="rounded-sm"
               />
             </div>
             <div className="flex flex-col gap-0.5 leading-none">
-              <span className="font-sifonn text-xl font-medium">OrtoQBank</span>
+              <span className="font-sifonn text-xl font-medium">Ortoclub</span>
             </div>
           </Link>
         </SidebarMenuButton>

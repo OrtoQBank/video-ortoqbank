@@ -40,7 +40,7 @@ function PricingPlanContent({ plans }: PricingPlanContentProps) {
       className="bg-gradient-to-br from-slate-50 to-blue-brand/10 py-8"
     >
       <div className="container mx-auto mb-16 px-4 text-center">
-        <h1 className="mb-3 text-4xl font-bold text-blue-brand">OrtoQBank</h1>
+        <h1 className="mb-3 text-4xl font-bold text-blue-brand">Ortoclub</h1>
         <p className="mx-auto max-w-2xl text-lg text-gray-600">
           Escolha o plano ideal para sua preparação e garanta sua aprovação no
           TEOT

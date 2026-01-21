@@ -27,10 +27,10 @@ export const TENANT_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
  * Examples:
  * - "app1.localhost" -> "app1"
  * - "app1.localhost:3000" -> "app1"
- * - "teot.ortoqbank.com" -> "teot"
+ * - "teot.Ortoclub.com" -> "teot"
  * - "localhost:3000" -> null
- * - "ortoqbank.com" -> null
- * - "www.ortoqbank.com" -> null (www is treated as main domain)
+ * - "Ortoclub.com" -> null
+ * - "www.Ortoclub.com" -> null (www is treated as main domain)
  *
  * @param hostname - The full hostname (e.g., "app1.localhost:3000")
  * @returns The subdomain or null if none detected
@@ -45,7 +45,7 @@ export function extractSubdomain(hostname: string): string | null {
     return subdomain || null;
   }
 
-  // Handle production domains (e.g., "teot.ortoqbank.com")
+  // Handle production domains (e.g., "teot.Ortoclub.com")
   const parts = hostWithoutPort.split(".");
 
   // Need at least 3 parts for a subdomain (sub.domain.tld)

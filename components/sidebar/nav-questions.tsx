@@ -8,7 +8,7 @@ import Image from "next/image";
 export default function QuestionsPromo() {
   const handleVisitClick = () => {
     // Link to Tokebank questions platform
-    window.open("https://ortoqbank.com.br/criar-teste", "_blank");
+    window.open("https://Ortoclub.com.br/criar-teste", "_blank");
   };
 
   return (
@@ -20,7 +20,7 @@ export default function QuestionsPromo() {
           <div className="flex size-14 items-center justify-center rounded-lg">
             <Image
               src="/questoes-transparente.png"
-              alt="OrtoQBank Logo"
+              alt="Ortoclub Logo"
               width={52}
               height={52}
               className="rounded-sm"

@@ -12,9 +12,6 @@ export default async function CategoriesPage() {
   const host = headersList.get("host") || "localhost";
   const tenantSlug = getTenantSlugFromHostname(host);
 
-  console.log("[Categories Page] Host:", host);
-  console.log("[Categories Page] Resolved tenant slug:", tenantSlug);
-
   // Get auth token for Convex
   const { userId, getToken } = await auth();
   const token = await getToken({ template: "convex" }).catch(() => null);
@@ -47,7 +44,6 @@ export default async function CategoriesPage() {
     );
   }
 
-  console.log("[Categories Page] Tenant found:", tenant.slug, tenant._id);
 
   // Preload categories (main data)
   const preloadedCategories = await preloadQuery(

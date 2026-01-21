@@ -1,9 +1,88 @@
+import { fetchQuery } from "convex/nextjs";
+import { api } from "@/convex/_generated/api";
+import { auth } from "@clerk/nextjs/server";
+import { headers } from "next/headers";
+import { getTenantSlugFromHostname } from "@/lib/tenant";
 import { requireVideoAccess } from "@/lib/access";
-import { FavoritesClientPage } from "./_components/favorites-client-page";
+import { FavoritesClientPage } from "./_components/favorites-client";
 
 export default async function FavoritesPage() {
   // Verifica acesso pago antes de carregar conteúdo
   await requireVideoAccess();
 
-  return <FavoritesClientPage />;
+  // Get tenant from hostname
+  const headersList = await headers();
+  const host = headersList.get("host") || "localhost";
+  const tenantSlug = getTenantSlugFromHostname(host);
+
+  // Get auth token for Convex
+  const { userId, getToken } = await auth();
+  const token = await getToken({ template: "convex" }).catch(() => null);
+
+  // User must be authenticated (requireVideoAccess already checks this)
+  if (!userId) {
+    return null;
+  }
+
+  // Fetch tenant from Convex
+  const tenant = await fetchQuery(
+    api.tenants.getBySlug,
+    { slug: tenantSlug },
+    token ? { token } : undefined,
+  ).catch((error) => {
+    console.error("[Favorites Page] Failed to fetch tenant:", error);
+    return null;
+  });
+
+  if (!tenant) {
+    console.error(
+      `[Favorites Page] Tenant "${tenantSlug}" not found in database`,
+    );
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <p className="text-muted-foreground mb-2">
+            Tenant &quot;{tenantSlug}&quot; not found
+          </p>
+          <p className="text-sm text-muted-foreground">Host: {host}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Fetch initial favorites (first page)
+  const initialFavoritesResult = await fetchQuery(
+    api.favorites.getUserFavoriteLessons,
+    {
+      tenantId: tenant._id,
+      userId,
+      paginationOpts: { numItems: 20, cursor: null },
+    },
+    token ? { token } : undefined,
+  ).catch((error) => {
+    console.error("[Favorites Page] Failed to fetch favorites:", error);
+    return { page: [], isDone: true, continueCursor: undefined };
+  });
+
+  // Fetch watch also lessons
+  const initialWatchAlso = await fetchQuery(
+    api.favorites.getWatchAlsoLessons,
+    {
+      tenantId: tenant._id,
+      userId,
+      limit: 6,
+    },
+    token ? { token } : undefined,
+  ).catch((error) => {
+    console.error("[Favorites Page] Failed to fetch watch also:", error);
+    return [];
+  });
+
+  return (
+    <FavoritesClientPage
+      initialFavorites={initialFavoritesResult.page}
+      initialWatchAlso={initialWatchAlso}
+      userId={userId}
+    />
+  );
 }

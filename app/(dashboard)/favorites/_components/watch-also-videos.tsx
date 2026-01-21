@@ -68,7 +68,7 @@ export function WatchAlsoVideos({ watchAlsoVideos }: WatchAlsoVideosProps) {
               onClick={() => handleVideoClick(video)}
               className="cursor-pointer hover:shadow-md transition-all duration-300 hover:border-primary group relative overflow-hidden p-0"
             >
-              <div className="w-full h-48 bg-gradient-to-br from-blue-500/20 via-blue-400/10 to-blue-300/5 flex items-center justify-center relative rounded-t-lg overflow-hidden">
+              <div className="w-full h-48 bg-linear-to-br from-blue-500/20 via-blue-400/10 to-blue-300/5 flex items-center justify-center relative rounded-t-lg overflow-hidden">
                 {video.thumbnailUrl ? (
                   <Image
                     src={video.thumbnailUrl}

@@ -129,11 +129,14 @@ export function getTenantSlugFromHostname(hostname: string): string {
  * Get full tenant context from hostname.
  * Includes both the slug and the static configuration.
  *
+ * Note: The slug may be a dynamic tenant not in the static config.
+ * The config will fall back to the default tenant's config in that case.
+ *
  * @param hostname - The full hostname
  * @returns Object with slug and config
  */
 export function getTenantFromHostname(hostname: string): {
-  slug: TenantSlug;
+  slug: string;
   config: TenantConfig;
   isDefault: boolean;
 } {

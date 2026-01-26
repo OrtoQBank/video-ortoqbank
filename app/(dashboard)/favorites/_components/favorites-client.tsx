@@ -75,13 +75,15 @@ export function FavoritesClientPage({
   );
 
   // Determine if client query has taken over
-  const isClientReady = results !== undefined;
+  // usePaginatedQuery always returns results as an array (never undefined)
+  // On initial load, results is empty with status === "LoadingFirstPage"
+  // We only consider client ready after it finishes loading the first page
+  const isClientReady = status !== "LoadingFirstPage";
 
   // Combine server-fetched data with client data
   // After hydration, the client query takes over with real-time updates
   const favoritesData = useMemo(() => {
-    // If client query has returned results, use those (they're reactive)
-    // Check for undefined/null to distinguish "not yet loaded" from "empty"
+    // If client query has finished loading first page, use those results (they're reactive)
     if (isClientReady) {
       return results as FavoriteLessonData[];
     }

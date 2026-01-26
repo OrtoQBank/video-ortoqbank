@@ -103,7 +103,7 @@ export function ConfirmModal({
           </Button>
           <Button
             onClick={handleConfirm}
-            className="bg-blue-brand hover:bg-blue-brand-dark text-white px-8"
+            className="bg-blue-brand hover:bg-blue-brand/80 text-white px-8"
             disabled={loading}
           >
             {loading ? "Processando..." : confirmText}

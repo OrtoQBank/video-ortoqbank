@@ -24,27 +24,27 @@ const sifonn = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "OrtoQBank - Banco de Vídeos de Ortopedia",
+  title: "Ortoclub - Banco de Vídeos de Ortopedia",
   icons: {
     icon: "/favicon.ico",
   },
   description:
-    "OrtoQBank - Banco de Vídeos de Ortopedia. Conheça nossa plataforma e garanta sua aprovação na prova da SBOT! Feito por especialistas da USP.",
+    "Ortoclub - Banco de Vídeos de Ortopedia. Conheça nossa plataforma e garanta sua aprovação na prova da SBOT! Feito por especialistas da USP.",
   keywords:
     "Ortopedia, vídeos, banco de vídeos, ortopedista, residência médica, ortopedia",
-  authors: [{ name: "OrtoQBank" }],
+  authors: [{ name: "Ortoclub" }],
   openGraph: {
-    title: "OrtoQBank - Banco de Vídeos de Ortopedia",
+    title: "Ortoclub - Banco de Vídeos de Ortopedia",
     description:
-      "OrtoQBank - Vídeos de Ortopedia. Conheça nossa plataforma e garanta sua aprovação na prova da SBOT! Feito por especialistas da USP.",
+      "Ortoclub - Vídeos de Ortopedia. Conheça nossa plataforma e garanta sua aprovação na prova da SBOT! Feito por especialistas da USP.",
     type: "website",
     locale: "pt_BR",
   },
   twitter: {
     card: "summary_large_image",
-    title: "OrtoQBank - Banco de Vídeos de Ortopedia",
+    title: "Ortoclub - Banco de Vídeos de Ortopedia",
     description:
-      "OrtoQBank - Vídeos de Ortopedia. Conheça nossa plataforma e garanta sua aprovação na prova da SBOT! Feito por especialistas da USP.",
+      "Ortoclub - Vídeos de Ortopedia. Conheça nossa plataforma e garanta sua aprovação na prova da SBOT! Feito por especialistas da USP.",
   },
   robots: {
     index: true,

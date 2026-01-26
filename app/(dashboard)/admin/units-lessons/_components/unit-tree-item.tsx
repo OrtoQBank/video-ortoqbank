@@ -8,6 +8,7 @@ import {
   PencilIcon,
   EyeIcon,
   EyeOffIcon,
+  Trash2Icon,
 } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -19,22 +20,36 @@ import {
 } from "@dnd-kit/sortable";
 import { LessonTreeItem } from "./lesson-tree-item";
 import { UnitTreeItemProps } from "./types";
+import { useUnitsLessonsStore } from "./store";
+import { useUnitsLessonsPageContext } from "./units-lessons-page";
+import { useTenantMutation, useTenantReady } from "@/hooks/use-tenant-convex";
+import { api } from "@/convex/_generated/api";
+import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 
 export function UnitTreeItem({
   unit,
-  isExpanded,
   unitLessons,
-  onToggle,
-  onEdit,
-  onEditLesson,
-  onTogglePublishUnit,
-  onTogglePublishLesson,
-  isDraggingUnit,
-  isDraggingLesson,
   sensors,
   onDragEndLessons,
-  onDragStartLesson,
 }: UnitTreeItemProps) {
+  const { toast } = useToast();
+  const { showError } = useErrorModal();
+  const isTenantReady = useTenantReady();
+  const togglePublishUnit = useTenantMutation(api.units.togglePublish);
+
+  const {
+    expandedUnits,
+    toggleUnit,
+    editUnit,
+    isDraggingUnit,
+    setIsDraggingLesson,
+  } = useUnitsLessonsStore();
+
+  const { handleDeleteUnit } = useUnitsLessonsPageContext();
+
+  const isExpanded = expandedUnits.has(unit._id);
+
   const {
     attributes,
     listeners,
@@ -49,6 +64,24 @@ export function UnitTreeItem({
     transition,
   };
 
+  const handleTogglePublish = async () => {
+    try {
+      if (!isTenantReady) {
+        throw new Error("Tenant not loaded");
+      }
+      await togglePublishUnit({ id: unit._id });
+      toast({
+        title: "Sucesso",
+        description: "Status de publicação da unidade atualizado!",
+      });
+    } catch (error) {
+      showError(
+        error instanceof Error ? error.message : "Erro ao atualizar status",
+        "Erro ao atualizar status",
+      );
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
@@ -56,7 +89,7 @@ export function UnitTreeItem({
       className={cn(
         "space-y-1",
         isItemDragging &&
-          "opacity-50 ring-2 ring-primary rounded-lg shadow-lg z-50",
+        "opacity-50 ring-2 ring-primary rounded-lg shadow-lg z-50",
       )}
     >
       {/* Unit Header */}
@@ -70,7 +103,7 @@ export function UnitTreeItem({
           <GripVerticalIcon className="h-4 w-4 text-muted-foreground" />
         </div>
         <button
-          onClick={() => onToggle(unit._id)}
+          onClick={() => toggleUnit(unit._id)}
           className="flex items-center gap-2 flex-1 min-w-0 text-left"
         >
           {isExpanded ? (
@@ -91,7 +124,7 @@ export function UnitTreeItem({
           size="icon"
           variant="ghost"
           className="h-8 w-8 shrink-0"
-          onClick={() => onTogglePublishUnit(unit._id)}
+          onClick={handleTogglePublish}
           title={unit.isPublished ? "Despublicar" : "Publicar"}
           disabled={isDraggingUnit}
         >
@@ -105,11 +138,22 @@ export function UnitTreeItem({
           size="icon"
           variant="ghost"
           className="h-8 w-8 shrink-0"
-          onClick={() => onEdit(unit)}
+          onClick={() => editUnit(unit)}
           title="Editar unidade"
           disabled={isDraggingUnit}
         >
           <PencilIcon className="h-4 w-4" />
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8 shrink-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+          onClick={() => handleDeleteUnit(unit._id)}
+          title="Excluir unidade"
+          aria-label="Excluir unidade"
+          disabled={isDraggingUnit}
+        >
+          <Trash2Icon className="h-4 w-4" />
         </Button>
       </div>
 
@@ -120,20 +164,14 @@ export function UnitTreeItem({
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragEnd={onDragEndLessons(unit._id)}
-            onDragStart={onDragStartLesson}
+            onDragStart={() => setIsDraggingLesson(true)}
           >
             <SortableContext
               items={unitLessons.map((lesson) => lesson._id)}
               strategy={verticalListSortingStrategy}
             >
               {unitLessons.map((lesson) => (
-                <LessonTreeItem
-                  key={lesson._id}
-                  lesson={lesson}
-                  onEdit={onEditLesson}
-                  onTogglePublish={onTogglePublishLesson}
-                  isDragging={isDraggingLesson}
-                />
+                <LessonTreeItem key={lesson._id} lesson={lesson} />
               ))}
             </SortableContext>
           </DndContext>

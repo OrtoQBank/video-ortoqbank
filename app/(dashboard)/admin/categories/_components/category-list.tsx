@@ -3,13 +3,13 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
 import { useConfirmModal } from "@/hooks/use-confirm-modal";
 import { ErrorModal } from "@/components/ui/error-modal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { useTenantMutation, useTenantReady } from "@/hooks/use-tenant-convex";
 import {
   EditIcon,
   Trash2Icon,
@@ -94,7 +94,7 @@ function SortableCategoryItem({
       className={cn(
         "flex items-center gap-2 p-3 border rounded-lg transition-colors",
         isEditOrderMode &&
-          "cursor-grab active:cursor-grabbing hover:bg-accent/50",
+        "cursor-grab active:cursor-grabbing hover:bg-accent/50",
         !isEditOrderMode && "hover:bg-accent/50",
         isDragging && "opacity-50 ring-2 ring-primary",
       )}
@@ -166,10 +166,11 @@ function SortableCategoryItem({
 }
 
 export function CategoryList({ categories }: CategoryListProps) {
-  const updateCategory = useMutation(api.categories.update);
-  const deleteCategory = useMutation(api.categories.remove);
-  const reorderCategories = useMutation(api.categories.reorder);
-  const togglePublishCategory = useMutation(api.categories.togglePublish);
+  const isTenantReady = useTenantReady();
+  const updateCategory = useTenantMutation(api.categories.update);
+  const deleteCategory = useTenantMutation(api.categories.remove);
+  const reorderCategories = useTenantMutation(api.categories.reorder);
+  const togglePublishCategory = useTenantMutation(api.categories.togglePublish);
   const { toast } = useToast();
   const { error, showError, hideError } = useErrorModal();
   const { confirm, showConfirm, hideConfirm } = useConfirmModal();
@@ -198,6 +199,7 @@ export function CategoryList({ categories }: CategoryListProps) {
 
   // Update ordered categories when categories prop changes
   useEffect(() => {
+
     setOrderedCategories(categories);
   }, [categories]);
 
@@ -234,6 +236,11 @@ export function CategoryList({ categories }: CategoryListProps) {
         "A descrição deve ter pelo menos 10 caracteres",
         "Descrição inválida",
       );
+      return;
+    }
+
+    if (!isTenantReady) {
+      showError("Tenant não encontrado", "Erro de configuração");
       return;
     }
 
@@ -280,6 +287,10 @@ export function CategoryList({ categories }: CategoryListProps) {
     showConfirm(
       message,
       async () => {
+        if (!isTenantReady) {
+          showError("Tenant não encontrado", "Erro de configuração");
+          return;
+        }
         try {
           await deleteCategory({ id });
           toast({
@@ -307,19 +318,23 @@ export function CategoryList({ categories }: CategoryListProps) {
     const action = currentStatus ? "despublicar" : "publicar";
     const message = currentStatus
       ? `Despublicar a categoria "${title}" irá:\n\n` +
-        `• Despublicar TODOS os módulos desta categoria\n` +
-        `• Despublicar TODAS as aulas destes módulos\n\n` +
-        `Os alunos não terão mais acesso a este conteúdo.\n\n` +
-        `Deseja continuar?`
+      `• Despublicar TODOS os módulos desta categoria\n` +
+      `• Despublicar TODAS as aulas destes módulos\n\n` +
+      `Os alunos não terão mais acesso a este conteúdo.\n\n` +
+      `Deseja continuar?`
       : `Publicar a categoria "${title}" irá:\n\n` +
-        `• Publicar TODOS os módulos desta categoria\n` +
-        `• Publicar TODAS as aulas destes módulos\n\n` +
-        `Os alunos terão acesso a todo este conteúdo.\n\n` +
-        `Deseja continuar?`;
+      `• Publicar TODOS os módulos desta categoria\n` +
+      `• Publicar TODAS as aulas destes módulos\n\n` +
+      `Os alunos terão acesso a todo este conteúdo.\n\n` +
+      `Deseja continuar?`;
 
     showConfirm(
       message,
       async () => {
+        if (!isTenantReady) {
+          showError("Tenant não encontrado", "Erro de configuração");
+          return;
+        }
         try {
           const newStatus = await togglePublishCategory({ id });
           toast({
@@ -353,6 +368,11 @@ export function CategoryList({ categories }: CategoryListProps) {
   };
 
   const handleSaveOrder = async () => {
+    if (!isTenantReady) {
+      showError("Tenant não encontrado", "Erro de configuração");
+      return;
+    }
+
     setIsSavingOrder(true);
     try {
       // Create updates array with new positions

@@ -2,12 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
-import {
-  Preloaded,
-  usePreloadedQuery,
-  useQuery,
-  useMutation,
-} from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useQueryState, parseAsString } from "nuqs";
 import {
@@ -28,16 +23,25 @@ import { Feedback } from "./feedback";
 import { Rating } from "./rating";
 import { cn, formatCpf } from "@/lib/utils";
 import { getSignedEmbedUrl } from "@/app/actions/bunny";
+import {
+  useTenantQuery,
+  useTenantMutation,
+  useTenantReady,
+} from "@/hooks/use-tenant-convex";
 
 interface UnitsPageProps {
-  preloadedUnits: Preloaded<typeof api.units.listPublishedByCategory>;
+  categoryId: Id<"categories">;
   categoryTitle: string;
 }
 
-export function UnitsPage({ preloadedUnits, categoryTitle }: UnitsPageProps) {
-  const units = usePreloadedQuery(preloadedUnits);
+export function UnitsPage({ categoryId, categoryTitle }: UnitsPageProps) {
+  const unitsRaw = useTenantQuery(api.units.listPublishedByCategory, {
+    categoryId,
+  });
+  const units = useMemo(() => unitsRaw ?? [], [unitsRaw]);
   const { user } = useUser();
   const { state } = useSidebar();
+  const isTenantReady = useTenantReady();
 
   // URL state for selected lesson (nuqs)
   const [lessonIdParam, setLessonIdParam] = useQueryState(
@@ -46,15 +50,17 @@ export function UnitsPage({ preloadedUnits, categoryTitle }: UnitsPageProps) {
   );
 
   // Mutations
-  const markCompleted = useMutation(api.progress.mutations.markLessonCompleted);
-  const markIncomplete = useMutation(
+  const markCompleted = useTenantMutation(
+    api.progress.mutations.markLessonCompleted,
+  );
+  const markIncomplete = useTenantMutation(
     api.progress.mutations.markLessonIncomplete,
   );
-  const toggleFavorite = useMutation(api.favorites.toggleFavorite);
-  const addRecentView = useMutation(api.recentViews.addView);
+  const toggleFavorite = useTenantMutation(api.favorites.toggleFavorite);
+  const addRecentView = useTenantMutation(api.recentViews.addView);
 
   // Load lessons for first unit to get the first lesson (only published)
-  const firstUnitLessons = useQuery(
+  const firstUnitLessons = useTenantQuery(
     api.lessons.listPublishedByUnit,
     units[0] ? { unitId: units[0]._id } : "skip",
   );
@@ -83,20 +89,20 @@ export function UnitsPage({ preloadedUnits, categoryTitle }: UnitsPageProps) {
   const [embedLoading, setEmbedLoading] = useState(false);
 
   // Load lessons for current unit (only published)
-  const currentUnitLessons = useQuery(
+  const currentUnitLessons = useTenantQuery(
     api.lessons.listPublishedByUnit,
     currentUnitId ? { unitId: currentUnitId } : "skip",
   );
 
   // Load lessons for next unit (for smooth transitions, only published)
-  const nextUnitLessons = useQuery(
+  const nextUnitLessons = useTenantQuery(
     api.lessons.listPublishedByUnit,
     nextUnitId ? { unitId: nextUnitId } : "skip",
   );
 
   // Query lesson from URL parameter (if provided)
   // Validate that lessonIdParam is a non-empty string before casting to Id<"lessons">
-  const lessonFromUrl = useQuery(
+  const lessonFromUrl = useTenantQuery(
     api.lessons.getById,
     lessonIdParam && lessonIdParam.length > 0
       ? { id: lessonIdParam as Id<"lessons"> }
@@ -104,25 +110,24 @@ export function UnitsPage({ preloadedUnits, categoryTitle }: UnitsPageProps) {
   );
 
   // Queries for current state
-  const currentLesson = useQuery(
+  const currentLesson = useTenantQuery(
     api.lessons.getById,
     currentLessonId ? { id: currentLessonId } : "skip",
   );
 
   // OPTIMIZED: Get progress only for THIS category (not all 5000 lessons!)
-  const categoryId = units[0]?.categoryId;
-  const allUserProgress = useQuery(
+  const allUserProgress = useTenantQuery(
     api.progress.queries.getCompletedLessonsByCategory,
     user?.id && categoryId ? { userId: user.id, categoryId } : "skip",
   );
 
   // OPTIMIZED: Get unit progress only for THIS category (not all 1000 units!)
-  const allUnitsProgress = useQuery(
+  const allUnitsProgress = useTenantQuery(
     api.progress.queries.getUnitProgressByCategory,
     user?.id && categoryId ? { userId: user.id, categoryId } : "skip",
   );
 
-  const isFavorited = useQuery(
+  const isFavorited = useTenantQuery(
     api.favorites.isFavorited,
     user?.id && currentLessonId
       ? { userId: user.id, lessonId: currentLessonId }
@@ -236,7 +241,7 @@ export function UnitsPage({ preloadedUnits, categoryTitle }: UnitsPageProps) {
       setLessonIdParam(lessonId);
 
       // Register the view
-      if (user?.id) {
+      if (user?.id && isTenantReady) {
         try {
           await addRecentView({
             userId: user.id,
@@ -249,7 +254,7 @@ export function UnitsPage({ preloadedUnits, categoryTitle }: UnitsPageProps) {
         }
       }
     },
-    [user, addRecentView, setLessonIdParam],
+    [user, isTenantReady, addRecentView, setLessonIdParam],
   );
 
   // Handle transition to first lesson of next unit
@@ -272,15 +277,22 @@ export function UnitsPage({ preloadedUnits, categoryTitle }: UnitsPageProps) {
   }, [nextUnitId, nextUnitLessons, currentLessonId, handleLessonClick]);
 
   const handleMarkCompleted = async () => {
-    if (!user?.id || !currentLessonId || !currentUnitId) return;
+    if (!user?.id || !currentLessonId || !currentUnitId || !isTenantReady)
+      return;
     try {
       // Toggle between completed and incomplete
       if (isLessonCompleted) {
         // If already completed, mark as incomplete
-        await markIncomplete({ userId: user.id, lessonId: currentLessonId });
+        await markIncomplete({
+          userId: user.id,
+          lessonId: currentLessonId,
+        });
       } else {
         // If not completed, mark as completed
-        await markCompleted({ userId: user.id, lessonId: currentLessonId });
+        await markCompleted({
+          userId: user.id,
+          lessonId: currentLessonId,
+        });
 
         // Register completion view
         await addRecentView({
@@ -296,9 +308,12 @@ export function UnitsPage({ preloadedUnits, categoryTitle }: UnitsPageProps) {
   };
 
   const handleToggleFavorite = async () => {
-    if (!user?.id || !currentLessonId) return;
+    if (!user?.id || !currentLessonId || !isTenantReady) return;
     try {
-      await toggleFavorite({ userId: user.id, lessonId: currentLessonId });
+      await toggleFavorite({
+        userId: user.id,
+        lessonId: currentLessonId,
+      });
     } catch (error) {
       console.error("Error toggling favorite:", error);
     }
@@ -359,9 +374,9 @@ export function UnitsPage({ preloadedUnits, categoryTitle }: UnitsPageProps) {
   const globalProgressPercent =
     totalLessonsCount > 0
       ? Math.min(
-          100,
-          Math.round((totalCompletedLessons / totalLessonsCount) * 100),
-        )
+        100,
+        Math.round((totalCompletedLessons / totalLessonsCount) * 100),
+      )
       : 0;
 
   if (units.length === 0) {
@@ -574,7 +589,7 @@ export function UnitsPage({ preloadedUnits, categoryTitle }: UnitsPageProps) {
                           className={cn(
                             "flex-1 lg:flex-none lg:min-w-[160px]",
                             isLessonCompleted &&
-                              "bg-white text-green-600 hover:bg-green-50 border-green-600 border-2",
+                            "bg-white text-green-600 hover:bg-green-50 border-green-600 border-2",
                           )}
                         >
                           <CheckCircleIcon

@@ -182,7 +182,7 @@ function CheckoutSuccessContent() {
                   </div>
                   <p>
                     O email conterá um link para criar sua conta na plataforma
-                    OrtoQBank
+                    Ortoclub
                   </p>
                 </div>
                 <div className="flex items-start">

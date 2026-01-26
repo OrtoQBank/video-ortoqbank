@@ -3,10 +3,11 @@ import { mutation, query } from "./_generated/server";
 import { paginationOptsValidator } from "convex/server";
 
 /**
- * Submit or update rating for a lesson
+ * Submit or update rating for a lesson (tenant-scoped)
  */
 export const submitRating = mutation({
   args: {
+    tenantId: v.id("tenants"),
     userId: v.string(), // clerkUserId
     lessonId: v.id("lessons"),
     unitId: v.id("units"),
@@ -17,13 +18,23 @@ export const submitRating = mutation({
       throw new Error("Rating deve ser entre 1 e 5");
     }
 
-    // Check if user already rated this lesson
-    const existingRating = await ctx.db
+    // Verify lesson belongs to tenant
+    const lesson = await ctx.db.get(args.lessonId);
+    if (!lesson || lesson.tenantId !== args.tenantId) {
+      throw new Error("Aula não encontrada ou não pertence a este tenant");
+    }
+
+    // Check if user already rated this lesson in this tenant
+    const existingRatings = await ctx.db
       .query("lessonRatings")
-      .withIndex("by_userId_and_lessonId", (q) =>
-        q.eq("userId", args.userId).eq("lessonId", args.lessonId),
+      .withIndex("by_tenantId_and_lessonId", (q) =>
+        q.eq("tenantId", args.tenantId).eq("lessonId", args.lessonId),
       )
-      .first();
+      .collect();
+
+    const existingRating = existingRatings.find(
+      (r) => r.userId === args.userId,
+    );
 
     if (existingRating) {
       // Update existing rating
@@ -35,6 +46,7 @@ export const submitRating = mutation({
     } else {
       // Create new rating
       const ratingId = await ctx.db.insert("lessonRatings", {
+        tenantId: args.tenantId,
         userId: args.userId,
         lessonId: args.lessonId,
         unitId: args.unitId,
@@ -51,17 +63,32 @@ export const submitRating = mutation({
  */
 export const getUserRating = query({
   args: {
+    tenantId: v.id("tenants"),
     userId: v.string(),
     lessonId: v.id("lessons"),
   },
+  returns: v.union(
+    v.object({
+      _id: v.id("lessonRatings"),
+      _creationTime: v.number(),
+      createdAt: v.number(),
+      userId: v.string(),
+      tenantId: v.id("tenants"),
+      unitId: v.id("units"),
+      lessonId: v.id("lessons"),
+      rating: v.number(),
+    }),
+    v.null()
+  ),
   handler: async (ctx, args) => {
-    const rating = await ctx.db
+    const ratings = await ctx.db
       .query("lessonRatings")
-      .withIndex("by_userId_and_lessonId", (q) =>
-        q.eq("userId", args.userId).eq("lessonId", args.lessonId),
+      .withIndex("by_tenantId_and_lessonId", (q) =>
+        q.eq("tenantId", args.tenantId).eq("lessonId", args.lessonId)
       )
-      .first();
+      .collect();
 
+    const rating = ratings.find((r) => r.userId === args.userId);
     return rating || null;
   },
 });
@@ -71,12 +98,19 @@ export const getUserRating = query({
  */
 export const getLessonAverageRating = query({
   args: {
+    tenantId: v.id("tenants"),
     lessonId: v.id("lessons"),
   },
+  returns: v.object({
+    average: v.number(),
+    count: v.number(),
+  }),
   handler: async (ctx, args) => {
     const ratings = await ctx.db
       .query("lessonRatings")
-      .withIndex("by_lessonId", (q) => q.eq("lessonId", args.lessonId))
+      .withIndex("by_tenantId_and_lessonId", (q) =>
+        q.eq("tenantId", args.tenantId).eq("lessonId", args.lessonId),
+      )
       .collect();
 
     if (ratings.length === 0) {
@@ -94,18 +128,45 @@ export const getLessonAverageRating = query({
 });
 
 /**
- * Get all ratings with user and lesson information (admin only) - Paginated
+ * Get all ratings with user and lesson information (tenant admin only) - Paginated
  */
 export const getAllRatingsWithDetails = query({
-  args: { paginationOpts: paginationOptsValidator },
+  args: {
+    tenantId: v.id("tenants"),
+    paginationOpts: paginationOptsValidator,
+  },
+
+  returns: v.object({
+    page: v.array(v.object({
+      _id: v.id("lessonRatings"),
+      _creationTime: v.number(),
+      userId: v.string(),
+      lessonId: v.id("lessons"),
+      unitId: v.id("units"),
+      rating: v.number(),
+      createdAt: v.number(),
+      userName: v.string(),
+      userEmail: v.string(),
+      lessonTitle: v.string(),
+      unitTitle: v.string(),
+    })),
+    isDone: v.boolean(),
+    continueCursor: v.union(v.string(), v.null()),
+  }),
   handler: async (ctx, args) => {
+    // Get all ratings for this tenant
     const paginatedRatings = await ctx.db
       .query("lessonRatings")
+      .withIndex("by_tenantId", (q) => q.eq("tenantId", args.tenantId))
       .order("desc")
+     
       .paginate(args.paginationOpts);
+      
+       const ratings = paginatedRatings.page;
+    
 
     const ratingsWithDetails = await Promise.all(
-      paginatedRatings.page.map(async (rating) => {
+      ratings.map(async (rating) => {
         const user = await ctx.db
           .query("users")
           .withIndex("by_clerkUserId", (q) =>
@@ -134,9 +195,12 @@ export const getAllRatingsWithDetails = query({
       }),
     );
 
+  
+
     return {
-      ...paginatedRatings,
       page: ratingsWithDetails,
+      isDone: paginatedRatings.isDone,
+      continueCursor: paginatedRatings.continueCursor,
     };
   },
 });

@@ -1,25 +1,33 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getCurrentUser, requireAdmin } from "./users";
+import {
+  hasActiveTenantAccess,
+  getUserTenantMembership,
+  requireTenantAdmin,
+} from "./lib/tenantContext";
 
 /**
  * ============================================================================
- * ACCESS MODEL (VIDEO APP)
+ * ACCESS MODEL (VIDEO APP) - MULTITENANCY ENABLED
  *
- * Convex is the SOURCE OF TRUTH for paid access.
- * Clerk is used ONLY for authentication (identity).
+ * Access is now tenant-scoped:
+ * - Users can belong to multiple tenants
+ * - Each tenant membership has its own access settings
+ * - Global user fields (paid, hasActiveYearAccess) are kept for backward compatibility
+ * - Tenant-specific access is checked via tenantMemberships
  *
- * Rules for VIDEO app access:
- * - user.status === "active"
- * - user.paid === true
- * - user.hasActiveYearAccess === true
+ * Rules for VIDEO app access within a tenant:
+ * - user.status === "active" (global status)
+ * - tenantMembership.hasActiveAccess === true (tenant-specific)
+ * - tenantMembership.accessExpiresAt > now (if set)
  * ============================================================================
  */
 
 /**
- * Centralized access rule (DO NOT DUPLICATE LOGIC)
+ * Centralized access rule (backward compatible - global)
  */
-function hasVideoAccess(user: {
+function hasVideoAccessGlobal(user: {
   status: string;
   paid: boolean;
   hasActiveYearAccess: boolean;
@@ -32,28 +40,144 @@ function hasVideoAccess(user: {
 }
 
 // ============================================================================
-// PUBLIC ACCESS CHECKS (used by UI, Server Components, API routes)
+// TENANT-SCOPED ACCESS CHECKS
 // ============================================================================
 
 /**
- * Check if CURRENT authenticated user has access to VIDEO app
- * (Used in Server Components / client queries)
+ * Check if CURRENT authenticated user has access to VIDEO app within a tenant
  */
-export const checkUserHasVideoAccess = query({
-  args: {},
-  async handler(ctx) {
+export const checkUserHasTenantAccess = query({
+  args: { tenantId: v.id("tenants") },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     if (!user) return false;
-    return hasVideoAccess(user);
+
+    // Check tenant membership and access
+    return await hasActiveTenantAccess(ctx, user._id, args.tenantId);
   },
 });
 
 /**
- * Check access by Clerk user ID
- * IMPORTANT: This is the function you should call from:
- * - Server Components
- * - API Routes
- * - Server Actions
+ * Check tenant access by Clerk user ID
+ * Used in Server Components, API Routes, Server Actions
+ */
+export const checkUserHasTenantAccessByClerkId = query({
+  args: {
+    tenantId: v.id("tenants"),
+    clerkUserId: v.string(),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", args.clerkUserId))
+      .unique();
+
+    if (!user || user.status !== "active") return false;
+
+    return await hasActiveTenantAccess(ctx, user._id, args.tenantId);
+  },
+});
+
+/**
+ * Full access + billing info for current user within a tenant
+ */
+export const getTenantAccessDetails = query({
+  args: { tenantId: v.id("tenants") },
+  returns: v.object({
+    hasAccess: v.boolean(),
+    role: v.union(v.literal("member"), v.literal("admin"), v.null()),
+    hasActiveAccess: v.boolean(),
+    accessExpiresAt: v.optional(v.number()),
+    daysUntilExpiration: v.optional(v.number()),
+    userStatus: v.union(v.literal("active"), v.literal("inactive"), v.literal("suspended")),
+  }),
+  async handler(
+    ctx,
+    args,
+  ): Promise<{
+    hasAccess: boolean;
+    role: "member" | "admin" | null;
+    hasActiveAccess: boolean;
+    accessExpiresAt?: number;
+    daysUntilExpiration?: number;
+    userStatus: "active" | "inactive" | "suspended";
+  }> {
+    const user = await getCurrentUser(ctx);
+
+    if (!user) {
+      return {
+        hasAccess: false,
+        role: null,
+        hasActiveAccess: false,
+        userStatus: "inactive",
+      };
+    }
+
+    const membership = await getUserTenantMembership(
+      ctx,
+      user._id,
+      args.tenantId,
+    );
+
+    if (!membership) {
+      return {
+        hasAccess: false,
+        role: null,
+        hasActiveAccess: false,
+        userStatus: user.status,
+      };
+    }
+    const now = Date.now();
+    let daysUntilExpiration: number | undefined;
+
+    if (membership.accessExpiresAt && membership.hasActiveAccess) {
+        
+      if (membership.accessExpiresAt > now) {
+        daysUntilExpiration = Math.ceil(
+          (membership.accessExpiresAt - now) / (24 * 60 * 60 * 1000),
+        );
+      }
+    }
+
+    const hasAccess =
+      user.status === "active" &&
+      membership.hasActiveAccess &&
+      (!membership.accessExpiresAt || membership.accessExpiresAt > now);
+
+    return {
+      hasAccess,
+      role: membership.role,
+      hasActiveAccess: membership.hasActiveAccess,
+      accessExpiresAt: membership.accessExpiresAt,
+      daysUntilExpiration,
+      userStatus: user.status,
+    };
+  },
+});
+
+// ============================================================================
+// LEGACY / BACKWARD COMPATIBLE ACCESS CHECKS (global, non-tenant)
+// ============================================================================
+
+/**
+ * Check if CURRENT authenticated user has access to VIDEO app (global)
+ * @deprecated Use checkUserHasTenantAccess for tenant-scoped access
+ */
+export const checkUserHasVideoAccess = query({
+  args: {},
+  returns: v.boolean(),
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return false;
+    return hasVideoAccessGlobal(user);
+  },
+});
+
+/**
+ * Check access by Clerk user ID (global)
+ * @deprecated Use checkUserHasTenantAccessByClerkId for tenant-scoped access
  */
 export const checkUserHasVideoAccessByClerkId = query({
   args: { clerkUserId: v.string() },
@@ -65,16 +189,13 @@ export const checkUserHasVideoAccessByClerkId = query({
 
     if (!user) return false;
 
-    return hasVideoAccess(user);
+    return hasVideoAccessGlobal(user);
   },
 });
 
-// ============================================================================
-// ACCESS DETAILS (UI / ACCOUNT / BILLING)
-// ============================================================================
-
 /**
- * Full access + billing info for current user
+ * Full access + billing info for current user (global)
+ * @deprecated Use getTenantAccessDetails for tenant-scoped access
  */
 export const getVideoAccessDetails = query({
   args: {},
@@ -113,7 +234,7 @@ export const getVideoAccessDetails = query({
     }
 
     return {
-      hasAccess: hasVideoAccess(user),
+      hasAccess: hasVideoAccessGlobal(user),
       paid: user.paid,
       hasActiveYearAccess: user.hasActiveYearAccess,
       status: user.status,
@@ -129,7 +250,7 @@ export const getVideoAccessDetails = query({
 // ============================================================================
 
 /**
- * Update payment info
+ * Update payment info (global user level)
  * Used by:
  * - Payment webhooks
  * - Admin tools
@@ -163,12 +284,45 @@ export const updatePayment = mutation({
   },
 });
 
+/**
+ * Update tenant-specific access for a user
+ * Used by tenant admins
+ */
+export const updateTenantAccess = mutation({
+  args: {
+    tenantId: v.id("tenants"),
+    userId: v.id("users"),
+    hasActiveAccess: v.boolean(),
+    accessExpiresAt: v.optional(v.number()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await requireTenantAdmin(ctx, args.tenantId);
+
+    const membership = await getUserTenantMembership(
+      ctx,
+      args.userId,
+      args.tenantId,
+    );
+    if (!membership) {
+      throw new Error("User is not a member of this tenant");
+    }
+
+    await ctx.db.patch(membership._id, {
+      hasActiveAccess: args.hasActiveAccess,
+      accessExpiresAt: args.accessExpiresAt,
+    });
+
+    return;
+  },
+});
+
 // ============================================================================
 // ADMIN QUERIES
 // ============================================================================
 
 /**
- * Admin-only: check access by internal Convex user ID
+ * Admin-only: check access by internal Convex user ID (global)
  */
 export const checkUserHasVideoAccessById = query({
   args: { userId: v.id("users") },
@@ -178,7 +332,22 @@ export const checkUserHasVideoAccessById = query({
     const user = await ctx.db.get(args.userId);
     if (!user) return false;
 
-    return hasVideoAccess(user);
+    return hasVideoAccessGlobal(user);
+  },
+});
+
+/**
+ * Tenant admin: check user access within tenant
+ */
+export const checkUserTenantAccessById = query({
+  args: {
+    tenantId: v.id("tenants"),
+    userId: v.id("users"),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    await requireTenantAdmin(ctx, args.tenantId);
+    return await hasActiveTenantAccess(ctx, args.userId, args.tenantId);
   },
 });
 

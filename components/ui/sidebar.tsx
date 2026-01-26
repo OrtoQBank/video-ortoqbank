@@ -213,7 +213,7 @@ const Sidebar = React.forwardRef<
     if (isMobile) {
       return (
         <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
-          <SheetTitle className="hidden">OrtoQBank Navigation</SheetTitle>
+          <SheetTitle className="hidden">Ortoclub Navigation</SheetTitle>
           <SheetContent
             data-sidebar="sidebar"
             data-mobile="true"
@@ -227,7 +227,7 @@ const Sidebar = React.forwardRef<
             side={side}
           >
             <div id="sidebar-description" className="sr-only">
-              Navigation menu for OrtoQBank application
+              Navigation menu for Ortoclub application
             </div>
             <div className="flex h-full w-full flex-col">{children}</div>
           </SheetContent>
@@ -646,7 +646,7 @@ const SidebarMenuAction = React.forwardRef<
         "peer-data-[size=lg]/menu-button:top-2.5",
         "group-data-[collapsible=icon]:hidden",
         showOnHover &&
-          "peer-data-[active=true]/menu-button:text-sidebar-accent-foreground group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 md:opacity-0",
+        "peer-data-[active=true]/menu-button:text-sidebar-accent-foreground group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 md:opacity-0",
         className,
       )}
       {...props}

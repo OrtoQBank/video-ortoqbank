@@ -11,13 +11,13 @@ export default function Header() {
         <Link href="/" className="flex items-end space-x-2">
           <Image
             src="/logo-transparente.png"
-            alt="OrtoQBank Logo"
+            alt="Ortoclub Logo"
             width={40}
             height={40}
             className="rounded-sm"
           />
           <span className="font-sifonn translate-y-1 text-2xl font-bold">
-            OrtoQBank
+            Ortoclub
           </span>
         </Link>
         <div className="flex items-center gap-8">

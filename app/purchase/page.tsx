@@ -17,7 +17,7 @@ export default function PurchasePage() {
         </CardHeader>
         <CardContent className="space-y-6">
           <p className="text-center text-gray-600">
-            Esta área é exclusiva para assinantes do OrtoQBank Video. Adquira
+            Esta área é exclusiva para assinantes do Ortoclub Video. Adquira
             seu acesso e tenha disponível:
           </p>
 
@@ -40,14 +40,14 @@ export default function PurchasePage() {
 
           <div className="pt-4 space-y-3">
             <Button asChild className="w-full" size="lg">
-              <Link href="https://video.ortoqbank.com.br" target="_blank">
+              <Link href="https://video.Ortoclub.com.br" target="_blank">
                 <CreditCard className="mr-2 h-5 w-5" />
                 Adquirir Acesso
               </Link>
             </Button>
 
             <Button asChild variant="outline" className="w-full" size="lg">
-              <Link href="mailto:ortoqbank@gmail.com">Precisa de ajuda?</Link>
+              <Link href="mailto:Ortoclub@gmail.com">Precisa de ajuda?</Link>
             </Button>
           </div>
 

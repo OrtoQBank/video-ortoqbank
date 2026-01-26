@@ -10,7 +10,6 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
-import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
@@ -26,6 +25,8 @@ import {
 } from "@/components/ui/field";
 import { CheckCircle2Icon, FolderPlusIcon } from "lucide-react";
 import { ImageUpload } from "@/components/ui/image-upload";
+import { useTenantMutation, useTenantReady } from "@/hooks/use-tenant-convex";
+import { useRef, useEffect } from "react";
 
 const formSchema = z.object({
   title: z.string().min(3, "Título deve ter pelo menos 3 caracteres"),
@@ -44,7 +45,16 @@ interface CategoryFormProps {
 }
 
 export function CategoryForm({ onSuccess }: CategoryFormProps) {
-  const createCategory = useMutation(api.categories.create);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const isTenantReady = useTenantReady();
+  const createCategory = useTenantMutation(api.categories.create);
   const { toast } = useToast();
   const { error, showError, hideError } = useErrorModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -61,6 +71,11 @@ export function CategoryForm({ onSuccess }: CategoryFormProps) {
   });
 
   async function onSubmit(data: z.infer<typeof formSchema>) {
+    if (!isTenantReady) {
+      showError("Tenant não encontrado", "Erro de configuração");
+      return;
+    }
+
     setIsSubmitting(true);
     // Clear any previous success message to avoid showing it alongside errors
     setCreatedCategory(false);
@@ -86,7 +101,11 @@ export function CategoryForm({ onSuccess }: CategoryFormProps) {
       }
 
       // Reset success state after 3 seconds
-      setTimeout(() => setCreatedCategory(false), 3000);
+      setTimeout(() => {
+        if (isMountedRef.current) {
+          setCreatedCategory(false);
+        }
+      }, 3000);
     } catch (error) {
       showError(
         error instanceof Error ? error.message : "Erro desconhecido",

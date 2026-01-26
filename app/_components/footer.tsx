@@ -3,7 +3,7 @@ export default function Footer() {
     <footer className="bg-blue-brand py-8 px-4">
       <div className="container mx-auto max-w-6xl text-center text-white">
         <p>
-          &copy; {new Date().getFullYear()} OrtoQBank Vídeos. Todos os direitos
+          &copy; {new Date().getFullYear()} Ortoclub Vídeos. Todos os direitos
           reservados.
         </p>
       </div>

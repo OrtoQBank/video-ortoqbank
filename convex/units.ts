@@ -3,62 +3,90 @@ import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { paginationOptsValidator } from "convex/server";
-import { requireAdmin } from "./users";
+import { requireTenantAdmin } from "./lib/tenantContext";
 
-// ADMIN: List all units with pagination
+// ============================================================================
+// QUERIES
+// ============================================================================
+
+/**
+ * List all units for a tenant with pagination (ADMIN)
+ */
 export const listPaginated = query({
-  args: { paginationOpts: paginationOptsValidator },
+  args: {
+    tenantId: v.id("tenants"),
+    paginationOpts: paginationOptsValidator,
+  },
   handler: async (ctx, args) => {
-    return await ctx.db.query("units").paginate(args.paginationOpts);
+    return await ctx.db
+      .query("units")
+      .withIndex("by_tenantId", (q) => q.eq("tenantId", args.tenantId))
+      .paginate(args.paginationOpts);
   },
 });
 
-// Query para listar todas as unidades (ADMIN - deprecated, use listPaginated)
+/**
+ * List all units for a tenant (ADMIN - limited to 100)
+ */
 export const list = query({
-  args: {},
-  handler: async (ctx) => {
-    // DEPRECATED: Use listPaginated for better performance
-    const units = await ctx.db.query("units").take(100); // Limited to 100
-    return units;
-  },
-});
-
-// Query para listar apenas unidades PUBLICADAS (USER)
-export const listPublished = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { tenantId: v.id("tenants") },
+  handler: async (ctx, args) => {
     const units = await ctx.db
       .query("units")
-      .withIndex("by_isPublished", (q) => q.eq("isPublished", true))
-      .collect();
+      .withIndex("by_tenantId", (q) => q.eq("tenantId", args.tenantId))
+      .take(100);
     return units;
   },
 });
 
-// ADMIN: List units by category with pagination
+/**
+ * List only PUBLISHED units for a tenant (USER)
+ */
+export const listPublished = query({
+  args: { tenantId: v.id("tenants") },
+  handler: async (ctx, args) => {
+    const units = await ctx.db
+      .query("units")
+      .withIndex("by_tenantId", (q) => q.eq("tenantId", args.tenantId))
+      .collect();
+
+    // Filter to published only
+    return units.filter((u) => u.isPublished);
+  },
+});
+
+/**
+ * List units by category with pagination (ADMIN)
+ */
 export const listByCategoryPaginated = query({
   args: {
+    tenantId: v.id("tenants"),
     categoryId: v.id("categories"),
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
     return await ctx.db
       .query("units")
-      .withIndex("by_categoryId_and_order", (q) =>
-        q.eq("categoryId", args.categoryId),
+      .withIndex("by_tenantId_and_categoryId", (q) =>
+        q.eq("tenantId", args.tenantId).eq("categoryId", args.categoryId),
       )
       .paginate(args.paginationOpts);
   },
 });
 
-// Query para listar unidades de uma categoria específica (ADMIN - deprecated)
+/**
+ * List units by category (ADMIN - limited to 100)
+ */
 export const listByCategory = query({
-  args: { categoryId: v.id("categories") },
+  args: {
+    tenantId: v.id("tenants"),
+    categoryId: v.id("categories"),
+  },
   handler: async (ctx, args) => {
     const units = await ctx.db
       .query("units")
-      .withIndex("by_categoryId_and_order", (q) =>
-        q.eq("categoryId", args.categoryId),
+      .withIndex("by_tenantId_and_categoryId", (q) =>
+        q.eq("tenantId", args.tenantId).eq("categoryId", args.categoryId),
       )
       .take(100);
 
@@ -66,13 +94,23 @@ export const listByCategory = query({
   },
 });
 
-// Query para listar apenas unidades PUBLICADAS de uma categoria PUBLICADA (USER)
+/**
+ * List only PUBLISHED units for a PUBLISHED category (USER)
+ */
 export const listPublishedByCategory = query({
-  args: { categoryId: v.id("categories") },
+  args: {
+    tenantId: v.id("tenants"),
+    categoryId: v.id("categories"),
+  },
   handler: async (ctx, args) => {
     // Check if category is published
     const category = await ctx.db.get(args.categoryId);
     if (!category || !category.isPublished) {
+      return [];
+    }
+
+    // Verify category belongs to tenant
+    if (category.tenantId !== args.tenantId) {
       return [];
     }
 
@@ -87,29 +125,69 @@ export const listPublishedByCategory = query({
   },
 });
 
-// Query para buscar uma unidade por ID
+/**
+ * Get a unit by ID
+ */
 export const getById = query({
-  args: { id: v.id("units") },
+  args: {
+    id: v.id("units"),
+    tenantId: v.optional(v.id("tenants")),
+  },
   handler: async (ctx, args) => {
     const unit = await ctx.db.get(args.id);
     return unit;
   },
 });
 
-// Query para buscar uma unidade por slug
+/**
+ * Get a unit by slug within a tenant
+ */
 export const getBySlug = query({
-  args: { slug: v.string() },
+  args: {
+    tenantId: v.id("tenants"),
+    slug: v.string(),
+  },
   handler: async (ctx, args) => {
+    // Note: We don't have a by_tenantId_and_slug index, so we filter after query
     const unit = await ctx.db
       .query("units")
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .unique();
 
+    // Verify tenant ownership
+    if (unit && unit.tenantId !== args.tenantId) {
+      return null;
+    }
+
     return unit;
   },
 });
 
-// Helper function to generate slug from title
+/**
+ * Get cascade delete info for a unit
+ */
+export const getCascadeDeleteInfo = query({
+  args: { id: v.id("units") },
+  handler: async (ctx, args) => {
+    // Count lessons in this unit
+    const lessons = await ctx.db
+      .query("lessons")
+      .withIndex("by_unitId", (q) => q.eq("unitId", args.id))
+      .collect();
+
+    return {
+      lessonsCount: lessons.length,
+    };
+  },
+});
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Generate slug from title
+ */
 function generateSlug(title: string): string {
   return title
     .toLowerCase()
@@ -119,21 +197,37 @@ function generateSlug(title: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-// Mutation para criar uma nova unidade
+// ============================================================================
+// MUTATIONS
+// ============================================================================
+
+/**
+ * Create a new unit (tenant admin only)
+ */
 export const create = mutation({
   args: {
+    tenantId: v.id("tenants"),
     categoryId: v.id("categories"),
     title: v.string(),
     description: v.string(),
   },
   handler: async (ctx, args) => {
-    // SECURITY: Require admin access
-    await requireAdmin(ctx);
+    // SECURITY: Require tenant admin access
+    await requireTenantAdmin(ctx, args.tenantId);
+
+    // Verify category belongs to this tenant
+    const category = await ctx.db.get(args.categoryId);
+    if (!category) {
+      throw new Error("Categoria não encontrada");
+    }
+    if (category.tenantId !== args.tenantId) {
+      throw new Error("Categoria não pertence a este tenant");
+    }
 
     // Auto-generate slug from title
     const slug = generateSlug(args.title);
 
-    // Verificar se já existe uma unidade com o mesmo slug
+    // Check if slug already exists
     const existing = await ctx.db
       .query("units")
       .withIndex("by_slug", (q) => q.eq("slug", slug))
@@ -157,13 +251,8 @@ export const create = mutation({
     );
     const nextOrderIndex = maxOrderIndex + 1;
 
-    // Get category to inherit isPublished status
-    const category = await ctx.db.get(args.categoryId);
-    if (!category) {
-      throw new Error("Categoria não encontrada");
-    }
-
     const unitId: Id<"units"> = await ctx.db.insert("units", {
+      tenantId: args.tenantId,
       categoryId: args.categoryId,
       title: args.title,
       slug: slug,
@@ -171,8 +260,8 @@ export const create = mutation({
       order_index: nextOrderIndex,
       totalLessonVideos: 0,
       lessonCounter: 0,
-      lessonNumberCounter: 0, // Atomic counter for lesson number allocation
-      isPublished: category.isPublished ?? true, // Inherit from category, default to true
+      lessonNumberCounter: 0,
+      isPublished: category.isPublished ?? true,
     });
 
     // Update contentStats
@@ -184,9 +273,12 @@ export const create = mutation({
   },
 });
 
-// Mutation para atualizar uma unidade
+/**
+ * Update a unit (tenant admin only)
+ */
 export const update = mutation({
   args: {
+    tenantId: v.id("tenants"),
     id: v.id("units"),
     categoryId: v.id("categories"),
     title: v.string(),
@@ -194,13 +286,31 @@ export const update = mutation({
     order_index: v.number(),
   },
   handler: async (ctx, args) => {
-    // SECURITY: Require admin access
-    await requireAdmin(ctx);
+    // SECURITY: Require tenant admin access
+    await requireTenantAdmin(ctx, args.tenantId);
+
+    // Verify unit belongs to this tenant
+    const unit = await ctx.db.get(args.id);
+    if (!unit) {
+      throw new Error("Unidade não encontrada");
+    }
+    if (unit.tenantId !== args.tenantId) {
+      throw new Error("Unidade não pertence a este tenant");
+    }
+
+    // Verify target category belongs to this tenant
+    const category = await ctx.db.get(args.categoryId);
+    if (!category) {
+      throw new Error("Categoria não encontrada");
+    }
+    if (category.tenantId !== args.tenantId) {
+      throw new Error("Categoria não pertence a este tenant");
+    }
 
     // Auto-generate slug from title
     const slug = generateSlug(args.title);
 
-    // Verificar se já existe outra unidade com o mesmo slug
+    // Check if slug already exists (excluding current unit)
     const existing = await ctx.db
       .query("units")
       .withIndex("by_slug", (q) => q.eq("slug", slug))
@@ -222,30 +332,26 @@ export const update = mutation({
   },
 });
 
-// Query para obter informações sobre exclusão em cascata
-export const getCascadeDeleteInfo = query({
-  args: { id: v.id("units") },
-  handler: async (ctx, args) => {
-    // Count lessons in this unit
-    const lessons = await ctx.db
-      .query("lessons")
-      .withIndex("by_unitId", (q) => q.eq("unitId", args.id))
-      .collect();
-
-    return {
-      lessonsCount: lessons.length,
-    };
-  },
-});
-
-// Mutation para deletar uma unidade (cascade delete)
+/**
+ * Delete a unit with cascade delete (tenant admin only)
+ */
 export const remove = mutation({
   args: {
+    tenantId: v.id("tenants"),
     id: v.id("units"),
   },
   handler: async (ctx, args) => {
-    // SECURITY: Require admin access
-    await requireAdmin(ctx);
+    // SECURITY: Require tenant admin access
+    await requireTenantAdmin(ctx, args.tenantId);
+
+    // Verify unit belongs to this tenant
+    const unit = await ctx.db.get(args.id);
+    if (!unit) {
+      throw new Error("Unidade não encontrada");
+    }
+    if (unit.tenantId !== args.tenantId) {
+      throw new Error("Unidade não pertence a este tenant");
+    }
 
     // Get all lessons in this unit
     const lessons = await ctx.db
@@ -280,9 +386,12 @@ export const remove = mutation({
   },
 });
 
-// Mutation para reordenar unidades
+/**
+ * Reorder units (tenant admin only)
+ */
 export const reorder = mutation({
   args: {
+    tenantId: v.id("tenants"),
     updates: v.array(
       v.object({
         id: v.id("units"),
@@ -291,8 +400,19 @@ export const reorder = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    // SECURITY: Require admin access
-    await requireAdmin(ctx);
+    // SECURITY: Require tenant admin access
+    await requireTenantAdmin(ctx, args.tenantId);
+
+    // Verify all units belong to this tenant
+    for (const update of args.updates) {
+      const unit = await ctx.db.get(update.id);
+      if (!unit) {
+        throw new Error(`Unidade não encontrada: ${update.id}`);
+      }
+      if (unit.tenantId !== args.tenantId) {
+        throw new Error("Uma das unidades não pertence a este tenant");
+      }
+    }
 
     // Update all unit order_index
     for (const update of args.updates) {
@@ -305,19 +425,27 @@ export const reorder = mutation({
   },
 });
 
-// Mutation para alternar publicação de unidade (cascade)
+/**
+ * Toggle publish status (cascade to lessons) - tenant admin only
+ */
 export const togglePublish = mutation({
   args: {
+    tenantId: v.id("tenants"),
     id: v.id("units"),
   },
   handler: async (ctx, args) => {
-    // SECURITY: Require admin access
-    await requireAdmin(ctx);
+    // SECURITY: Require tenant admin access
+    await requireTenantAdmin(ctx, args.tenantId);
 
     const unit = await ctx.db.get(args.id);
 
     if (!unit) {
       throw new Error("Unidade não encontrada");
+    }
+
+    // Verify unit belongs to this tenant
+    if (unit.tenantId !== args.tenantId) {
+      throw new Error("Unidade não pertence a este tenant");
     }
 
     const newPublishStatus = !unit.isPublished;

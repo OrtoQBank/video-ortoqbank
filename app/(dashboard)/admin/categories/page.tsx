@@ -1,6 +1,4 @@
 import { CategoriesPage } from "./_components/categories-page";
-import { api } from "@/convex/_generated/api";
-import { preloadQuery } from "convex/nextjs";
 import { requireAdminServer } from "@/lib/server-auth";
 
 /**
@@ -15,8 +13,6 @@ export default async function AdminCategoriesPage() {
   // Explicit server-side authorization check (defense in depth)
   await requireAdminServer();
 
-  // Preload categories data on the server
-  const preloadedCategories = await preloadQuery(api.categories.list);
-
-  return <CategoriesPage preloadedCategories={preloadedCategories} />;
+  // Categories are now fetched client-side with tenant context
+  return <CategoriesPage />;
 }

@@ -16,7 +16,7 @@ export default function SupportPage() {
       <div className="mb-8">
         <h1 className="mb-2 text-2xl font-semibold">Suporte</h1>
         <p className="text-muted-foreground">
-          Como usar o OrtoQBank da melhor forma para sua preparação
+          Como usar o Ortoclub da melhor forma para sua preparação
         </p>
       </div>
 
@@ -26,10 +26,10 @@ export default function SupportPage() {
             <HelpCircle className="mt-1 h-6 w-6 `flex-shrink-0` text-brand-blue" />
             <div>
               <h2 className="text-lg font-medium">
-                Como usar o OrtoQBank da melhor forma
+                Como usar o Ortoclub da melhor forma
               </h2>
               <p className="text-muted-foreground mt-1">
-                Bem-vindo ao OrtoQBank, seu parceiro estratégico na preparação
+                Bem-vindo ao Ortoclub, seu parceiro estratégico na preparação
                 para a prova da SBOT! Para aproveitar ao máximo a plataforma, é
                 importante entender como cada área funciona:
               </p>
@@ -68,7 +68,7 @@ export default function SupportPage() {
               <p className="text-muted-foreground text-sm">
                 Treine em condições semelhantes às da prova! Nessa área, estão
                 disponíveis provas anteriores da SBOT (TARO e TEOT) e simulados
-                originais OrtoQBank. Todos com gabaritos comentados. É a
+                originais Ortoclub. Todos com gabaritos comentados. É a
                 ferramenta perfeita para medir seu desempenho e se familiarizar
                 com o estilo da banca.
               </p>
@@ -121,20 +121,20 @@ export default function SupportPage() {
             </p>
             <div className="flex flex-col gap-3 sm:flex-row">
               <a
-                href="mailto:ortoqbank@gmail.com"
+                href="mailto:Ortoclub@gmail.com"
                 className="inline-flex items-center gap-2 rounded-md bg-slate-100 px-3 py-2 text-sm transition-colors hover:bg-slate-200"
               >
                 <Mail className="h-4 w-4" />
-                <span>ortoqbank@gmail.com</span>
+                <span>Ortoclub@gmail.com</span>
               </a>
               <a
-                href="https://instagram.com/ortoqbank"
+                href="https://instagram.com/Ortoclub"
                 className="inline-flex items-center gap-2 rounded-md bg-slate-100 px-3 py-2 text-sm transition-colors hover:bg-slate-200"
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 <Instagram className="h-4 w-4" />
-                <span>@ortoqbank</span>
+                <span>@Ortoclub</span>
               </a>
             </div>
           </CardContent>

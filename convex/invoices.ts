@@ -42,7 +42,7 @@ export const generateInvoice = internalMutation({
     }
 
     // Build service description
-    const serviceDescription = "Acesso à plataforma OrtoQBank";
+    const serviceDescription = "Acesso à plataforma Ortoclub";
 
     // Build payment method description for invoice observations
     let paymentMethodDescription = "Cartão de Crédito";
@@ -58,6 +58,7 @@ export const generateInvoice = internalMutation({
 
     // Create invoice record with installment information for reference
     const invoiceId = await ctx.db.insert("invoices", {
+      tenantId: order.tenantId, // Get tenantId from the order
       orderId: args.orderId,
       asaasPaymentId: args.asaasPaymentId,
       status: "pending",

@@ -1,16 +1,55 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useQuery } from "convex/react";
 import { SessionProvider } from "@/components/providers/session-provider";
+import {
+  TenantProvider,
+  useTenant,
+} from "@/components/providers/tenant-provider";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { MobileBottomNav } from "@/components/nav/mobile-bottom-nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { api } from "@/convex/_generated/api";
 
-export default function Layout({ children }: { children: React.ReactNode }) {
-  const { isLoading } = useCurrentUser();
+function DashboardContent({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const { isLoading: isUserLoading, isAuthenticated } = useCurrentUser();
+  const { isLoading: isTenantLoading, error: tenantError, tenantId } = useTenant();
 
-  // Show loading while user is being stored
-  if (isLoading) {
+  // Check user's access to this specific tenant
+  const accessCheck = useQuery(
+    api.tenants.checkUserAccess,
+    tenantId ? { tenantId } : "skip"
+  );
+
+  const isAccessLoading = accessCheck === undefined && tenantId !== null;
+
+  // Redirect to purchase if user doesn't have access to this tenant
+  useEffect(() => {
+    // Wait until all data is loaded
+    if (isUserLoading || isTenantLoading || isAccessLoading) {
+      return;
+    }
+
+    // If not authenticated, redirect to home (Clerk will handle sign-in)
+    if (!isAuthenticated) {
+      router.push("/");
+      return;
+    }
+
+    // If tenant is loaded and user doesn't have access, redirect to purchase
+    if (tenantId && accessCheck && !accessCheck.hasAccess) {
+
+      router.push("/purchase");
+      return;
+    }
+  }, [isUserLoading, isTenantLoading, isAccessLoading, isAuthenticated, tenantId, accessCheck, router]);
+
+  // Show loading while user, tenant, or access is being loaded
+  if (isUserLoading || isTenantLoading || isAccessLoading) {
     return (
       <div className="from-brand-blue/10 flex min-h-screen items-center justify-center bg-gradient-to-br to-indigo-100">
         <div className="text-center">
@@ -20,6 +59,31 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
+
+  // Show error if tenant not found
+  if (tenantError) {
+    return (
+      <div className="from-brand-blue/10 flex min-h-screen items-center justify-center bg-gradient-to-br to-indigo-100">
+        <div className="text-center">
+          <h1 className="mb-4 text-2xl font-bold text-red-600">Erro</h1>
+          <p className="text-gray-600">{tenantError}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show nothing while redirecting (user doesn't have access)
+  if (tenantId && accessCheck && !accessCheck.hasAccess) {
+    return (
+      <div className="from-brand-blue/10 flex min-h-screen items-center justify-center bg-gradient-to-br to-indigo-100">
+        <div className="text-center">
+          <div className="border-brand-blue mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2"></div>
+          <p className="text-gray-600">Redirecionando...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <SidebarProvider defaultOpen={false}>
       <SessionProvider>
@@ -37,5 +101,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <MobileBottomNav />
       </SessionProvider>
     </SidebarProvider>
+  );
+}
+
+export default function Layout({ children }: { children: React.ReactNode }) {
+  return (
+    <TenantProvider>
+      <DashboardContent>{children}</DashboardContent>
+    </TenantProvider>
   );
 }

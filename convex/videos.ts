@@ -26,7 +26,10 @@ export const getByVideoId = query({
  * Get video by ID
  */
 export const getById = query({
-  args: { id: v.id("videos") },
+  args: {
+    id: v.id("videos"),
+    tenantId: v.optional(v.id("tenants")),
+  },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.id);
   },
@@ -56,6 +59,7 @@ export const listByUser = query({
  */
 export const create = mutation({
   args: {
+    tenantId: v.id("tenants"),
     videoId: v.string(),
     libraryId: v.string(),
     title: v.string(),
@@ -96,6 +100,7 @@ export const create = mutation({
     }
 
     const videoId: Id<"videos"> = await ctx.db.insert("videos", {
+      tenantId: args.tenantId,
       videoId: args.videoId,
       libraryId: args.libraryId,
       title: args.title,

@@ -16,6 +16,7 @@ import { Preloaded, usePreloadedQuery, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import type { FunctionReturnType } from "convex/server";
+import { useTenant } from "@/components/providers/tenant-provider";
 
 type RecentViewsData = FunctionReturnType<
   typeof api.recentViews.getRecentViewsWithDetails
@@ -45,10 +46,10 @@ function RecentViewsWithPreload({
 function RecentViewsWithoutPreload() {
   const router = useRouter();
   const { user } = useCurrentUser();
-
+  const tenant = useTenant();
   const recentViews = useQuery(
     api.recentViews.getRecentViewsWithDetails,
-    user ? { userId: user._id, limit: 5 } : "skip",
+    user && tenant?.tenantId ? { userId: user._id, tenantId: tenant.tenantId, limit: 5 } : "skip",
   );
 
   // Handle loading state
@@ -116,7 +117,7 @@ function RecentViewsContent({
                     }
                     className="flex items-center gap-4 p-3 rounded-lg border hover:bg-accent transition-colors cursor-pointer"
                   >
-                    <div className="w-24 h-16 rounded bg-muted flex items-center justify-center relative overflow-hidden flex-shrink-0">
+                    <div className="w-24 h-16 rounded bg-muted flex items-center justify-center relative overflow-hidden shrink-0">
                       {view.lesson.thumbnailUrl ? (
                         <Image
                           src={view.lesson.thumbnailUrl}

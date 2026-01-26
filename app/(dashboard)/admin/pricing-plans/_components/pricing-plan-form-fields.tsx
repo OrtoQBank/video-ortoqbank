@@ -64,7 +64,7 @@ export function PricingPlanFormFields({
             <Input
               value={form.productId || ""}
               onChange={(e) => updateForm({ productId: e.target.value })}
-              placeholder="Ex: ortoqbank_2025"
+              placeholder="Ex: Ortoclub_2025"
               className="text-xs"
             />
             {mode === "create" && (

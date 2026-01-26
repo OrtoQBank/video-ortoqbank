@@ -8,7 +8,7 @@ import Image from "next/image";
 export default function QuestionsPromo() {
   const handleVisitClick = () => {
     // Link to Tokebank questions platform
-    window.open("https://ortoqbank.com.br/criar-teste", "_blank");
+    window.open("https://Ortoclub.com.br/criar-teste", "_blank");
   };
 
   return (
@@ -20,7 +20,7 @@ export default function QuestionsPromo() {
           <div className="flex size-14 items-center justify-center rounded-lg">
             <Image
               src="/questoes-transparente.png"
-              alt="OrtoQBank Logo"
+              alt="Ortoclub Logo"
               width={52}
               height={52}
               className="rounded-sm"
@@ -29,11 +29,13 @@ export default function QuestionsPromo() {
         </div>
 
         {/* Title */}
-        <h3 className="mb-1 text-base font-semibold text-white">Questões?</h3>
+        <h3 className="mb-1 text-base font-semibold text-white">Qbank?</h3>
 
         {/* Description */}
         <p className="mb-4 text-sm leading-relaxed text-white">
-          Acesse as questões, e se você não as tem, venha ver os planos.
+          Fixe o conteúdo com questões direcionadas.
+          <br />
+          Treine no OrtoQBank exatamente os temas que você acabou de estudar.
         </p>
 
         {/* CTA Button */}

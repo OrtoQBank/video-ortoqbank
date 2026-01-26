@@ -1,6 +1,5 @@
 "use client";
 
-import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import {
@@ -10,6 +9,7 @@ import {
   CircleIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTenantQuery } from "@/hooks/use-tenant-convex";
 
 interface LessonListProps {
   unitId: Id<"units">;
@@ -36,7 +36,7 @@ export function LessonList({
   onLessonClick,
 }: LessonListProps) {
   // Load lessons for this unit (only published)
-  const lessons = useQuery(
+  const lessons = useTenantQuery(
     api.lessons.listPublishedByUnit,
     isExpanded ? { unitId } : "skip",
   );

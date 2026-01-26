@@ -1,15 +1,26 @@
 import { v } from "convex/values";
 import { mutation, query, type MutationCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { requireAdmin } from "./users";
+import { Id } from "./_generated/dataModel";
+import {
+  requireTenantAdmin,
+} from "./lib/tenantContext";
 
-// Query para listar todas as categorias ordenadas por position (ADMIN - mostra todas)
+// ============================================================================
+// QUERIES
+// ============================================================================
+
+/**
+ * List all categories for a tenant, ordered by position (ADMIN - shows all)
+ */
 export const list = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { tenantId: v.id("tenants") },
+  handler: async (ctx, args) => {
     const categories = await ctx.db
       .query("categories")
-      .withIndex("by_position")
+      .withIndex("by_tenantId_and_position", (q) =>
+        q.eq("tenantId", args.tenantId),
+      )
       .order("asc")
       .collect();
 
@@ -17,13 +28,17 @@ export const list = query({
   },
 });
 
-// Query para listar apenas categorias PUBLICADAS (USER - mostra apenas publicadas)
+/**
+ * List only PUBLISHED categories for a tenant (USER - shows only published)
+ */
 export const listPublished = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { tenantId: v.id("tenants") },
+  handler: async (ctx, args) => {
     const categories = await ctx.db
       .query("categories")
-      .withIndex("by_isPublished", (q) => q.eq("isPublished", true))
+      .withIndex("by_tenantId_and_isPublished", (q) =>
+        q.eq("tenantId", args.tenantId).eq("isPublished", true),
+      )
       .collect();
 
     // Sort by position
@@ -31,22 +46,54 @@ export const listPublished = query({
   },
 });
 
-// Query para buscar uma categoria por ID
+/**
+ * Get a category by ID
+ * Note: tenantId is optional because useTenantQuery auto-injects it,
+ * but we don't use it here since we're fetching by ID directly.
+ */
 export const getById = query({
-  args: { id: v.id("categories") },
+  args: {
+    id: v.id("categories"),
+    tenantId: v.optional(v.id("tenants")),
+  },
+  returns: v.union(
+      v.object({
+      _id: v.id("categories"),
+      _creationTime: v.number(),
+      tenantId: v.id("tenants"),
+      title: v.string(),
+      slug: v.string(),
+      description: v.string(),
+      position: v.number(),
+      iconUrl: v.optional(v.string()),
+      isPublished: v.boolean(),
+    }),
+    v.null()
+  ),
   handler: async (ctx, args) => {
     const category = await ctx.db.get(args.id);
+ // Verify tenant ownership if tenantId provided
+    if (category && args.tenantId && category.tenantId !== args.tenantId) {
+      return null;
+    }
     return category;
   },
 });
 
-// Query para buscar uma categoria por slug
+/**
+ * Get a category by slug within a tenant
+ */
 export const getBySlug = query({
-  args: { slug: v.string() },
+  args: {
+    tenantId: v.id("tenants"),
+    slug: v.string(),
+  },
   handler: async (ctx, args) => {
     const category = await ctx.db
       .query("categories")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+      .withIndex("by_tenantId_and_slug", (q) =>
+        q.eq("tenantId", args.tenantId).eq("slug", args.slug),
+      )
       .unique();
 
     return category;
@@ -54,11 +101,61 @@ export const getBySlug = query({
 });
 
 /**
- * Atomically get and increment the category position counter.
+ * Get cascade delete info for a category
+ */
+export const getCascadeDeleteInfo = query({
+  args: { 
+    id: v.id("categories"),
+    tenantId: v.id("tenants"),
+  },
+  returns: v.object({
+    unitsCount: v.number(),
+    lessonsCount: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const category = await ctx.db.get(args.id);
+    if (!category || category.tenantId !== args.tenantId) {
+      throw new Error("Categoria não encontrada");
+    }
+    // Get all units in this category
+    const units = await ctx.db
+      .query("units")
+      .withIndex("by_categoryId", (q) => q.eq("categoryId", args.id))
+      .collect();
+
+    const unitsCount = units.length;
+    let lessonsCount = 0;
+
+    // Count lessons in all units
+    for (const unit of units) {
+      const lessons = await ctx.db
+        .query("lessons")
+        .withIndex("by_unitId", (q) => q.eq("unitId", unit._id))
+        .collect();
+      lessonsCount += lessons.length;
+    }
+
+    return {
+      unitsCount,
+      lessonsCount,
+    };
+  },
+});
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Atomically get and increment the category position counter for a tenant.
  * Uses a unique index to ensure single-counter document and atomic patch operations.
  */
-async function getNextPosition(ctx: MutationCtx): Promise<number> {
-  const COUNTER_ID = "global";
+async function getNextPosition(
+  ctx: MutationCtx,
+  tenantId: Id<"tenants">,
+): Promise<number> {
+  // Use tenant-specific counter ID
+  const COUNTER_ID = `tenant_${tenantId}`;
 
   // Query for the counter document using unique index
   let counter = await ctx.db
@@ -68,10 +165,10 @@ async function getNextPosition(ctx: MutationCtx): Promise<number> {
 
   // Initialize counter if it doesn't exist
   if (!counter) {
-    // Get current max position to initialize counter
+    // Get current max position for this tenant to initialize counter
     const maxPositionCategory = await ctx.db
       .query("categories")
-      .withIndex("by_position")
+      .withIndex("by_tenantId_and_position", (q) => q.eq("tenantId", tenantId))
       .order("desc")
       .first();
     const initialPosition = (maxPositionCategory?.position ?? 0) + 1;
@@ -119,7 +216,9 @@ async function getNextPosition(ctx: MutationCtx): Promise<number> {
   return nextPosition;
 }
 
-// Helper function to generate slug from title
+/**
+ * Generate slug from title
+ */
 function generateSlug(title: string): string {
   return title
     .toLowerCase()
@@ -129,16 +228,23 @@ function generateSlug(title: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-// Mutation para criar uma nova categoria
+// ============================================================================
+// MUTATIONS
+// ============================================================================
+
+/**
+ * Create a new category (tenant admin only)
+ */
 export const create = mutation({
   args: {
+    tenantId: v.id("tenants"),
     title: v.string(),
     description: v.string(),
     iconUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // SECURITY: Require admin access
-    await requireAdmin(ctx);
+    // SECURITY: Require tenant admin access
+    await requireTenantAdmin(ctx, args.tenantId);
 
     // Validate input lengths
     if (args.title.trim().length < 3) {
@@ -158,10 +264,12 @@ export const create = mutation({
       );
     }
 
-    // Verificar se já existe uma categoria com o mesmo slug
+    // Check if slug already exists in this tenant
     const existing = await ctx.db
       .query("categories")
-      .withIndex("by_slug", (q) => q.eq("slug", slug))
+      .withIndex("by_tenantId_and_slug", (q) =>
+        q.eq("tenantId", args.tenantId).eq("slug", slug),
+      )
       .first();
 
     if (existing) {
@@ -169,10 +277,11 @@ export const create = mutation({
     }
 
     // Atomically get the next position using the counter
-    const nextPosition = await getNextPosition(ctx);
+    const nextPosition = await getNextPosition(ctx, args.tenantId);
 
     // Insert with the calculated position
     const categoryId = await ctx.db.insert("categories", {
+      tenantId: args.tenantId,
       title: args.title,
       slug: slug,
       description: args.description,
@@ -198,17 +307,20 @@ export const create = mutation({
   },
 });
 
-// Mutation para atualizar uma categoria
+/**
+ * Update a category (tenant admin only)
+ */
 export const update = mutation({
   args: {
+    tenantId: v.id("tenants"),
     id: v.id("categories"),
     title: v.string(),
     description: v.string(),
     iconUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // SECURITY: Require admin access
-    await requireAdmin(ctx);
+    // SECURITY: Require tenant admin access
+    await requireTenantAdmin(ctx, args.tenantId);
 
     // Validate input lengths
     if (args.title.trim().length < 3) {
@@ -217,6 +329,17 @@ export const update = mutation({
 
     if (args.description.trim().length < 10) {
       throw new Error("Descrição deve ter pelo menos 10 caracteres");
+    }
+
+    // Get current category to verify tenant ownership
+    const currentCategory = await ctx.db.get(args.id);
+    if (!currentCategory) {
+      throw new Error("Categoria não encontrada");
+    }
+
+    // Verify category belongs to this tenant
+    if (currentCategory.tenantId !== args.tenantId) {
+      throw new Error("Categoria não pertence a este tenant");
     }
 
     // Auto-generate slug from title
@@ -228,24 +351,19 @@ export const update = mutation({
       );
     }
 
-    // Verificar se já existe outra categoria com o mesmo slug
+    // Check if slug already exists in this tenant (excluding current category)
     const existing = await ctx.db
       .query("categories")
-      .withIndex("by_slug", (q) => q.eq("slug", slug))
+      .withIndex("by_tenantId_and_slug", (q) =>
+        q.eq("tenantId", args.tenantId).eq("slug", slug),
+      )
       .first();
 
     if (existing && existing._id !== args.id) {
       throw new Error("Já existe uma categoria com este slug");
     }
 
-    // Get current category to preserve position
-    const currentCategory = await ctx.db.get(args.id);
-    if (!currentCategory) {
-      throw new Error("Categoria não encontrada");
-    }
-
-    // Prepare update object
-    // Note: iconUrl is always included (even if undefined) to allow clearing the icon
+    // Update the category
     await ctx.db.patch(args.id, {
       title: args.title,
       slug: slug,
@@ -257,43 +375,26 @@ export const update = mutation({
   },
 });
 
-// Query para obter informações sobre exclusão em cascata
-export const getCascadeDeleteInfo = query({
-  args: { id: v.id("categories") },
-  handler: async (ctx, args) => {
-    // Get all units in this category
-    const units = await ctx.db
-      .query("units")
-      .withIndex("by_categoryId", (q) => q.eq("categoryId", args.id))
-      .collect();
-
-    const unitsCount = units.length;
-    let lessonsCount = 0;
-
-    // Count lessons in all units
-    for (const unit of units) {
-      const lessons = await ctx.db
-        .query("lessons")
-        .withIndex("by_unitId", (q) => q.eq("unitId", unit._id))
-        .collect();
-      lessonsCount += lessons.length;
-    }
-
-    return {
-      unitsCount,
-      lessonsCount,
-    };
-  },
-});
-
-// Mutation para deletar uma categoria (cascade delete)
+/**
+ * Delete a category with cascade delete (tenant admin only)
+ */
 export const remove = mutation({
   args: {
+    tenantId: v.id("tenants"),
     id: v.id("categories"),
   },
   handler: async (ctx, args) => {
-    // SECURITY: Require admin access
-    await requireAdmin(ctx);
+    // SECURITY: Require tenant admin access
+    await requireTenantAdmin(ctx, args.tenantId);
+
+    // Verify category belongs to this tenant
+    const category = await ctx.db.get(args.id);
+    if (!category) {
+      throw new Error("Categoria não encontrada");
+    }
+    if (category.tenantId !== args.tenantId) {
+      throw new Error("Categoria não pertence a este tenant");
+    }
 
     // Get all units in this category
     const units = await ctx.db
@@ -343,9 +444,12 @@ export const remove = mutation({
   },
 });
 
-// Mutation para reordenar categorias
+/**
+ * Reorder categories (tenant admin only)
+ */
 export const reorder = mutation({
   args: {
+    tenantId: v.id("tenants"),
     updates: v.array(
       v.object({
         id: v.id("categories"),
@@ -354,8 +458,19 @@ export const reorder = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    // SECURITY: Require admin access
-    await requireAdmin(ctx);
+    // SECURITY: Require tenant admin access
+    await requireTenantAdmin(ctx, args.tenantId);
+
+    // Verify all categories belong to this tenant
+    for (const update of args.updates) {
+      const category = await ctx.db.get(update.id);
+      if (!category) {
+        throw new Error(`Categoria não encontrada: ${update.id}`);
+      }
+      if (category.tenantId !== args.tenantId) {
+        throw new Error("Uma das categorias não pertence a este tenant");
+      }
+    }
 
     // Update all category positions
     for (const update of args.updates) {
@@ -368,19 +483,27 @@ export const reorder = mutation({
   },
 });
 
-// Mutation para alternar publicação de categoria (cascade)
+/**
+ * Toggle publish status (cascade to units and lessons) - tenant admin only
+ */
 export const togglePublish = mutation({
   args: {
+    tenantId: v.id("tenants"),
     id: v.id("categories"),
   },
   handler: async (ctx, args) => {
-    // SECURITY: Require admin access
-    await requireAdmin(ctx);
+    // SECURITY: Require tenant admin access
+    await requireTenantAdmin(ctx, args.tenantId);
 
     const category = await ctx.db.get(args.id);
 
     if (!category) {
       throw new Error("Categoria não encontrada");
+    }
+
+    // Verify category belongs to this tenant
+    if (category.tenantId !== args.tenantId) {
+      throw new Error("Categoria não pertence a este tenant");
     }
 
     const newPublishStatus = !category.isPublished;
@@ -391,7 +514,6 @@ export const togglePublish = mutation({
     });
 
     // Get all units in this category
-
     const units = await ctx.db
       .query("units")
       .withIndex("by_categoryId", (q) => q.eq("categoryId", args.id))

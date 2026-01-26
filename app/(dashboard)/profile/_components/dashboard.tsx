@@ -4,28 +4,31 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CheckCircle2, PlayCircle, TrendingUp } from "lucide-react";
-import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useTenantQuery, useTenantReady } from "@/hooks/use-tenant-convex";
 
 export default function Dashboard() {
   // Get current user
   const { user, isLoading: isUserLoading } = useCurrentUser();
   const userId = user?.clerkUserId;
+  const isTenantReady = useTenantReady();
 
-  // Use regular queries - all hooks called unconditionally
-  const contentStats = useQuery(api.aggregate.get, {});
-  const completedCountResult = useQuery(
+  // Use tenant query for tenant-scoped content stats
+  const contentStats = useTenantQuery(api.aggregate.getByTenant, {});
+
+  // Use tenant queries for tenant-scoped data
+  const completedCountResult = useTenantQuery(
     api.progress.queries.getCompletedPublishedLessonsCount,
     userId ? { userId } : "skip",
   );
-  const viewedCountResult = useQuery(
+  const viewedCountResult = useTenantQuery(
     api.recentViews.getUniqueViewedLessonsCount,
     userId ? { userId } : "skip",
   );
 
   // Show loading skeleton while data is loading
-  const isLoading = contentStats === undefined || isUserLoading;
+  const isLoading = contentStats === undefined || isUserLoading || !isTenantReady;
 
   const totalLessons = contentStats?.totalLessons || 0;
   const completedLessonsCount = completedCountResult ?? 0;
@@ -74,7 +77,7 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Aulas Visualizadas
+              Aulas Iniciadas
             </CardTitle>
             <PlayCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -118,14 +121,14 @@ export default function Dashboard() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">
-            Aulas Visualizadas
+            Aulas Iniciadas
           </CardTitle>
           <PlayCircle className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{viewedCount}</div>
           <p className="text-xs text-muted-foreground">
-            {viewedCount === 1 ? "aula visualizada" : "aulas visualizadas"}
+            {viewedCount === 1 ? "aula iniciada" : "aulas iniciadas"}
           </p>
         </CardContent>
       </Card>

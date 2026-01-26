@@ -3,10 +3,11 @@ import { Id } from "../_generated/dataModel";
 import { getTotalLessonsCount } from "../aggregate";
 
 /**
- * Helper function to update unit and global progress
+ * Helper function to update unit and global progress for a tenant
  */
 export async function updateUnitAndGlobalProgress(
   ctx: MutationCtx,
+  tenantId: Id<"tenants">,
   userId: string,
   unitId: Id<"units">,
 ) {
@@ -17,14 +18,17 @@ export async function updateUnitAndGlobalProgress(
   if (unit) {
     const completedLessonsInUnit = await ctx.db
       .query("userProgress")
-      .withIndex("by_userId_and_unitId", (q) =>
-        q.eq("userId", userId).eq("unitId", unitId),
+      .withIndex("by_tenantId_and_userId_and_lessonId", (q) =>
+        q.eq("tenantId", tenantId).eq("userId", userId),
       )
       .collect();
 
-    const completedCount = completedLessonsInUnit.filter(
-      (p) => p.completed,
-    ).length;
+    // Filter to this unit only
+    const lessonsInThisUnit = completedLessonsInUnit.filter(
+      (p) => p.unitId === unitId,
+    );
+
+    const completedCount = lessonsInThisUnit.filter((p) => p.completed).length;
     const progressPercent =
       unit.totalLessonVideos > 0
         ? Math.round((completedCount / unit.totalLessonVideos) * 100)
@@ -32,13 +36,14 @@ export async function updateUnitAndGlobalProgress(
 
     const unitProgressDoc = await ctx.db
       .query("unitProgress")
-      .withIndex("by_userId_and_unitId", (q) =>
-        q.eq("userId", userId).eq("unitId", unitId),
+      .withIndex("by_tenantId_and_userId_and_unitId", (q) =>
+        q.eq("tenantId", tenantId).eq("userId", userId).eq("unitId", unitId),
       )
       .unique();
 
     if (!unitProgressDoc) {
       await ctx.db.insert("unitProgress", {
+        tenantId,
         userId,
         unitId,
         completedLessonsCount: completedCount,
@@ -56,17 +61,19 @@ export async function updateUnitAndGlobalProgress(
     }
   }
 
-  // Update userGlobalProgress
+  // Update userGlobalProgress for this tenant
   const allCompletedLessons = await ctx.db
     .query("userProgress")
-    .withIndex("by_userId_and_completed", (q) =>
-      q.eq("userId", userId).eq("completed", true),
+    .withIndex("by_tenantId_and_userId", (q) =>
+      q.eq("tenantId", tenantId).eq("userId", userId),
     )
     .collect();
 
-  const totalCompletedCount = allCompletedLessons.length;
+  const totalCompletedCount = allCompletedLessons.filter(
+    (p) => p.completed,
+  ).length;
 
-  // Get total lessons from aggregate
+  // Get total lessons from aggregate (TODO: make this tenant-scoped in future)
   const totalLessonsInSystem = await getTotalLessonsCount(ctx);
   const globalProgressPercent =
     totalLessonsInSystem > 0
@@ -75,11 +82,14 @@ export async function updateUnitAndGlobalProgress(
 
   const globalProgressDoc = await ctx.db
     .query("userGlobalProgress")
-    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .withIndex("by_tenantId_and_userId", (q) =>
+      q.eq("tenantId", tenantId).eq("userId", userId),
+    )
     .unique();
 
   if (!globalProgressDoc) {
     await ctx.db.insert("userGlobalProgress", {
+      tenantId,
       userId,
       completedLessonsCount: totalCompletedCount,
       progressPercent: globalProgressPercent,

@@ -121,30 +121,44 @@ export const getSuggestions = query({
 /**
  * Search categories by title/description
  * Simplified version that only searches categories directly
+ * Filters by tenantId and isPublished
  */
 export const searchCategories = query({
-  args: { query: v.string() },
+  args: { query: v.string(), tenantId: v.id("tenants") },
+  returns: v.array(
+    v.object({
+      _id: v.id("categories"),
+      _creationTime: v.number(),
+      tenantId: v.id("tenants"),
+      title: v.string(),
+      description: v.string(),
+      isPublished: v.boolean(),
+      // Include other fields from your categories schema
+    })
+    ),
   handler: async (ctx, args) => {
     const searchQuery = args.query.toLowerCase().trim();
 
-    // If no query, return all published categories (limited)
-    if (!searchQuery) {
-      return await ctx.db
-        .query("categories")
-        .withIndex("by_isPublished", (q) => q.eq("isPublished", true))
-        .take(20);
-    }
-
-    // Fetch limited categories and filter
+    // Fetch published categories for this tenant
     const categories = await ctx.db
       .query("categories")
-      .withIndex("by_isPublished", (q) => q.eq("isPublished", true))
-      .take(20);
+      .withIndex("by_tenantId_and_isPublished", (q) =>
+        q.eq("tenantId", args.tenantId).eq("isPublished", true),
+      )
+      .collect();
 
-    return categories.filter(
-      (category) =>
-        category.title.toLowerCase().includes(searchQuery) ||
-        category.description.toLowerCase().includes(searchQuery),
-    );
+    // If no search query, return all (up to 20)
+    if (!searchQuery) {
+      return categories.slice(0, 20);
+    }
+
+    // Filter by search query
+    return categories
+      .filter(
+        (category) =>
+          category.title.toLowerCase().includes(searchQuery) ||
+          category.description.toLowerCase().includes(searchQuery),
+      )
+      .slice(0, 20);
   },
 });

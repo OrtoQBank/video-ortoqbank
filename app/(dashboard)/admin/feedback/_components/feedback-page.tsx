@@ -4,7 +4,7 @@ import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { usePaginatedQuery } from "convex/react";
+import { useTenantPaginatedQuery } from "@/hooks/use-tenant-convex";
 import { api } from "@/convex/_generated/api";
 import { MessageSquare, Star } from "lucide-react";
 import { FeedbackList } from "./feedback-list";
@@ -16,7 +16,7 @@ export function FeedbackPage() {
     results: feedbacks,
     status: feedbackStatus,
     loadMore: loadMoreFeedbacks,
-  } = usePaginatedQuery(
+  } = useTenantPaginatedQuery(
     api.feedback.getAllFeedbackWithDetails,
     {},
     { initialNumItems: 10 },
@@ -26,7 +26,7 @@ export function FeedbackPage() {
     results: ratings,
     status: ratingsStatus,
     loadMore: loadMoreRatings,
-  } = usePaginatedQuery(
+  } = useTenantPaginatedQuery(
     api.ratings.getAllRatingsWithDetails,
     {},
     { initialNumItems: 10 },
@@ -36,11 +36,10 @@ export function FeedbackPage() {
     <div className="min-h-screen relative">
       {/* Sidebar trigger - follows sidebar position */}
       <SidebarTrigger
-        className={`hidden md:inline-flex fixed top-2 h-6 w-6 text-brand-blue hover:text-brand-blue hover:bg-brand-blue transition-[left] duration-200 ease-linear z-10 ${
-          state === "collapsed"
+        className={`hidden md:inline-flex fixed top-2 h-6 w-6 text-black hover:text-black hover:bg-gray-100 transition-[left] duration-200 ease-linear z-10 ${state === "collapsed"
             ? "left-[calc(var(--sidebar-width-icon)+0.25rem)]"
             : "left-[calc(var(--sidebar-width)+0.25rem)]"
-        }`}
+          }`}
       />
 
       {/* Header */}
@@ -54,9 +53,9 @@ export function FeedbackPage() {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="p-8 pb-24 md:pb-8">
-        <div className="max-w-7xl mx-auto">
+      {/* Content with standardized padding */}
+      <div className="p-6 pb-24 md:p-12">
+        <div className="max-w-4xl mx-auto">
           <Tabs defaultValue="feedback" className="space-y-6">
             <TabsList className="grid w-full max-w-md grid-cols-2">
               <TabsTrigger value="feedback" className="gap-2">
@@ -95,7 +94,7 @@ export function FeedbackPage() {
                             onClick={() => loadMoreFeedbacks(10)}
                             variant="outline"
                           >
-                            Carregar mais
+                            Ver mais
                           </Button>
                         </div>
                       )}
@@ -136,7 +135,7 @@ export function FeedbackPage() {
                             onClick={() => loadMoreRatings(10)}
                             variant="outline"
                           >
-                            Carregar mais
+                            Ver mais
                           </Button>
                         </div>
                       )}

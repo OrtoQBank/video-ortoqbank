@@ -3,10 +3,10 @@
 import { Check, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useQuery } from "convex/react";
 
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
+import { useTenantQuery } from "@/hooks/use-tenant-convex";
 
 import { Doc } from "@/convex/_generated/dataModel";
 
@@ -40,7 +40,7 @@ function PricingPlanContent({ plans }: PricingPlanContentProps) {
       className="bg-gradient-to-br from-slate-50 to-blue-brand/10 py-8"
     >
       <div className="container mx-auto mb-16 px-4 text-center">
-        <h1 className="mb-3 text-4xl font-bold text-blue-brand">OrtoQBank</h1>
+        <h1 className="mb-3 text-4xl font-bold text-blue-brand">Ortoclub</h1>
         <p className="mx-auto max-w-2xl text-lg text-gray-600">
           Escolha o plano ideal para sua preparação e garanta sua aprovação no
           TEOT
@@ -127,7 +127,7 @@ function PricingPlanContent({ plans }: PricingPlanContentProps) {
 }
 
 export default function PricingPlan() {
-  const plans = useQuery(api.pricingPlans.getActiveProducts);
+  const plans = useTenantQuery(api.pricingPlans.getActiveProducts, {});
 
   // Se ainda estiver carregando, não renderiza nada (ou pode mostrar um loading)
   if (plans === undefined) {

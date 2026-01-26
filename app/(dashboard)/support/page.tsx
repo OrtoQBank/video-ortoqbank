@@ -153,11 +153,11 @@ export default function SupportPage() {
             </p>
             <div className="flex flex-col gap-3 sm:flex-row">
               <a
-                href="mailto:ortoqbank@gmail.com"
+                href="mailto:Ortoclub@gmail.com"
                 className="inline-flex items-center gap-2 rounded-md bg-slate-100 px-3 py-2 text-sm transition-colors hover:bg-slate-200"
               >
                 <Mail className="h-4 w-4" />
-                <span>ortoqbank@gmail.com</span>
+                <span>Ortoclub@gmail.com</span>
               </a>
               <a
                 href="https://instagram.com/orto.club"

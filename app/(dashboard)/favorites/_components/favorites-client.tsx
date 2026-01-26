@@ -29,6 +29,7 @@ interface FavoriteLessonData {
 
 interface FavoritesClientPageProps {
   initialFavorites: FavoriteLessonData[];
+  initialIsDone: boolean;
   userId: string;
   tenantId: Id<"tenants">;
 }
@@ -60,6 +61,7 @@ function formatDuration(seconds: number): string {
 
 export function FavoritesClientPage({
   initialFavorites,
+  initialIsDone,
   userId,
   tenantId,
 }: FavoritesClientPageProps) {
@@ -72,17 +74,31 @@ export function FavoritesClientPage({
     { initialNumItems: 20 },
   );
 
+  // Determine if client query has taken over
+  const isClientReady = results !== undefined;
+
   // Combine server-fetched data with client data
   // After hydration, the client query takes over with real-time updates
   const favoritesData = useMemo(() => {
     // If client query has returned results, use those (they're reactive)
     // Check for undefined/null to distinguish "not yet loaded" from "empty"
-    if (results !== undefined) {
+    if (isClientReady) {
       return results as FavoriteLessonData[];
     }
     // Otherwise, use initial server data
     return initialFavorites;
-  }, [results, initialFavorites]);
+  }, [isClientReady, results, initialFavorites]);
+
+  // Compute effective status for pagination
+  // During hydration, derive status from server's initialIsDone
+  // After client takes over, use client's status
+  const effectiveStatus = useMemo(() => {
+    if (isClientReady) {
+      return status;
+    }
+    // During hydration, map server state to client status type
+    return initialIsDone ? "Exhausted" : "CanLoadMore";
+  }, [isClientReady, status, initialIsDone]) as "LoadingFirstPage" | "CanLoadMore" | "LoadingMore" | "Exhausted";
 
   // Transform to Video interface
   const favorites = useMemo(
@@ -111,7 +127,7 @@ export function FavoritesClientPage({
           favorites={favorites}
           userId={userId}
           tenantId={tenantId}
-          status={status}
+          status={effectiveStatus}
           onLoadMore={() => loadMore(10)}
         />
       </div>

@@ -30,7 +30,7 @@ interface FavoritesSectionProps {
     onLoadMore: () => void;
 }
 
-const ITEMS_PER_PAGE = 14; // 6 per column x 2 columns
+const ITEMS_PER_PAGE = 14; // 7 per column x 2 columns
 
 export function FavoritesSection({
     favorites,

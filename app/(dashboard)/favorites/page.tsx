@@ -36,15 +36,17 @@ export default async function FavoritesPage() {
 
   if (!tenant) {
     console.error(
-      `[Favorites Page] Tenant "${tenantSlug}" not found in database`,
+      `[Favorites Page] Tenant "${tenantSlug}" not found in database (host: ${host})`,
     );
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <p className="text-muted-foreground mb-2">
-            Tenant &quot;{tenantSlug}&quot; not found
+            Configuração não encontrada
           </p>
-          <p className="text-sm text-muted-foreground">Host: {host}</p>
+          <p className="text-sm text-muted-foreground">
+            Por favor, verifique o endereço ou entre em contato com o suporte.
+          </p>
         </div>
       </div>
     );
@@ -69,6 +71,7 @@ export default async function FavoritesPage() {
   return (
     <FavoritesClientPage
       initialFavorites={initialFavoritesResult.page}
+      initialIsDone={initialFavoritesResult.isDone}
       userId={userId}
       tenantId={tenant._id}
     />

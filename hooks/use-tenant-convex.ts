@@ -227,40 +227,42 @@ interface TenantPaginatedQueryOptions {
    * Initial number of items to load
    */
   initialNumItems: number;
-  /**
-   * If true, the query will skip if tenantId is not yet available.
-   * Default: true
-   */
-  requireTenant?: boolean;
 }
 
 /**
  * Hook that wraps usePaginatedQuery and auto-injects tenantId from TenantProvider.
  *
- * Usage:
- * ```typescript
- * // Instead of:
- * const { results, status, loadMore } = usePaginatedQuery(
- *   api.lessons.listPaginated,
- *   { tenantId },
- *   { initialNumItems: 10 }
- * );
+ * ⚠️ IMPORTANT LIMITATION:
+ * Unlike `useTenantQuery`, this hook CANNOT skip the query when tenant is not ready.
+ * Convex's `usePaginatedQuery` doesn't support the "skip" pattern.
  *
- * // Use:
- * const { results, status, loadMore } = useTenantPaginatedQuery(
- *   api.lessons.listPaginated,
- *   {},
- *   { initialNumItems: 10 }
- * );
+ * If your backend query requires `v.id("tenants")` (not optional), you MUST ensure
+ * the component only renders when tenant is available. Use one of these patterns:
+ *
+ * Pattern 1: Guard with useTenantReady()
+ * ```typescript
+ * function MyComponent() {
+ *   const tenantReady = useTenantReady();
+ *   if (!tenantReady) return <Loading />;
+ *
+ *   // Safe to use - tenant is guaranteed to be available
+ *   const { results } = useTenantPaginatedQuery(api.items.list, {}, { initialNumItems: 10 });
+ *   return <List items={results} />;
+ * }
  * ```
  *
- * The hook automatically injects the current tenant's ID into the query args.
- * If tenantId is not yet available (loading), the query returns empty results.
+ * Pattern 2: Conditional rendering from parent
+ * ```typescript
+ * function Parent() {
+ *   const tenantReady = useTenantReady();
+ *   return tenantReady ? <ChildWithPagination /> : <Loading />;
+ * }
+ * ```
  *
  * @param query - The Convex query function reference
- * @param args - Query arguments
+ * @param args - Query arguments (tenantId will be auto-injected)
  * @param options - Pagination options including initialNumItems
- * @returns The paginated query result with results, status, and loadMore
+ * @returns The paginated query result with results, status, loadMore, and isLoading
  */
 export function useTenantPaginatedQuery<
   Query extends FunctionReference<"query">,
@@ -270,50 +272,28 @@ export function useTenantPaginatedQuery<
   options: TenantPaginatedQueryOptions,
 ) {
   const { tenantId, isLoading: isTenantLoading } = useTenant();
-  const { initialNumItems, requireTenant = true } = options;
-
-  // Determine if we should skip the query
-  const shouldSkip = useMemo(() => {
-    // Skip if tenant is required but not yet available
-    if (requireTenant && isTenantLoading) return true;
-    if (requireTenant && !tenantId) return true;
-
-    return false;
-  }, [requireTenant, isTenantLoading, tenantId]);
+  const { initialNumItems } = options;
 
   // Build the final args with tenantId injected
+  // Note: If tenantId is undefined and the query requires it, Convex will throw
+  // a validation error. See the JSDoc above for how to handle this properly.
   const finalArgs = useMemo(() => {
-    if (shouldSkip) {
-      // Return object with undefined tenantId - usePaginatedQuery doesn't support 'skip'
-      return { tenantId: undefined };
-    }
-
     return {
       ...args,
       tenantId: tenantId ?? undefined,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shouldSkip, JSON.stringify(args), tenantId]);
+  }, [JSON.stringify(args), tenantId]);
 
+  // usePaginatedQuery must be called unconditionally (React rules of hooks)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const result = usePaginatedQuery(query, finalArgs as any, {
     initialNumItems,
   });
 
-  // If we should skip, return empty results
-  if (shouldSkip) {
-    return {
-      results: [] as FunctionReturnType<Query> extends { page: infer P }
-        ? P
-        : never[],
-      status: "LoadingFirstPage" as const,
-      loadMore: () => {},
-      isLoading: true,
-    };
-  }
-
   return {
     ...result,
-    isLoading: result.status === "LoadingFirstPage",
+    // Consider loading if tenant is still loading OR if first page is loading
+    isLoading: isTenantLoading || result.status === "LoadingFirstPage",
   };
 }

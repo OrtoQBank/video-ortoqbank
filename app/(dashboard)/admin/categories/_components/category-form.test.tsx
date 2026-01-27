@@ -2,11 +2,12 @@ import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { CategoryForm } from "./category-form";
 
-// Mock Convex useMutation hook
+// Mock tenant hooks
 const mockCreateCategory = vi.fn(() => Promise.resolve());
 
-vi.mock("convex/react", () => ({
-  useMutation: vi.fn(() => mockCreateCategory),
+vi.mock("@/hooks/use-tenant-convex", () => ({
+  useTenantMutation: vi.fn(() => mockCreateCategory),
+  useTenantReady: vi.fn(() => true),
 }));
 
 // Mock useToast hook

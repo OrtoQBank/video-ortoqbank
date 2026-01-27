@@ -27,6 +27,21 @@ vi.mock("@/hooks/useCurrentUser", () => ({
   }),
 }));
 
+// Mock tenant provider
+vi.mock("@/components/providers/tenant-provider", () => ({
+  useTenant: vi.fn(() => ({
+    tenantId: "test-tenant-id" as Id<"tenants">,
+    tenantSlug: "test-tenant",
+    tenantName: "Test Tenant",
+    tenantDisplayName: "Test Tenant Display",
+    tenantLogoUrl: null,
+    tenantPrimaryColor: null,
+    config: null,
+    isLoading: false,
+    error: null,
+  })),
+}));
+
 // Mock data that matches the expected return type
 const mockRecentViewsData = [
   {

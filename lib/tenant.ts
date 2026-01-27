@@ -11,7 +11,6 @@
 import {
   DEFAULT_TENANT_SLUG,
   getTenantConfig,
-  TenantSlug,
   type TenantConfig,
 } from "@/config/tenants.config";
 

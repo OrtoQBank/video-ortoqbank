@@ -2,8 +2,10 @@ import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { CategoryList } from "./category-list";
 
-vi.mock("convex/react", () => ({
-  useMutation: vi.fn(() => vi.fn(() => Promise.resolve())),
+// Mock tenant hooks
+vi.mock("@/hooks/use-tenant-convex", () => ({
+  useTenantMutation: vi.fn(() => vi.fn(() => Promise.resolve())),
+  useTenantReady: vi.fn(() => true),
 }));
 
 describe("CategoryList", () => {

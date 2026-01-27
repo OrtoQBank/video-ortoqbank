@@ -4,11 +4,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Feedback } from "./feedback";
 import { Id } from "@/convex/_generated/dataModel";
 
-// Mock Convex hooks
+// Mock tenant hooks
 const mockSubmitFeedback = vi.fn();
 
-vi.mock("convex/react", () => ({
-  useMutation: vi.fn(() => mockSubmitFeedback),
+vi.mock("@/hooks/use-tenant-convex", () => ({
+  useTenantMutation: vi.fn(() => mockSubmitFeedback),
+  useTenantReady: vi.fn(() => true),
 }));
 
 describe("Feedback", () => {

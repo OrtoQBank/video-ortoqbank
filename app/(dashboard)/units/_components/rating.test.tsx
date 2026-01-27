@@ -4,13 +4,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Rating } from "./rating";
 import { Id } from "@/convex/_generated/dataModel";
 
-// Mock Convex hooks
+// Mock tenant hooks
 const mockSubmitRating = vi.fn();
 const mockUserRating = vi.fn();
 
-vi.mock("convex/react", () => ({
-  useMutation: vi.fn(() => mockSubmitRating),
-  useQuery: vi.fn(() => mockUserRating()),
+vi.mock("@/hooks/use-tenant-convex", () => ({
+  useTenantMutation: vi.fn(() => mockSubmitRating),
+  useTenantQuery: vi.fn(() => mockUserRating()),
+  useTenantReady: vi.fn(() => true),
 }));
 
 describe("Rating", () => {
@@ -39,26 +40,7 @@ describe("Rating", () => {
     expect(stars).toHaveLength(5);
   });
 
-  it("should show confirm button when rating is selected", async () => {
-    const user = userEvent.setup();
-    render(
-      <Rating
-        userId={mockUserId}
-        lessonId={mockLessonId}
-        unitId={mockUnitId}
-      />,
-    );
-
-    const stars = screen.getAllByRole("button", { name: /avaliar com/i });
-    await user.click(stars[2]); // Click on 3rd star
-
-    await waitFor(() => {
-      const confirmButton = screen.getByText("Confirmar avaliação");
-      expect(confirmButton).toBeDefined();
-    });
-  });
-
-  it("should call submitRating when confirm button is clicked", async () => {
+  it("should call submitRating when star is clicked", async () => {
     const user = userEvent.setup();
     mockSubmitRating.mockResolvedValue("rating-id");
 
@@ -72,13 +54,6 @@ describe("Rating", () => {
 
     const stars = screen.getAllByRole("button", { name: /avaliar com/i });
     await user.click(stars[3]); // Click on 4th star
-
-    await waitFor(() => {
-      const confirmButton = screen.getByText("Confirmar avaliação");
-      expect(confirmButton).toBeDefined();
-    });
-
-    await user.click(screen.getByText("Confirmar avaliação"));
 
     await waitFor(() => {
       expect(mockSubmitRating).toHaveBeenCalledWith({
@@ -114,7 +89,7 @@ describe("Rating", () => {
     expect(stars).toHaveLength(5);
   });
 
-  it("should not show confirm button when rating matches existing rating", async () => {
+  it("should not call submitRating when clicking same rating as existing", async () => {
     const user = userEvent.setup();
     mockUserRating.mockReturnValue({
       _id: "rating-id" as Id<"lessonRatings">,
@@ -137,9 +112,7 @@ describe("Rating", () => {
     const stars = screen.getAllByRole("button", { name: /avaliar com/i });
     await user.click(stars[2]); // Click on 3rd star (same as existing)
 
-    await waitFor(() => {
-      const confirmButton = screen.queryByText("Confirmar avaliação");
-      expect(confirmButton).toBeNull();
-    });
+    // Should not call submitRating since it's the same rating
+    expect(mockSubmitRating).not.toHaveBeenCalled();
   });
 });

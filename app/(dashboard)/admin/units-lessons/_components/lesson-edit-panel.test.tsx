@@ -14,13 +14,19 @@ vi.mock("@clerk/nextjs", () => ({
   }),
 }));
 
-// Mock Convex hooks
+// Mock tenant hooks
+vi.mock("@/hooks/use-tenant-convex", () => ({
+  useTenantMutation: vi.fn(() => vi.fn(() => Promise.resolve())),
+  useTenantAction: vi.fn(() => vi.fn(() => Promise.resolve())),
+  useTenantReady: vi.fn(() => true),
+}));
+
+// Mock Convex hooks (for useQuery and useAction which are used directly)
 vi.mock("convex/react", async () => {
   const actual = await vi.importActual("convex/react");
   return {
     ...actual,
     useQuery: vi.fn(() => null),
-    useMutation: vi.fn(() => vi.fn(() => Promise.resolve())),
     useAction: vi.fn(() => vi.fn(() => Promise.resolve())),
   };
 });

@@ -2,9 +2,15 @@ import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { LessonForm } from "./lesson-create-form";
 
-// Mock Convex hooks
+// Mock tenant hooks
+vi.mock("@/hooks/use-tenant-convex", () => ({
+  useTenantMutation: vi.fn(() => vi.fn(() => Promise.resolve())),
+  useTenantAction: vi.fn(() => vi.fn(() => Promise.resolve())),
+  useTenantReady: vi.fn(() => true),
+}));
+
+// Mock Convex hooks (for useAction which is used directly)
 vi.mock("convex/react", () => ({
-  useMutation: vi.fn(() => vi.fn(() => Promise.resolve())),
   useAction: vi.fn(() => vi.fn(() => Promise.resolve())),
 }));
 

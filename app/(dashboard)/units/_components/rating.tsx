@@ -35,7 +35,6 @@ export function Rating({ userId, lessonId, unitId }: RatingProps) {
   useEffect(() => {
     if (prevLessonIdRef.current !== lessonId) {
       prevLessonIdRef.current = lessonId;
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsSubmitting(false);
     }
   }, [lessonId]);

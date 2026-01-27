@@ -2,9 +2,10 @@ import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { UnitForm } from "./unit-create-form";
 
-// Mock Convex useMutation hook
-vi.mock("convex/react", () => ({
-  useMutation: vi.fn(() => vi.fn(() => Promise.resolve())),
+// Mock tenant hooks
+vi.mock("@/hooks/use-tenant-convex", () => ({
+  useTenantMutation: vi.fn(() => vi.fn(() => Promise.resolve())),
+  useTenantReady: vi.fn(() => true),
 }));
 
 // Mock useToast hook

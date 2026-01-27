@@ -1,8 +1,7 @@
 import { screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { UnitsPage } from "./units-page";
-import { api } from "@/convex/_generated/api";
-import { Preloaded } from "convex/react";
+import { Id } from "@/convex/_generated/dataModel";
 import { renderWithProviders } from "@/__tests__/utils/test-utils";
 
 // Mock Next.js Router
@@ -32,22 +31,19 @@ vi.mock("@clerk/nextjs", () => ({
   }),
 }));
 
-// Mock Convex hooks
-const mockUsePreloadedQuery = vi.fn(() => [
-  {
-    _id: "unit-1",
-    title: "Test Unit",
-    categoryId: "cat-1",
-    totalLessonVideos: 5,
-  },
-]); // Return at least one unit
-const mockUseQuery = vi.fn(() => null);
-const mockUseMutation = vi.fn(() => vi.fn(() => Promise.resolve()));
+// Mock tenant hooks
+const mockUseTenantQuery = vi.fn();
+const mockUseTenantMutation = vi.fn(() => vi.fn(() => Promise.resolve()));
 
+vi.mock("@/hooks/use-tenant-convex", () => ({
+  useTenantQuery: () => mockUseTenantQuery(),
+  useTenantMutation: () => mockUseTenantMutation(),
+  useTenantReady: vi.fn(() => true),
+}));
+
+// Mock Convex hooks (for getCurrentUserCpf which uses useQuery directly)
 vi.mock("convex/react", () => ({
-  usePreloadedQuery: () => mockUsePreloadedQuery(),
-  useQuery: () => mockUseQuery(),
-  useMutation: () => mockUseMutation(),
+  useQuery: vi.fn(() => null),
 }));
 
 // Mock getSignedEmbedUrl
@@ -74,16 +70,23 @@ vi.mock("nuqs", () => ({
 describe("UnitsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default mock returns: units list, then various other queries return null
+    mockUseTenantQuery
+      .mockReturnValueOnce([
+        {
+          _id: "unit-1" as Id<"units">,
+          title: "Test Unit",
+          categoryId: "cat-1" as Id<"categories">,
+          totalLessonVideos: 5,
+        },
+      ]) // units
+      .mockReturnValue(null); // other queries
   });
 
   it("should render", () => {
     renderWithProviders(
       <UnitsPage
-        preloadedUnits={
-          api.units.listPublishedByCategory as unknown as Preloaded<
-            typeof api.units.listPublishedByCategory
-          >
-        }
+        categoryId={"cat-1" as Id<"categories">}
         categoryTitle="Test Category"
       />,
     );
@@ -97,11 +100,7 @@ describe("UnitsPage", () => {
 
     renderWithProviders(
       <UnitsPage
-        preloadedUnits={
-          api.units.listPublishedByCategory as unknown as Preloaded<
-            typeof api.units.listPublishedByCategory
-          >
-        }
+        categoryId={"cat-1" as Id<"categories">}
         categoryTitle="Test Category"
       />,
     );
@@ -114,15 +113,10 @@ describe("UnitsPage", () => {
   it("should handle invalid lessonId in URL parameter gracefully", () => {
     // Setup: invalid lessonId returns null from query
     mockLessonIdParam.mockReturnValue("invalid-lesson-id");
-    mockUseQuery.mockReturnValue(null);
 
     renderWithProviders(
       <UnitsPage
-        preloadedUnits={
-          api.units.listPublishedByCategory as unknown as Preloaded<
-            typeof api.units.listPublishedByCategory
-          >
-        }
+        categoryId={"cat-1" as Id<"categories">}
         categoryTitle="Test Category"
       />,
     );

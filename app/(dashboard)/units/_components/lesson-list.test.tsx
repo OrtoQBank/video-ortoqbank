@@ -3,9 +3,9 @@ import { describe, it, expect, vi } from "vitest";
 import { LessonList } from "./lesson-list";
 import { Id } from "@/convex/_generated/dataModel";
 
-// Mock Convex useQuery hook
-vi.mock("convex/react", () => ({
-  useQuery: vi.fn(() => []), // Return empty array for lessons
+// Mock tenant hooks
+vi.mock("@/hooks/use-tenant-convex", () => ({
+  useTenantQuery: vi.fn(() => []), // Return empty array for lessons
 }));
 
 describe("LessonList", () => {

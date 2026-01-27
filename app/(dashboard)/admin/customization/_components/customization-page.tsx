@@ -139,7 +139,13 @@ export function CustomizationPage() {
       ? hexToOklch(customColor)
       : primaryColor || DEFAULT_PRIMARY_COLOR;
     document.documentElement.style.setProperty("--blue-brand", colorToApply);
-  }, [primaryColor, customColor, useCustomColor]);
+
+    // Cleanup: restore original saved color when component unmounts
+    return () => {
+      const originalColor = tenantPrimaryColor || DEFAULT_PRIMARY_COLOR;
+      document.documentElement.style.setProperty("--blue-brand", originalColor);
+    };
+  }, [primaryColor, customColor, useCustomColor, tenantPrimaryColor]);
 
   // Convert hex to oklch (simplified approximation)
   function hexToOklch(hex: string): string {

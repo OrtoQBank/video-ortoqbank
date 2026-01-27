@@ -10,7 +10,7 @@ import { TenantProvider } from "@/components/providers/tenant-provider";
 
 export default function Home() {
   return (
-    <TenantProvider>
+    <TenantProvider applyBrandColor={false}>
       <div className="flex flex-col min-h-screen">
         <Header />
         <HeroSection />

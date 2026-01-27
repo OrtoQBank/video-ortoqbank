@@ -211,8 +211,14 @@ export function UnitsLessonsPage() {
 
         const reorderedLessons = arrayMove(unitLessons, oldIndex, newIndex);
 
+        // Update lessonNumber in reordered lessons for immediate UI feedback
+        const reorderedWithNumbers = reorderedLessons.map((lesson, index) => ({
+          ...lesson,
+          lessonNumber: index + 1,
+        }));
+
         // Update local state immediately for smooth UI
-        updateDraggedLessonsForUnit(unitId, reorderedLessons, localLessons);
+        updateDraggedLessonsForUnit(unitId, reorderedWithNumbers, localLessons);
 
         // Save to database
         try {
@@ -220,9 +226,10 @@ export function UnitsLessonsPage() {
             throw new Error("Tenant not loaded");
           }
 
-          const updates = reorderedLessons.map((lesson, index) => ({
+          const updates = reorderedWithNumbers.map((lesson, index) => ({
             id: lesson._id,
             order_index: index,
+            lessonNumber: index + 1,
           }));
 
           await reorderLessons({ updates });

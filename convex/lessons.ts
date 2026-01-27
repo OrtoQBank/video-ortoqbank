@@ -462,6 +462,7 @@ export const togglePublish = mutation({
 
 /**
  * Reorder lessons (tenant admin only)
+ * Updates both order_index and lessonNumber to keep them in sync
  */
 export const reorder = mutation({
   args: {
@@ -470,6 +471,7 @@ export const reorder = mutation({
       v.object({
         id: v.id("lessons"),
         order_index: v.number(),
+        lessonNumber: v.number(),
       }),
     ),
   },
@@ -488,10 +490,11 @@ export const reorder = mutation({
       }
     }
 
-    // Update all lesson order_index
+    // Update all lesson order_index and lessonNumber
     for (const update of args.updates) {
       await ctx.db.patch(update.id, {
         order_index: update.order_index,
+        lessonNumber: update.lessonNumber,
       });
     }
 

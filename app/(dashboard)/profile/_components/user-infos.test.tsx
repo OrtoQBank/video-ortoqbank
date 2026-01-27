@@ -2,21 +2,29 @@ import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import UserInfos from "./user-infos";
 
-// Mock Convex useQuery hook
-const mockUseQuery = vi.fn();
+// Mock Clerk useUser hook
 const mockUseUser = vi.fn();
-
-vi.mock("convex/react", () => ({
-  useQuery: (query: unknown, args?: unknown) => mockUseQuery(query, args),
-}));
-
 vi.mock("@clerk/nextjs", () => ({
   useUser: () => mockUseUser(),
+}));
+
+// Mock session provider
+const mockUseSession = vi.fn();
+vi.mock("@/components/providers/session-provider", () => ({
+  useSession: () => mockUseSession(),
 }));
 
 describe("UserInfos", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseSession.mockReturnValue({
+      isAdmin: false,
+      isSuperAdmin: false,
+      globalRole: "user",
+      tenantRole: "member",
+      hasAccess: true,
+      isLoading: false,
+    });
   });
 
   it("should render", () => {
@@ -28,13 +36,6 @@ describe("UserInfos", () => {
         primaryEmailAddress: { emailAddress: "test@example.com" },
       },
     });
-    mockUseQuery.mockReturnValue({
-      _id: "user-123",
-      firstName: "Test",
-      lastName: "User",
-      email: "test@example.com",
-      role: "user",
-    });
     render(<UserInfos />);
     expect(screen.getByText("Test User")).toBeInTheDocument();
     expect(screen.getByText("test@example.com")).toBeInTheDocument();
@@ -45,29 +46,29 @@ describe("UserInfos", () => {
       isLoaded: false,
       user: null,
     });
-    mockUseQuery.mockReturnValue(undefined);
     render(<UserInfos />);
     expect(screen.getByText("Carregando...")).toBeInTheDocument();
   });
 
-  it("should render with custom props", () => {
+  it("should render with admin role", () => {
     mockUseUser.mockReturnValue({
       isLoaded: true,
       user: {
-        fullName: "Custom User",
+        fullName: "Admin User",
         imageUrl: null,
-        primaryEmailAddress: { emailAddress: "custom@example.com" },
+        primaryEmailAddress: { emailAddress: "admin@example.com" },
       },
     });
-    mockUseQuery.mockReturnValue({
-      _id: "user-456",
-      firstName: "Custom",
-      lastName: "User",
-      email: "custom@example.com",
-      role: "admin",
+    mockUseSession.mockReturnValue({
+      isAdmin: true,
+      isSuperAdmin: false,
+      globalRole: "admin",
+      tenantRole: "admin",
+      hasAccess: true,
+      isLoading: false,
     });
     render(<UserInfos />);
-    expect(screen.getByText("Custom User")).toBeInTheDocument();
+    expect(screen.getByText("Admin User")).toBeInTheDocument();
     expect(screen.getByText("Administrador")).toBeInTheDocument();
   });
 });

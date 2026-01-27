@@ -17,9 +17,9 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-// Mock Convex useQuery hook
-vi.mock("convex/react", () => ({
-  useQuery: vi.fn(() => true), // Return true (paid) by default
+// Mock tenant hooks - return true (paid) by default
+vi.mock("@/hooks/use-tenant-convex", () => ({
+  useTenantQuery: vi.fn(() => true),
 }));
 
 describe("PaymentRequired", () => {

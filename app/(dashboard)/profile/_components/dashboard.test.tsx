@@ -8,10 +8,11 @@ vi.mock("@/hooks/useCurrentUser", () => ({
   useCurrentUser: () => mockUseCurrentUser(),
 }));
 
-// Mock Convex useQuery hook
-const mockUseQuery = vi.fn();
-vi.mock("convex/react", () => ({
-  useQuery: (query: unknown, args?: unknown) => mockUseQuery(query, args),
+// Mock tenant hooks
+const mockUseTenantQuery = vi.fn();
+vi.mock("@/hooks/use-tenant-convex", () => ({
+  useTenantQuery: () => mockUseTenantQuery(),
+  useTenantReady: vi.fn(() => true),
 }));
 
 describe("Dashboard", () => {
@@ -25,7 +26,7 @@ describe("Dashboard", () => {
       isLoading: false,
       isAuthenticated: true,
     });
-    mockUseQuery
+    mockUseTenantQuery
       .mockReturnValueOnce({ totalLessons: 10 }) // contentStats
       .mockReturnValueOnce(5) // completedCountResult
       .mockReturnValueOnce(3); // viewedCountResult
@@ -33,7 +34,7 @@ describe("Dashboard", () => {
     render(<Dashboard />);
     expect(screen.getByText("Aulas Concluídas")).toBeInTheDocument();
     expect(screen.getByText("Progresso Geral")).toBeInTheDocument();
-    expect(screen.getByText("Aulas Visualizadas")).toBeInTheDocument();
+    expect(screen.getByText("Aulas Iniciadas")).toBeInTheDocument();
   });
 
   it("should render with custom props", () => {
@@ -42,7 +43,7 @@ describe("Dashboard", () => {
       isLoading: false,
       isAuthenticated: true,
     });
-    mockUseQuery
+    mockUseTenantQuery
       .mockReturnValueOnce({ totalLessons: 20 }) // totalLessons
       .mockReturnValueOnce(10) // completedCountResult
       .mockReturnValueOnce(5); // viewedCountResult
@@ -57,11 +58,11 @@ describe("Dashboard", () => {
       isLoading: true,
       isAuthenticated: false,
     });
-    mockUseQuery.mockReturnValue(undefined); // Loading state
+    mockUseTenantQuery.mockReturnValue(undefined); // Loading state
 
     render(<Dashboard />);
     expect(screen.getByText("Aulas Concluídas")).toBeInTheDocument();
     expect(screen.getByText("Progresso Geral")).toBeInTheDocument();
-    expect(screen.getByText("Aulas Visualizadas")).toBeInTheDocument();
+    expect(screen.getByText("Aulas Iniciadas")).toBeInTheDocument();
   });
 });

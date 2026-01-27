@@ -11,7 +11,6 @@
 import {
   DEFAULT_TENANT_SLUG,
   getTenantConfig,
-  TenantSlug,
   type TenantConfig,
 } from "@/config/tenants.config";
 
@@ -106,7 +105,7 @@ export function isPlainLocalhost(hostname: string): boolean {
 /**
  * Get the tenant slug from a hostname.
  * Returns the subdomain if found, otherwise falls back to default tenant.
- * 
+ *
  * Note: This returns the actual subdomain from the hostname, even if it's not
  * in the static config. The static config is only used for UI branding fallbacks.
  * Tenant existence should be validated by querying the Convex database.
@@ -129,11 +128,14 @@ export function getTenantSlugFromHostname(hostname: string): string {
  * Get full tenant context from hostname.
  * Includes both the slug and the static configuration.
  *
+ * Note: The slug may be a dynamic tenant not in the static config.
+ * The config will fall back to the default tenant's config in that case.
+ *
  * @param hostname - The full hostname
  * @returns Object with slug and config
  */
 export function getTenantFromHostname(hostname: string): {
-  slug: TenantSlug;
+  slug: string;
   config: TenantConfig;
   isDefault: boolean;
 } {

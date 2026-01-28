@@ -7,8 +7,10 @@
 
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { internal, api } from "./_generated/api";
 import { sha256Hex } from "./bunny/utils";
+import type { WebhookEvent } from "@clerk/backend";
+import { Webhook } from "svix";
 
 const http = httpRouter();
 
@@ -64,6 +66,111 @@ const DEFAULT_STATUS = {
   status: "processing" as VideoStatus,
   playable: false,
 };
+
+http.route({
+  path: "/clerk-users-webhook",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const event = await validateRequest(request);
+    if (!event) {
+      return new Response("Error occured", { status: 400 });
+    }
+    switch (event.type) {
+      case "user.created": // intentional fallthrough
+      case "user.updated": {
+        try {
+          // Prepare the data for Convex by ensuring proper types
+          // Convert null to undefined for optional fields (Clerk uses null, Convex uses undefined)
+          const userData = {
+            id: event.data.id,
+            first_name: event.data.first_name ?? undefined,
+            last_name: event.data.last_name ?? undefined,
+            email_addresses: event.data.email_addresses,
+            image_url: event.data.image_url ?? undefined,
+            public_metadata: {
+              ...event.data.public_metadata,
+              // Convert payment ID to string if it exists
+              paymentId: event.data.public_metadata?.paymentId?.toString(),
+            },
+          };
+
+          await ctx.runMutation(internal.users.upsertFromClerk, {
+            data: userData,
+          });
+
+          // Handle claim token from invitation metadata or find by email
+          if (
+            event.type === "user.created" &&
+            event.data.email_addresses?.[0]?.email_address
+          ) {
+            try {
+              const email = event.data.email_addresses[0].email_address;
+              console.log(`🔗 New user created: ${email}`);
+
+              // Try to find and claim any paid orders for this email
+              const result = await ctx.runMutation(
+                internal.payments.claimOrderByEmail,
+                {
+                  email: email,
+                  clerkUserId: event.data.id,
+                },
+              );
+
+              console.log(`✅ Claim result:`, result);
+
+              // Try to update email invitation status to accepted
+              try {
+                const invitation = await ctx.runQuery(
+                  api.payments.findSentInvitationByEmail,
+                  {
+                    email: email,
+                  },
+                );
+
+                if (invitation) {
+                  await ctx.runMutation(
+                    internal.payments.updateEmailInvitationAccepted,
+                    {
+                      invitationId: invitation._id,
+                    },
+                  );
+                  console.log(
+                    `✅ Updated invitation status to accepted for ${email}`,
+                  );
+                }
+              } catch (invitationError) {
+                console.error(
+                  "Error updating invitation status:",
+                  invitationError,
+                );
+                // Don't fail the webhook if this fails
+              }
+            } catch (linkError) {
+              console.error("Error claiming order with token:", linkError);
+              // Don't fail the whole webhook if linking fails
+            }
+          }
+        } catch (error) {
+          console.error("Error upserting user from Clerk", error);
+        }
+
+        break;
+      }
+
+      case "user.deleted": {
+        const clerkUserId = event.data.id!;
+        await ctx.runMutation(internal.users.deleteFromClerk, { clerkUserId });
+        break;
+      }
+
+      default: {
+        console.log("Ignored Clerk webhook event", event.type);
+      }
+    }
+
+    return new Response(undefined, { status: 200 });
+  }),
+});
 
 /**
  * Bunny Stream Webhook
@@ -312,5 +419,23 @@ http.route({
     }
   }),
 });
+
+async function validateRequest(
+  req: Request,
+): Promise<WebhookEvent | undefined> {
+  const payloadString = await req.text();
+  const svixHeaders = {
+    "svix-id": req.headers.get("svix-id")!,
+    "svix-timestamp": req.headers.get("svix-timestamp")!,
+    "svix-signature": req.headers.get("svix-signature")!,
+  };
+  const wh = new Webhook(process.env.CLERK_WEBHOOK_SECRET!);
+  try {
+    return wh.verify(payloadString, svixHeaders) as unknown as WebhookEvent;
+  } catch (error) {
+    console.error("Error verifying webhook event", error);
+    return undefined;
+  }
+}
 
 export default http;

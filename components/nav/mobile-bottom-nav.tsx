@@ -1,6 +1,6 @@
 "use client";
 
-import { Menu, PlayCircleIcon, StarIcon, User } from "lucide-react";
+import { MenuIcon, PlayCircleIcon, StarIcon, UserIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -17,7 +17,7 @@ const navItems = [
     icon: StarIcon,
     prefetch: true,
   },
-  { href: "/profile", label: "Perfil", icon: User, prefetch: true },
+  { href: "/profile", label: "Perfil", icon: UserIcon, prefetch: true },
   // Add more items if necessary
 ] as const;
 
@@ -33,7 +33,7 @@ export function MobileBottomNav() {
         className="text-muted-foreground hover:text-primary flex h-full flex-col items-center justify-center gap-1 rounded-none px-2 text-xs"
         onClick={toggleSidebar} // Use the toggle function from the context
       >
-        <Menu className="h-5 w-5" />
+        <MenuIcon className="h-5 w-5" />
         <span>Menu</span>
       </Button>
 

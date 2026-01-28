@@ -86,7 +86,6 @@ export const savePricingPlan = mutation({
 
     if (id) {
       // Editar plano existente - don't update tenantId
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { tenantId: _tenantId, ...updateData } = planData;
       await ctx.db.patch(id, updateData);
       return id;

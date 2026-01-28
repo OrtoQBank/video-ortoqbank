@@ -19,7 +19,6 @@ export default defineSchema({
     logoUrl: v.optional(v.string()),
     primaryColor: v.optional(v.string()), // Primary brand color (replaces --blue-brand CSS variable)
     status: v.union(v.literal("active"), v.literal("suspended")),
-    createdAt: v.number(),
   })
     .index("by_slug", ["slug"])
     .index("by_domain", ["domain"])

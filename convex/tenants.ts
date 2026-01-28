@@ -68,7 +68,6 @@ export const getById = query({
       logoUrl: v.optional(v.string()),
       primaryColor: v.optional(v.string()),
       status: v.union(v.literal("active"), v.literal("suspended")),
-      createdAt: v.number(),
     }),
     v.null(),
   ),
@@ -86,7 +85,6 @@ export const getById = query({
       logoUrl: tenant.logoUrl,
       primaryColor: tenant.primaryColor,
       status: tenant.status,
-      createdAt: tenant.createdAt,
     };
   },
 });
@@ -106,7 +104,6 @@ export const list = query({
       logoUrl: v.optional(v.string()),
       primaryColor: v.optional(v.string()),
       status: v.union(v.literal("active"), v.literal("suspended")),
-      createdAt: v.number(),
     }),
   ),
   handler: async (ctx) => {
@@ -124,7 +121,6 @@ export const list = query({
       logoUrl: t.logoUrl,
       primaryColor: t.primaryColor,
       status: t.status,
-      createdAt: t.createdAt,
     }));
   },
 });
@@ -139,6 +135,7 @@ export const getMyTenants = query({
       tenantId: v.id("tenants"),
       name: v.string(),
       slug: v.string(),
+      domain: v.optional(v.string()),
       logoUrl: v.optional(v.string()),
       role: v.union(v.literal("member"), v.literal("admin")),
       hasActiveAccess: v.boolean(),
@@ -160,6 +157,7 @@ export const getMyTenants = query({
           tenantId: tenant._id,
           name: tenant.name,
           slug: tenant.slug,
+          domain: tenant.domain,
           logoUrl: tenant.logoUrl,
           role: membership.role,
           hasActiveAccess: membership.hasActiveAccess,
@@ -214,7 +212,6 @@ export const create = mutation({
       logoUrl: args.logoUrl,
       primaryColor: args.primaryColor,
       status: "active",
-      createdAt: Date.now(),
     });
 
     return tenantId;
@@ -228,6 +225,7 @@ export const update = mutation({
   args: {
     tenantId: v.id("tenants"),
     name: v.optional(v.string()),
+    domain: v.optional(v.string()),
     logoUrl: v.optional(v.string()),
     primaryColor: v.optional(v.string()),
   },
@@ -239,12 +237,16 @@ export const update = mutation({
 
     const updates: Partial<{
       name: string;
+      domain: string;
       logoUrl: string;
       primaryColor: string;
     }> = {};
 
     if (args.name !== undefined) {
       updates.name = args.name;
+    }
+    if (args.domain !== undefined) {
+      updates.domain = args.domain;
     }
     if (args.logoUrl !== undefined) {
       updates.logoUrl = args.logoUrl;
@@ -526,13 +528,14 @@ export const updateMemberAccess = mutation({
 // ============================================================================
 
 /**
- * Update tenant branding (display name, logo, primary color)
+ * Update tenant branding (display name, logo, primary color, domain)
  * Only tenant admins can update their own tenant's branding
  */
 export const updateBranding = mutation({
   args: {
     tenantId: v.id("tenants"),
     displayName: v.optional(v.string()),
+    domain: v.optional(v.string()),
     logoUrl: v.optional(v.string()),
     primaryColor: v.optional(v.string()),
   },
@@ -549,12 +552,16 @@ export const updateBranding = mutation({
     // Build update object with only provided fields
     const updates: Partial<{
       displayName: string;
+      domain: string;
       logoUrl: string;
       primaryColor: string;
     }> = {};
 
     if (args.displayName !== undefined) {
       updates.displayName = args.displayName;
+    }
+    if (args.domain !== undefined) {
+      updates.domain = args.domain;
     }
     if (args.logoUrl !== undefined) {
       updates.logoUrl = args.logoUrl;
@@ -583,6 +590,7 @@ export const createDefaultTenant = internalMutation({
   args: {
     name: v.string(),
     slug: v.string(),
+    domain: v.optional(v.string()),
   },
   returns: v.id("tenants"),
   handler: async (ctx, args) => {
@@ -595,8 +603,8 @@ export const createDefaultTenant = internalMutation({
     const tenantId = await ctx.db.insert("tenants", {
       name: args.name,
       slug: args.slug,
+      domain: args.domain,
       status: "active",
-      createdAt: Date.now(),
     });
 
     return tenantId;

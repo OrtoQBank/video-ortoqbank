@@ -6,7 +6,7 @@ import { api } from "@/convex/_generated/api";
 import { getTenantSlugFromHostname } from "@/lib/tenant";
 
 // Force dynamic rendering for admin routes (requires authentication)
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /**
  * Server-side admin layout with tenant-specific role-based authorization

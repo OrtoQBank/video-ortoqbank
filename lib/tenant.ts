@@ -5,14 +5,10 @@
  * - Extracting subdomain from hostname
  * - Detecting localhost development subdomains
  * - Managing tenant cookies
- * - Getting tenant configuration
+ *
+ * Tenant data (slug, domain, displayName, logoUrl, primaryColor, status)
+ * is managed dynamically in the Convex `tenants` table.
  */
-
-import {
-  DEFAULT_TENANT_SLUG,
-  getTenantConfig,
-  type TenantConfig,
-} from "@/config/tenants.config";
 
 /** Cookie name for storing the current tenant slug */
 export const TENANT_COOKIE_NAME = "x-tenant-slug";
@@ -20,16 +16,19 @@ export const TENANT_COOKIE_NAME = "x-tenant-slug";
 /** Cookie max age in seconds (1 year) */
 export const TENANT_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
+/** Default tenant slug when none is detected */
+export const DEFAULT_TENANT_SLUG = "teot";
+
 /**
  * Extract the subdomain from a hostname.
  *
  * Examples:
  * - "app1.localhost" -> "app1"
  * - "app1.localhost:3000" -> "app1"
- * - "teot.Ortoclub.com" -> "teot"
+ * - "teot.ortoclub.com" -> "teot"
  * - "localhost:3000" -> null
- * - "Ortoclub.com" -> null
- * - "www.Ortoclub.com" -> null (www is treated as main domain)
+ * - "ortoclub.com" -> null
+ * - "www.ortoclub.com" -> null (www is treated as main domain)
  *
  * @param hostname - The full hostname (e.g., "app1.localhost:3000")
  * @returns The subdomain or null if none detected
@@ -44,7 +43,7 @@ export function extractSubdomain(hostname: string): string | null {
     return subdomain || null;
   }
 
-  // Handle production domains (e.g., "teot.Ortoclub.com")
+  // Handle production domains (e.g., "teot.ortoclub.com")
   const parts = hostWithoutPort.split(".");
 
   // Need at least 3 parts for a subdomain (sub.domain.tld)
@@ -65,9 +64,8 @@ export function extractSubdomain(hostname: string): string | null {
 /**
  * Validate that a string *could* be a tenant slug.
  *
- * IMPORTANT:
- * - This does NOT check whether the tenant exists in Convex or in static config.
- * - This is used for cookie/subdomain resolution where tenants can be dynamic.
+ * This validates the FORMAT only, not whether the tenant exists in Convex.
+ * Tenant existence is validated by querying the Convex database.
  */
 export function isValidTenantSlug(slug: string): boolean {
   const normalized = slug.trim().toLowerCase();
@@ -106,10 +104,6 @@ export function isPlainLocalhost(hostname: string): boolean {
  * Get the tenant slug from a hostname.
  * Returns the subdomain if found, otherwise falls back to default tenant.
  *
- * Note: This returns the actual subdomain from the hostname, even if it's not
- * in the static config. The static config is only used for UI branding fallbacks.
- * Tenant existence should be validated by querying the Convex database.
- *
  * @param hostname - The full hostname
  * @returns The tenant slug (subdomain or default)
  */
@@ -117,37 +111,11 @@ export function getTenantSlugFromHostname(hostname: string): string {
   const subdomain = extractSubdomain(hostname);
 
   // Return the subdomain if it exists and looks valid (basic validation only)
-  if (subdomain && /^[a-z0-9](?:[a-z0-9-]{0,48}[a-z0-9])?$/.test(subdomain)) {
+  if (subdomain && isValidTenantSlug(subdomain)) {
     return subdomain;
   }
 
   return DEFAULT_TENANT_SLUG;
-}
-
-/**
- * Get full tenant context from hostname.
- * Includes both the slug and the static configuration.
- *
- * Note: The slug may be a dynamic tenant not in the static config.
- * The config will fall back to the default tenant's config in that case.
- *
- * @param hostname - The full hostname
- * @returns Object with slug and config
- */
-export function getTenantFromHostname(hostname: string): {
-  slug: string;
-  config: TenantConfig;
-  isDefault: boolean;
-} {
-  const subdomain = extractSubdomain(hostname);
-  const isValidSlug = subdomain && isValidTenantSlug(subdomain);
-  const slug = isValidSlug ? subdomain : DEFAULT_TENANT_SLUG;
-
-  return {
-    slug,
-    config: getTenantConfig(slug),
-    isDefault: !isValidSlug,
-  };
 }
 
 /**
@@ -169,14 +137,3 @@ export function getTenantCookieOptions(): {
     secure: process.env.NODE_ENV === "production",
   };
 }
-
-// Re-export types and functions from config for convenience
-export {
-  DEFAULT_TENANT_SLUG,
-  getAllTenantSlugs,
-  getTenantConfig,
-  type TenantBranding,
-  type TenantConfig,
-  type TenantContent,
-  type TenantSlug,
-} from "@/config/tenants.config";

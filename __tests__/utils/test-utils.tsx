@@ -138,9 +138,8 @@ export const mockUseTenant = vi.fn(() => ({
   tenantSlug: "test-tenant",
   tenantName: "Test Tenant",
   tenantDisplayName: "Test Tenant Display",
-  tenantLogoUrl: null,
-  tenantPrimaryColor: null,
-  config: null,
+  tenantLogoUrl: "/logo.webp",
+  tenantPrimaryColor: "oklch(0.6167 0.1623 250.58)",
   isLoading: false,
   error: null,
 }));
@@ -152,8 +151,6 @@ export const createTenantProviderMock = () => ({
   useTenant: mockUseTenant,
   useTenantId: vi.fn(() => "test-tenant-id" as Id<"tenants">),
   useTenantIdSafe: vi.fn(() => "test-tenant-id" as Id<"tenants">),
-  useTenantBranding: vi.fn(() => null),
-  useTenantLabels: vi.fn(() => null),
   TenantProvider: ({ children }: { children: ReactNode }) => children,
 });
 

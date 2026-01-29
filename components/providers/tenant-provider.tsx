@@ -12,10 +12,8 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import {
   TENANT_COOKIE_NAME,
-  getTenantConfig,
   DEFAULT_TENANT_SLUG,
   extractSubdomain,
-  type TenantConfig,
 } from "@/lib/tenant";
 
 /**
@@ -27,23 +25,22 @@ import {
  * 1. Cookie set by middleware (primary)
  * 2. Subdomain from window.location (fallback)
  *
- * It merges:
- * - Dynamic data from Convex (tenantId, status)
- * - Static config from tenants.config.ts (branding, content)
+ * All tenant data comes from the Convex database.
  * ============================================================================
  */
 
+// Default values for branding fallbacks
+const DEFAULT_LOGO = "/logo.webp";
+const DEFAULT_PRIMARY_COLOR = "oklch(0.6167 0.1623 250.58)";
+
 interface TenantContextType {
-  // Dynamic data from Convex
+  // Data from Convex
   tenantId: Id<"tenants"> | null;
   tenantSlug: string | null;
   tenantName: string | null;
-  tenantDisplayName: string | null; // Display name shown next to logo
+  tenantDisplayName: string | null;
   tenantLogoUrl: string | null;
   tenantPrimaryColor: string | null;
-
-  // Static config from tenants.config.ts
-  config: TenantConfig | null;
 
   // Status
   isLoading: boolean;
@@ -81,7 +78,7 @@ function getTenantSlugFromCookie(): string | null {
 }
 
 /**
- * Basic slug format validation (not checking static config)
+ * Basic slug format validation
  */
 function isValidSlugFormat(slug: string): boolean {
   return /^[a-z0-9](?:[a-z0-9-]{0,48}[a-z0-9])?$/.test(slug.toLowerCase());
@@ -142,7 +139,8 @@ export function TenantProvider({
     // Priority 4: Use default tenant
     return DEFAULT_TENANT_SLUG;
   }, [propSlug]);
-  // Fetch tenant data from Convex (for tenantId)
+
+  // Fetch tenant data from Convex
   const tenant = useQuery(api.tenants.getBySlug, slug ? { slug } : "skip");
 
   // Derive error state from tenant query results
@@ -153,12 +151,8 @@ export function TenantProvider({
         ? "This organization is suspended"
         : null;
 
-  // Get static config for this tenant
-  const staticConfig = slug ? getTenantConfig(slug) : null;
-
-  // Resolve primary color from Convex or static config
-  const resolvedPrimaryColor =
-    tenant?.primaryColor || staticConfig?.branding.primaryColor || null;
+  // Resolve primary color from Convex or use default
+  const resolvedPrimaryColor = tenant?.primaryColor || DEFAULT_PRIMARY_COLOR;
 
   // Inject primary color as CSS variable when it changes (only if applyBrandColor is true)
   useEffect(() => {
@@ -171,26 +165,20 @@ export function TenantProvider({
 
     // Cleanup: reset to default when component unmounts or color is removed
     return () => {
-      // Only reset if we had set a custom color
       if (applyBrandColor && resolvedPrimaryColor) {
-        // Reset to the default blue-brand color
         document.documentElement.style.removeProperty("--blue-brand");
       }
     };
   }, [resolvedPrimaryColor, applyBrandColor]);
 
   const contextValue: TenantContextType = {
-    // Dynamic data from Convex
+    // Data from Convex
     tenantId: tenant?._id || null,
     tenantSlug: slug,
-    tenantName: tenant?.name || staticConfig?.branding.name || null,
-    tenantDisplayName:
-      tenant?.displayName || staticConfig?.branding.name || null,
-    tenantLogoUrl: tenant?.logoUrl || staticConfig?.branding.logo || null,
+    tenantName: tenant?.name || null,
+    tenantDisplayName: tenant?.displayName || tenant?.name || null,
+    tenantLogoUrl: tenant?.logoUrl || DEFAULT_LOGO,
     tenantPrimaryColor: resolvedPrimaryColor,
-
-    // Static config
-    config: staticConfig,
 
     // Status
     isLoading: tenant === undefined && slug !== null,
@@ -237,22 +225,4 @@ export function useTenantIdSafe(): Id<"tenants"> | null {
   const tenant = useTenant();
   if (!tenant) return null;
   return tenant.tenantId;
-}
-
-/**
- * Hook to get tenant branding
- */
-export function useTenantBranding() {
-  const tenant = useTenant();
-  if (!tenant) return null;
-  return tenant.config?.branding || null;
-}
-
-/**
- * Hook to get tenant content labels
- */
-export function useTenantLabels() {
-  const tenant = useTenant();
-  if (!tenant) return null;
-  return tenant.config?.content.labels || null;
 }

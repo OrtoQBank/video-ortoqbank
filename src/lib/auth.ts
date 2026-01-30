@@ -7,14 +7,15 @@ import { auth } from "@clerk/nextjs/server";
 export async function getAuthToken() {
   const token = (await (await auth()).getToken({ template: "convex" })) ?? undefined;
   
-  // Debug: Log token info to help diagnose auth issues
+  // Debug: Log full token payload to diagnose auth issues
   // TODO: Remove after fixing auth
   if (token) {
     try {
       const payload = JSON.parse(atob(token.split(".")[1]));
+      console.log("[Auth Debug] Full token payload:", JSON.stringify(payload, null, 2));
       console.log("[Auth Debug] Token issuer (iss):", payload.iss);
-      console.log("[Auth Debug] Token audience (aud):", payload.aud);
-      console.log("[Auth Debug] Expected CLERK_JWT_ISSUER_DOMAIN:", process.env.CLERK_JWT_ISSUER_DOMAIN);
+      console.log("[Auth Debug] Token audience (aud):", payload.aud, "- type:", typeof payload.aud);
+      console.log("[Auth Debug] Token subject (sub):", payload.sub);
     } catch {
       console.log("[Auth Debug] Could not decode token");
     }

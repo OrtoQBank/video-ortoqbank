@@ -1,7 +1,7 @@
 import { ReactElement, ReactNode } from "react";
 import { render, RenderOptions } from "@testing-library/react";
 import { vi } from "vitest";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/src/components/ui/sidebar";
 import { Id } from "@/convex/_generated/dataModel";
 
 // Mock Next.js Router functions - can be used in vi.mock() calls

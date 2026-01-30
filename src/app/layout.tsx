@@ -5,7 +5,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Toaster } from "@/src/components/ui/toaster";
-
+import { ClerkProvider } from "@clerk/nextjs";
 import ConvexClientProvider from "@/src/components/convex-client-provider";
 
 const geistSans = Geist({
@@ -69,12 +69,14 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${sifonn.variable} antialiased`}
       >
-        <ConvexClientProvider>
-          <NuqsAdapter>
-            {children}
-            <Toaster />
-          </NuqsAdapter>
-        </ConvexClientProvider>
+        <ClerkProvider>
+          <ConvexClientProvider>
+            <NuqsAdapter>
+              {children}
+              <Toaster />
+            </NuqsAdapter>
+          </ConvexClientProvider>
+        </ClerkProvider>
       </body>
     </html>
   );

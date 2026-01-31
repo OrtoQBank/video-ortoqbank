@@ -1,6 +1,10 @@
 import { type MutationCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
-import { totalLessonsPerTenant } from "../aggregate";
+import {
+  totalLessonsPerTenant,
+  completedLessonsPerUser,
+  completedLessonsPerUserPerUnit,
+} from "../aggregate";
 
 /**
  * Helper function to update unit and global progress for a tenant
@@ -13,22 +17,14 @@ export async function updateUnitAndGlobalProgress(
 ) {
   const now = Date.now();
 
-  // Update unitProgress
+  // Update unitProgress using aggregate for O(log n) lookup
   const unit = await ctx.db.get(unitId);
   if (unit) {
-    const completedLessonsInUnit = await ctx.db
-      .query("userProgress")
-      .withIndex("by_tenantId_and_userId_and_lessonId", (q) =>
-        q.eq("tenantId", tenantId).eq("userId", userId),
-      )
-      .collect();
+    // Get completed count from aggregate
+    const completedCount = await completedLessonsPerUserPerUnit.sum(ctx, {
+      namespace: [tenantId, userId, unitId],
+    });
 
-    // Filter to this unit only
-    const lessonsInThisUnit = completedLessonsInUnit.filter(
-      (p) => p.unitId === unitId,
-    );
-
-    const completedCount = lessonsInThisUnit.filter((p) => p.completed).length;
     const progressPercent =
       unit.totalLessonVideos > 0
         ? Math.round((completedCount / unit.totalLessonVideos) * 100)
@@ -61,17 +57,10 @@ export async function updateUnitAndGlobalProgress(
     }
   }
 
-  // Update userGlobalProgress for this tenant
-  const allCompletedLessons = await ctx.db
-    .query("userProgress")
-    .withIndex("by_tenantId_and_userId", (q) =>
-      q.eq("tenantId", tenantId).eq("userId", userId),
-    )
-    .collect();
-
-  const totalCompletedCount = allCompletedLessons.filter(
-    (p) => p.completed,
-  ).length;
+  // Update userGlobalProgress using aggregates for O(log n) lookup
+  const totalCompletedCount = await completedLessonsPerUser.sum(ctx, {
+    namespace: [tenantId, userId],
+  });
 
   // Get total lessons from aggregate (per tenant)
   const totalLessonsInTenant = await totalLessonsPerTenant.count(ctx, {

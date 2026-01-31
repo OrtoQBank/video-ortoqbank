@@ -423,8 +423,6 @@ export const remove = mutationWithTrigger({
       // Schedule cascade delete in batches
       await ctx.scheduler.runAfter(0, internal.categories.deleteCascadeBatch, {
         categoryId: args.id,
-        unitsProcessed: 0,
-        lessonsDeleted: 0,
       });
 
       // Delete the category immediately (children will be deleted async)
@@ -460,8 +458,6 @@ export const remove = mutationWithTrigger({
 export const deleteCascadeBatch = internalMutationWithTrigger({
   args: {
     categoryId: v.id("categories"),
-    unitsProcessed: v.number(),
-    lessonsDeleted: v.number(),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -494,8 +490,6 @@ export const deleteCascadeBatch = internalMutationWithTrigger({
     if (units.length === BATCH_SIZE) {
       await ctx.scheduler.runAfter(0, internal.categories.deleteCascadeBatch, {
         categoryId: args.categoryId,
-        unitsProcessed: args.unitsProcessed + units.length,
-        lessonsDeleted: args.lessonsDeleted,
       });
     }
 
@@ -597,7 +591,6 @@ export const togglePublish = mutationWithTrigger({
         {
           categoryId: args.id,
           isPublished: newPublishStatus,
-          lessonsChanged: 0,
         },
       );
 
@@ -636,7 +629,6 @@ export const togglePublishCascadeBatch = internalMutationWithTrigger({
   args: {
     categoryId: v.id("categories"),
     isPublished: v.boolean(),
-    lessonsChanged: v.number(),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -687,7 +679,6 @@ export const togglePublishCascadeBatch = internalMutationWithTrigger({
         {
           categoryId: args.categoryId,
           isPublished: args.isPublished,
-          lessonsChanged: args.lessonsChanged + batchUnits.length,
         },
       );
     }

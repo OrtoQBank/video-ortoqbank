@@ -78,6 +78,23 @@ export const completedLessonsPerUser = new TableAggregate<{
   sumValue: (doc) => (doc.completed ? 1 : 0),
 });
 
+/**
+ * Aggregate for counting completed lessons per user per unit
+ * Namespace is a tuple of [tenantId, clerkUserId, unitId] for per-unit counting
+ * Uses sumValue to only count documents where completed: true
+ */
+export const completedLessonsPerUserPerUnit = new TableAggregate<{
+  Namespace: [Id<"tenants">, string, Id<"units">]; // [tenantId, clerkUserId, unitId]
+  Key: null;
+  DataModel: DataModel;
+  TableName: "userProgress";
+}>(components.aggregateUnitProgress, {
+  namespace: (doc) => [doc.tenantId, doc.userId, doc.unitId],
+  sortKey: () => null,
+  // Only include completed lessons in the sum
+  sumValue: (doc) => (doc.completed ? 1 : 0),
+});
+
 // ============================================================================
 // TRIGGERS - Automatic sync on table changes
 // ============================================================================
@@ -87,6 +104,7 @@ triggers.register("lessons", totalLessonsPerTenant.trigger());
 triggers.register("units", totalUnitsPerTenant.trigger());
 triggers.register("categories", totalCategoriesPerTenant.trigger());
 triggers.register("userProgress", completedLessonsPerUser.trigger());
+triggers.register("userProgress", completedLessonsPerUserPerUnit.trigger());
 
 // ============================================================================
 // CUSTOM MUTATION WRAPPERS - Use these for mutations that modify tracked tables
@@ -263,13 +281,14 @@ export const backfillAggregates = internalMutationWithTrigger({
       };
     }
 
-    // userProgress
+    // userProgress - insert into both user-level and unit-level aggregates
     const result = await ctx.db
       .query("userProgress")
       .paginate({ numItems: batchSize, cursor: args.cursor ?? null });
 
     for (const doc of result.page) {
       await completedLessonsPerUser.insertIfDoesNotExist(ctx, doc);
+      await completedLessonsPerUserPerUnit.insertIfDoesNotExist(ctx, doc);
     }
 
     return {
@@ -288,20 +307,26 @@ export const clearAllAggregates = internalMutationWithTrigger({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
+    // Content aggregates: rootLazy: false for faster reads (admin writes are infrequent)
     await totalLessonsPerTenant.clearAll(ctx, {
       maxNodeSize: 16,
-      rootLazy: true,
+      rootLazy: false,
     });
     await totalUnitsPerTenant.clearAll(ctx, {
       maxNodeSize: 16,
-      rootLazy: true,
+      rootLazy: false,
     });
     await totalCategoriesPerTenant.clearAll(ctx, {
       maxNodeSize: 16,
+      rootLazy: false,
+    });
+    // User progress aggregates: rootLazy: true with larger maxNodeSize to reduce write conflicts
+    await completedLessonsPerUser.clearAll(ctx, {
+      maxNodeSize: 32,
       rootLazy: true,
     });
-    await completedLessonsPerUser.clearAll(ctx, {
-      maxNodeSize: 16,
+    await completedLessonsPerUserPerUnit.clearAll(ctx, {
+      maxNodeSize: 32,
       rootLazy: true,
     });
 

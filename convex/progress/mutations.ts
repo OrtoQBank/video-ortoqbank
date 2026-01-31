@@ -3,6 +3,8 @@ import { updateUnitAndGlobalProgress } from "./helpers";
 import {
   mutationWithTrigger,
   totalLessonsPerTenant,
+  completedLessonsPerUser,
+  completedLessonsPerUserPerUnit,
 } from "../aggregate";
 
 /**
@@ -76,17 +78,10 @@ export const markLessonCompleted = mutationWithTrigger({
       )
       .unique();
 
-    const completedLessonsInUnit = await ctx.db
-      .query("userProgress")
-      .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
-      )
-      .collect();
-
-    const lessonsInThisUnit = completedLessonsInUnit.filter(
-      (p) => p.unitId === lesson.unitId,
-    );
-    const completedCount = lessonsInThisUnit.filter((p) => p.completed).length;
+    // Get completed count from aggregate for O(log n) lookup
+    const completedCount = await completedLessonsPerUserPerUnit.sum(ctx, {
+      namespace: [args.tenantId, args.userId, lesson.unitId],
+    });
     const progressPercent =
       unit.totalLessonVideos > 0
         ? Math.round((completedCount / unit.totalLessonVideos) * 100)
@@ -111,17 +106,10 @@ export const markLessonCompleted = mutationWithTrigger({
       });
     }
 
-    // Update userGlobalProgress
-    const allCompletedLessons = await ctx.db
-      .query("userProgress")
-      .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
-      )
-      .collect();
-
-    const totalCompletedCount = allCompletedLessons.filter(
-      (p) => p.completed,
-    ).length;
+    // Update userGlobalProgress using aggregates for O(log n) lookup
+    const totalCompletedCount = await completedLessonsPerUser.sum(ctx, {
+      namespace: [args.tenantId, args.userId],
+    });
 
     // Get total lessons from aggregate (per tenant)
     const totalLessonsInTenant = await totalLessonsPerTenant.count(ctx, {
@@ -203,22 +191,12 @@ export const markLessonIncomplete = mutationWithTrigger({
 
     const now = Date.now();
 
-    // Update unitProgress
+    // Update unitProgress using aggregate for O(log n) lookup
     const unit = await ctx.db.get(lesson.unitId);
     if (unit) {
-      const completedLessonsInUnit = await ctx.db
-        .query("userProgress")
-        .withIndex("by_tenantId_and_userId", (q) =>
-          q.eq("tenantId", args.tenantId).eq("userId", args.userId),
-        )
-        .collect();
-
-      const lessonsInThisUnit = completedLessonsInUnit.filter(
-        (p) => p.unitId === lesson.unitId,
-      );
-      const completedCount = lessonsInThisUnit.filter(
-        (p) => p.completed,
-      ).length;
+      const completedCount = await completedLessonsPerUserPerUnit.sum(ctx, {
+        namespace: [args.tenantId, args.userId, lesson.unitId],
+      });
       const progressPercent =
         unit.totalLessonVideos > 0
           ? Math.round((completedCount / unit.totalLessonVideos) * 100)
@@ -243,17 +221,10 @@ export const markLessonIncomplete = mutationWithTrigger({
       }
     }
 
-    // Update userGlobalProgress
-    const allCompletedLessons = await ctx.db
-      .query("userProgress")
-      .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
-      )
-      .collect();
-
-    const totalCompletedCount = allCompletedLessons.filter(
-      (p) => p.completed,
-    ).length;
+    // Update userGlobalProgress using aggregates for O(log n) lookup
+    const totalCompletedCount = await completedLessonsPerUser.sum(ctx, {
+      namespace: [args.tenantId, args.userId],
+    });
 
     // Get total lessons from aggregate (per tenant)
     const totalLessonsInTenant = await totalLessonsPerTenant.count(ctx, {
@@ -294,15 +265,10 @@ export const recalculateGlobalProgress = mutationWithTrigger({
   handler: async (ctx, args) => {
     const now = Date.now();
 
-    // Get all completed lessons for this tenant
-    const allProgress = await ctx.db
-      .query("userProgress")
-      .withIndex("by_tenantId_and_userId", (q) =>
-        q.eq("tenantId", args.tenantId).eq("userId", args.userId),
-      )
-      .collect();
-
-    const totalCompletedCount = allProgress.filter((p) => p.completed).length;
+    // Get completed count from aggregate for O(log n) lookup
+    const totalCompletedCount = await completedLessonsPerUser.sum(ctx, {
+      namespace: [args.tenantId, args.userId],
+    });
 
     // Get total lessons from aggregate (per tenant)
     const totalLessonsInTenant = await totalLessonsPerTenant.count(ctx, {

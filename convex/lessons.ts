@@ -335,9 +335,6 @@ export const update = mutationWithTrigger({
       throw new Error("Já existe uma aula com este slug");
     }
 
-    const wasPublished = currentLesson.isPublished;
-    const willBePublished = args.isPublished;
-
     await ctx.db.patch(args.id, {
       unitId: args.unitId,
       categoryId: unit.categoryId,
@@ -377,8 +374,6 @@ export const remove = mutationWithTrigger({
     if (lesson.tenantId !== args.tenantId) {
       throw new Error("Aula não pertence a este tenant");
     }
-
-    const wasPublished = lesson.isPublished;
 
     await ctx.db.delete(args.id);
 

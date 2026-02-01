@@ -287,7 +287,7 @@ function CheckoutSuccessContent() {
               <p>
                 Não recebeu o email? Verifique sua caixa de spam ou{" "}
                 <button
-                  onClick={() => router.push("/suporte")}
+                  onClick={() => router.push("/support")}
                   className="text-brand-blue hover:underline font-medium"
                 >
                   entre em contato conosco

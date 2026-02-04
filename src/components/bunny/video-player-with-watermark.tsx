@@ -135,9 +135,8 @@ export function VideoPlayerWithWatermark({
           height: "100%",
           width: "100%",
         }}
-        allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+        allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
         allowFullScreen
-        referrerPolicy="no-referrer"
       />
 
       {/* Watermark overlay - Continuous slow movement */}
